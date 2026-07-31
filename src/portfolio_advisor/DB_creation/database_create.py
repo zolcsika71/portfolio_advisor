@@ -194,6 +194,7 @@ def table_columns(
     table_name: str,
 ) -> list[str]:
     """Return the columns currently defined for a SQLite table, in order."""
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
     rows = connection.execute(
         f"PRAGMA table_info({_quote_identifier(table_name)})"
     ).fetchall()
@@ -224,6 +225,7 @@ def ensure_data_table(
         f"{_quote_identifier(column)} {_sql_type(column)}"
         for column in columns
     ]
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection
     connection.execute(
         f"CREATE TABLE {_quote_identifier(table_name)} "
         f"({', '.join(column_definitions)})"
@@ -240,7 +242,7 @@ def date_exists(
         return False
 
     # The table is created dynamically by ensure_data_table.
-    # noinspection SqlResolve
+    # noinspection SqlDialectInspection,SqlNoDataSourceInspection,SqlResolve
     result = connection.execute(
         'SELECT 1 FROM model_portfolios WHERE "Date" = ? LIMIT 1',
         (import_date,),
@@ -320,6 +322,7 @@ def import_file(
                     _quote_identifier(column) for column in columns
                 )
                 placeholders = ", ".join("?" for _ in columns)
+                # noinspection SqlDialectInspection,SqlNoDataSourceInspection
                 insert_sql = (
                     f"INSERT INTO {_quote_identifier(table_name)} "
                     f"({column_sql}) VALUES ({placeholders})"
