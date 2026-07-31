@@ -165,6 +165,7 @@ cython_debug/
 # Local data, including Graphify source documents
 data/
 database/
+identifier.sqlite
 
 # macOS Finder metadata
 .DS_Store
