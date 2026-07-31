@@ -163,5 +163,5 @@ cython_debug/
 #.idea/
 
 # Local source documents for Graphify
-/data/
-/database/
+data/knowledge/pdfs/
+.DS_Store
