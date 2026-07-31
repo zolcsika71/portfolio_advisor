@@ -3,12 +3,13 @@ name = "portfolio-advisor"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "zolcsika71",email = "bushdoctor2008@gmail.com"}
+    { name = "zolcsika71", email = "bushdoctor2008@gmail.com" }
 ]
-requires-python = "<=3.12 >3.13"
-dependencies = [
-]
+requires-python = ">=3.12,<3.13"
+dependencies = []
 
+[tool.poetry.dependencies]
+python = ">=3.12,<3.13"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
