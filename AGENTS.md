@@ -14,8 +14,8 @@ files, so they are namespaces rather than agents:
 - `src/portfolio_advisor/metrics/`
 - `src/portfolio_advisor/ranking/`
 
-`src/portfolio_advisor/main.py` is still the default PyCharm sample script and
-does not start an agent workflow.
+`src/portfolio_advisor/main.py` is the application entry point and delegates to
+the database-import workflow; it does not start an agent workflow.
 
 ## Implemented application components (not agents)
 
@@ -36,6 +36,10 @@ Relevant entry points include:
 - `translate_values()` — maps supported categorical values and rejects unknown
   categories.
 - `prepare_rows()` — prepares validated rows for import.
+- `add_date_field()` — adds one validated `Date` value to every normalized row.
+
+Only the visible `modell portfóliók` worksheet is accepted. Headers and
+supported categorical values are translated systematically into English.
 
 ### SQLite import layer
 
@@ -51,6 +55,30 @@ Relevant entry points include:
 - `DatabaseSession` — owns SQLite connection and transaction lifecycle.
 - `ensure_data_table()` — creates or validates the expected schema without
   silently altering an incompatible table.
+- `process_directory()` — finds all `.xls` files, ensures the database exists,
+  imports them in filename order, and moves successful files to the processed
+  directory.
+- `main()` — exposes the command-line importer.
+
+Default paths are:
+
+- Input: `/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/data/xls/import`
+- Processed: `/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/data/xls/processed`
+- Database: `/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/database/model_portfolio.sqlite`
+
+The SQLite table is `model_portfolios`. It contains `Date`, translated
+portfolio fields, allocation values, and portfolio risk/performance metrics.
+The filename must contain an eight-digit date immediately before `.xls`, such
+as `portfolio_20250726.xls`.
+
+Run the importer from the project root with:
+
+```bash
+poetry run python -m portfolio_advisor.main
+```
+
+PyCharm may also execute `src/portfolio_advisor/main.py` directly; the entry
+point supports both direct-script and package-module execution.
 
 ### Knowledge-graph scripts
 
