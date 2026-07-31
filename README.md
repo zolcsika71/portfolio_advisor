@@ -31,9 +31,9 @@ The importer:
 
 | Purpose | Path |
 |---|---|
-| Input Excel files | `/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/data/xls/import` |
-| Processed files | `/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/data/xls/processed` |
-| SQLite database | `/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/database/model_portfolio.sqlite` |
+| Input Excel files | `data/xls/import` |
+| Processed files | `data/xls/processed` |
+| SQLite database | `database/model_portfolio.sqlite` |
 
 The processed directory and database parent directory are created
 automatically.
