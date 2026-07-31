@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# PyCharm and environments
+.idea/
+.venv/
+venv/
+
+# Generated output
+graphify-out/
+
+# Sensitive or irrelevant data
+.env
+.env.*
+secrets/
+client_data/
+account_statements/
+
+# SQLite binary data
+database/*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
