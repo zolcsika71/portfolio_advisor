@@ -2,6 +2,17 @@
 
 This project provides wrapper scripts to simplify working with the Graphify knowledge base.
 
+The portfolio database importer is run through the application entry point:
+
+```bash
+poetry run python -m portfolio_advisor.main
+```
+
+It reads `.xls` files from `data/xls/import`, writes to
+`database/model_portfolio.sqlite`, and moves successfully processed files to
+`data/xls/processed`. Custom paths can be supplied with `--input-directory`,
+`--processed-directory`, and `--database`.
+
 ## Available Commands
 
 ### Verify the Graphify installation
@@ -67,6 +78,15 @@ run:
 ./scripts/gupdate.zsh
 ```
 
+After adding or changing reviewed rules in:
+
+```text
+data/knowledge/validated_rules/
+```
+
+run the same graph update and verification workflow. Only reviewed YAML or
+Markdown rules in that directory may define executable financial logic.
+
 ---
 
 ### Update Graphify
@@ -75,6 +95,23 @@ Updates the installed Graphify CLI to the latest version.
 
 ```bash
 ./scripts/update_graphify.zsh
+```
+
+---
+
+### Export the SQLite schema
+
+Exports the schema from the default portfolio database to
+`database/schema.sql`:
+
+```bash
+./scripts/export_schema.zsh
+```
+
+Optional arguments can override the database and output paths:
+
+```bash
+./scripts/export_schema.zsh /path/to/database.sqlite /path/to/schema.sql
 ```
 
 After upgrading Graphify, verify the installation again:
@@ -157,3 +194,11 @@ The wrapper scripts automatically switch to the Graphify knowledge corpus (`data
 | `gquery.zsh` | Query the Graphify knowledge graph |
 | `gupdate.zsh` | Update the Graphify knowledge graph after knowledge changes |
 | `update_graphify.zsh` | Update the installed Graphify CLI |
+| `export_schema.zsh` | Export the SQLite database schema to SQL |
+
+## Validated rules
+
+`data/knowledge/validated_rules/README.md` documents the requirements for
+reviewed rules. `codex.yaml` records the Codex-facing policy, including the
+restriction that Graphify `INFERRED` edges are for discovery only and cannot be
+used as executable financial rules without independent review.
