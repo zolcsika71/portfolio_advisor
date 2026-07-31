@@ -1,7 +1,7 @@
-"""Create and populate the shortlist SQLite database.
+"""Create and populate the portfolio SQLite database.
 
 The command-line entry point passes files from ``model_portfolios_shortlist_xls``
-to :func:`import_file` and uses ``db/shortlist.sqlite` as the destination.
+to: func:`import_file` and uses ``db/shortlist.sqlite` as the destination.
 The importer deliberately receives the destination path from its caller, so
 the existing ``model_portfolio.sqlite`` database is never opened or changed by
 the default shortlist workflow.
@@ -14,7 +14,9 @@ present are skipped.
 
 from __future__ import annotations
 
+import argparse
 import re
+import shutil
 import sqlite3
 from contextlib import AbstractContextManager
 from datetime import datetime
@@ -22,9 +24,18 @@ from pathlib import Path
 from types import TracebackType
 from typing import Final
 
-from .excel_processing import prepare_rows, read_target_worksheet
+from .excel_processing import add_date_field, prepare_rows, read_target_worksheet
 from .text_normalization import normalized_key
 
+DEFAULT_INPUT_DIR: Final = Path(
+    "/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/data/xls/import"
+)
+DEFAULT_PROCESSED_DIR: Final = Path(
+    "/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/data/xls/processed"
+)
+DEFAULT_DATABASE_PATH: Final = Path(
+    "/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/database/model_portfolio.sqlite"
+)
 
 # Matches an eight-digit date immediately before the file extension.
 # Example: ``portfolio_20250726.xlsx`` -> ``20250726``.
@@ -153,7 +164,7 @@ def extract_date(file_path: Path) -> str:
             f"Filename does not end in an eight-digit date: {file_path.name}"
         )
 
-    parsed_date = datetime.strptime(match.group(1), "%Y%m%d")
+    parsed_date = datetime.strptime(match.group(1), "%Y%m%d")  # noqa: DTZ007
     return parsed_date.strftime("%Y/%m/%d")
 
 
@@ -201,9 +212,7 @@ def ensure_data_table(
     Existing tables are not altered automatically. This prevents an import
     from silently writing data into an unexpected schema.
     """
-    existing_columns = table_columns(connection, table_name)
-
-    if existing_columns:
+    if existing_columns := table_columns(connection, table_name):
         if existing_columns != list(columns):
             raise ValueError(
                 f"Existing table {table_name!r} has incompatible columns. "
@@ -299,6 +308,7 @@ def import_file(
                     worksheet,
                     WORKSHEET_COLUMNS,
                 )
+                frame = add_date_field(frame, import_date)
 
                 # Empty worksheets do not require table creation or insertion.
                 if frame.empty:
@@ -315,14 +325,9 @@ def import_file(
                     f"({column_sql}) VALUES ({placeholders})"
                 )
 
-                # Prefix every worksheet row with the workbook import date.
-                # A generator avoids creating a second full in-memory copy.
                 connection.executemany(
                     insert_sql,
-                    (
-                        (import_date, *row)
-                        for row in frame.itertuples(index=False, name=None)
-                    ),
+                    frame.itertuples(index=False, name=None),
                 )
                 row_count += len(frame)
 
@@ -341,3 +346,106 @@ def import_file(
         f"into {database_path}"
     )
     return True
+
+
+def process_directory(
+    input_directory: Path = DEFAULT_INPUT_DIR,
+    database_path: Path = DEFAULT_DATABASE_PATH,
+    processed_directory: Path = DEFAULT_PROCESSED_DIR,
+) -> tuple[int, int]:
+    """Import every ``.xls`` file in *input_directory*.
+
+    Files are processed in filename order and moved only after successful
+    import. If the processed directory is the same as the input directory,
+    moving is correctly treated as a no-op because the file is already there.
+
+    Returns:
+        A ``(imported, skipped)`` count.
+
+    Raises:
+        FileNotFoundError: If the input directory does not exist.
+        NotADirectoryError: If the input path is not a directory.
+        Exception: Any workbook or database error is propagated and stops the
+            batch, leaving the failing file in place for inspection.
+    """
+    input_directory = input_directory.expanduser().resolve()
+    database_path = database_path.expanduser().resolve()
+    processed_directory = processed_directory.expanduser().resolve()
+
+    if not input_directory.exists():
+        raise FileNotFoundError(f"Input directory not found: {input_directory}")
+    if not input_directory.is_dir():
+        raise NotADirectoryError(f"Input path is not a directory: {input_directory}")
+    processed_directory.mkdir(parents=True, exist_ok=True)
+
+    files = sorted(
+        (path for path in input_directory.iterdir()
+         if path.is_file() and path.suffix.casefold() == ".xls"),
+        key=lambda path: path.name.casefold(),
+    )
+
+    # Create the database as soon as an input workbook is detected. This keeps
+    # database creation independent from workbook validation and row count.
+    if files:
+        database_path.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(database_path):
+            pass
+
+    imported = 0
+    skipped = 0
+    for file_path in files:
+        if import_file(file_path, database_path):
+            imported += 1
+        else:
+            skipped += 1
+
+        destination = processed_directory / file_path.name
+        if destination.resolve() == file_path.resolve():
+            print(f"Processed file already in destination: {file_path.name}")
+        else:
+            shutil.move(str(file_path), str(destination))
+            print(f"Moved processed file to: {destination}")
+
+    print(
+        f"Completed {len(files)} .xls file(s): "
+        f"{imported} imported, {skipped} skipped"
+    )
+    return imported, skipped
+
+
+def main() -> None:
+    """Run the batch importer from the command line."""
+    parser = argparse.ArgumentParser(
+        description="Import all .xls files from the portfolio input directory."
+    )
+    parser.add_argument(
+        "--input-directory",
+        type=Path,
+        default=DEFAULT_INPUT_DIR,
+        help=f"Directory containing .xls files (default: {DEFAULT_INPUT_DIR})",
+    )
+    parser.add_argument(
+        "--database",
+        type=Path,
+        default=DEFAULT_DATABASE_PATH,
+        help=f"SQLite destination (default: {DEFAULT_DATABASE_PATH})",
+    )
+    parser.add_argument(
+        "--processed-directory",
+        type=Path,
+        default=DEFAULT_PROCESSED_DIR,
+        help=(
+            "Directory for processed files "
+            f"(default: {DEFAULT_PROCESSED_DIR})"
+        ),
+    )
+    args = parser.parse_args()
+    process_directory(
+        args.input_directory,
+        args.database,
+        args.processed_directory,
+    )
+
+
+if __name__ == "__main__":
+    main()

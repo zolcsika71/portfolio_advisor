@@ -4,17 +4,21 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from functools import partial
 from numbers import Real
 from pathlib import Path
 from typing import Any, Final
 
+# noinspection PyPackageRequirements
 import pandas as pd
+
+# noinspection PyPackageRequirements
 from python_calamine import load_workbook
 
 from .text_normalization import normalized_key
 
-
 TARGET_WORKSHEET: Final = "modell portfóliók"
+DATE_COLUMN: Final = "Date"
 
 HEADER_TRANSLATIONS: Final = {
     "portfólió neve": "Portfolio Name", "portfolio name": "Portfolio Name",
@@ -213,6 +217,30 @@ def translate_headers(headers: list[Any], file_name: str, sheet_name: str) -> li
     return translated
 
 
+def _translate_value(
+    value: Any,
+    *,
+    column_name: str,
+    translations: dict[str, str],
+    english_values: dict[str, str],
+    invalid_values: set[str],
+) -> Any:
+    """Translate one categorical value using explicit column context."""
+    if value is None or pd.isna(value):
+        return value
+    key = normalized_key(value)
+    if key in translations:
+        return translations[key]
+    if key in english_values:
+        return english_values[key]
+    if key in invalid_values:
+        return None
+    raise ValueError(
+        f"No English translation configured for {column_name} "
+        f"value: {value!r}"
+    )
+
+
 def translate_values(frame: pd.DataFrame) -> pd.DataFrame:
     """Translate categorical values and reject unknown non-English categories."""
     frame = frame.copy()
@@ -223,23 +251,15 @@ def translate_values(frame: pd.DataFrame) -> pd.DataFrame:
             normalized_key(value): value for value in translations.values()
         }
         invalid_values = INVALID_CATEGORY_VALUES.get(column_name, set())
-
-        def translate(value: Any) -> Any:
-            if value is None or pd.isna(value):
-                return value
-            key = normalized_key(value)
-            if key in translations:
-                return translations[key]
-            if key in english_values:
-                return english_values[key]
-            if key in invalid_values:
-                return None
-            raise ValueError(
-                f"No English translation configured for {column_name} "
-                f"value: {value!r}"
+        frame[column_name] = frame[column_name].map(
+            partial(
+                _translate_value,
+                column_name=column_name,
+                translations=translations,
+                english_values=english_values,
+                invalid_values=invalid_values,
             )
-
-        frame[column_name] = frame[column_name].map(translate)
+        )
     return frame
 
 
@@ -284,3 +304,17 @@ def prepare_rows(file_path: Path, sheet_name: str, frame: pd.DataFrame,
     data = translate_values(data)
     data = replace_numeric_zeros(data)
     return data.astype(object).where(pd.notna(data), None)
+
+
+def add_date_field(frame: pd.DataFrame, import_date: str) -> pd.DataFrame:
+    """Add one deterministic import date to every normalized worksheet row."""
+    if not re.fullmatch(r"\d{4}/\d{2}/\d{2}", import_date):
+        raise ValueError(
+            f"Import date must use YYYY/MM/DD format: {import_date!r}"
+        )
+    if DATE_COLUMN in frame.columns:
+        raise ValueError(f"Worksheet already contains a {DATE_COLUMN!r} column")
+
+    dated = frame.copy()
+    dated.insert(0, DATE_COLUMN, import_date)
+    return dated
