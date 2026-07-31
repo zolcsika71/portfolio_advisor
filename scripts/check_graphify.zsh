@@ -99,11 +99,11 @@ print "Your Graphify installation is fully operational."
 print "The only operational limitation is that 'graphify query' assumes the current"
 print "working directory is the root of the knowledge corpus."
 print
-Recommendation
-==============
-Use the project's Graphify wrapper script to execute all Graphify queries.
-The wrapper script automatically changes to the knowledge corpus directory
-before invoking 'graphify query', ensuring the correct graph is always used
-regardless of the current working directory.
-
-No changes to the existing project structure or Graphify installation are required.
+print "Recommendation"
+print "=============="
+print "Use the project's Graphify wrapper script to execute all Graphify queries."
+print "The wrapper script automatically changes to the knowledge corpus directory"
+print "before invoking 'graphify query', ensuring the correct graph is always used"
+print "regardless of the current working directory."
+print
+print "No changes to the existing project structure or Graphify installation are required."
