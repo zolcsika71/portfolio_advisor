@@ -1,0 +1,6 @@
+database_creation:
+  input_directory: "/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/data/xls/import"
+  processed_directory: "/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/data/xls/processed"
+  database_path: "/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/database/model_portfolio.sqlite"
+  worksheet: "modell portfóliók"
+  file_extension: ".xls"
