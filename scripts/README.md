@@ -30,6 +30,10 @@ Checks:
 ./scripts/check_graphify.zsh
 ```
 
+The verification script checks the Graphify executable, generated graph files,
+JSON structure, graph statistics, and query functionality. After a successful
+check it prints the recommended wrapper-script workflow.
+
 ---
 
 ### Query the knowledge graph
@@ -130,6 +134,13 @@ After upgrading Graphify, verify the installation again:
 poetry install
 
 ./scripts/check_graphify.zsh
+```
+
+To syntax-check the shell wrappers:
+
+```bash
+zsh -n scripts/check_graphify.zsh
+zsh -n scripts/export_schema.zsh
 ```
 
 ---
