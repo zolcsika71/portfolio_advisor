@@ -6,7 +6,7 @@ authors = [
     { name = "zolcsika71", email = "bushdoctor2008@gmail.com" }
 ]
 requires-python = ">=3.12,<3.13"
-dependencies = ["pandas (>=3.0.5,<4.0.0)", "python-calamine (>=0.8.2,<0.9.0)"]
+dependencies = ["pandas (>=3.0.5,<4.0.0)", "python-calamine (>=0.8.2,<0.9.0)", "pyyaml (>=6.0.2,<7.0.0)"]
 
 [tool.poetry]
 packages = [
@@ -17,6 +17,7 @@ packages = [
 python = ">=3.12,<3.13"
 pandas = ">=3.0.5,<4.0.0"
 python-calamine = ">=0.8.2,<0.9.0"
+pyyaml = ">=6.0.2,<7.0.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
@@ -27,5 +28,6 @@ dev = [
     "pytest-cov (>=7.1.0,<8.0.0)",
     "ruff (>=0.16.1,<0.17.0)",
     "mypy (>=2.3.0,<3.0.0)",
+    "types-pyyaml (>=6.0.12.20250915,<7.0.0.0)",
     "pandas-stubs (>=3.0.5.260730,<4.0.0.0)"
 ]

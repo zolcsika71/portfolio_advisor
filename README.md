@@ -1,7 +1,8 @@
 # Portfolio Advisor
 
-Portfolio Advisor imports model-portfolio Excel data into a SQLite database.
-The current implementation focuses on the database creation workflow.
+Portfolio Advisor imports model-portfolio Excel data into SQLite and provides a
+deterministic capital-preservation analytics and ranking workflow. No LLM is
+used for calculations, scoring, ranking, or selection.
 
 ## Requirements
 
@@ -38,7 +39,7 @@ The importer:
 The processed directory and database parent directory are created
 automatically.
 
-## Running the importer
+## Running deterministic analysis
 
 From the project root:
 
@@ -46,19 +47,55 @@ From the project root:
 poetry run python -m portfolio_advisor.main
 ```
 
-The importer also accepts custom locations:
+The command emits a structured JSON result, discovers the latest observation
+date automatically, and opens SQLite in read-only mode. The shipped policy is
+deliberately marked `proposed`; the default command reports this and makes no
+selection until it has independent review. To evaluate that proposal in a
+controlled setting, opt in explicitly:
 
 ```bash
 poetry run python -m portfolio_advisor.main \
+  --allow-proposed-rules \
+  --top-alternatives 3
+```
+
+Use `--rules` and `--database` to supply reviewed rules and an alternative
+source database. Rules, weights, directions, coverage requirements, and
+allocation tolerances live in
+`data/knowledge/validated_rules/capital_preservation_ranking.yaml`.
+
+Supported current-schema indicators are allocation-weighted one-year return,
+reported annualized volatility, maximum drawdown, downside risk, Sharpe ratio,
+unhedged allocation, and currency concentration. VaR/CVaR, Sortino, reconstructed
+drawdown, liquidity, cost, and true currency mismatch need data not present in
+the source schema and are reported as unavailable.
+
+Every analysis result records its source observation date, policy status,
+rule-set version, and whether `--allow-proposed-rules` was explicitly supplied.
+If the selected rules file is missing, malformed, lacks a version, or is a
+proposed policy without that opt-in, the advisor fails closed: it returns no
+selection and no ranking, with `rules_status: "unavailable"` and the reason in
+`warnings`. It never substitutes a default policy.
+
+See [the methodology reference](docs/methodology.md) for the formulas,
+annualization assumptions, SQLite field mapping, reported-versus-recomputed
+metric boundary, ranking method, and policy controls.
+
+## Running the importer
+
+The existing Excel import workflow remains available:
+
+```bash
+poetry run python -m portfolio_advisor.main --import
+```
+
+For custom importer paths, run the dedicated importer module:
+
+```bash
+poetry run python -m portfolio_advisor.DB_creation.database_create \
   --input-directory /path/to/import \
   --processed-directory /path/to/processed \
   --database /path/to/model_portfolio.sqlite
-```
-
-PyCharm can execute this file directly:
-
-```bash
-python src/portfolio_advisor/main.py
 ```
 
 ## Input filename requirements
@@ -102,5 +139,6 @@ Run Ruff and compile the package with:
 
 ```bash
 poetry run ruff check src
-python -m compileall -q src
+poetry run pytest
+poetry run mypy src
 ```

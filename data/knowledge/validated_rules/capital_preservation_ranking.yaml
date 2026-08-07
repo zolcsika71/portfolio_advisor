@@ -1,0 +1,52 @@
+status: proposed
+version: "1.0.0"
+review_status: proposed
+review_date: 2026-08-07
+purpose: >-
+  Proposed deterministic ranking policy for a 3-12 month capital-preservation
+  objective. It is not executable by default until independently reviewed.
+inputs:
+  - latest-date allocation-weighted reported portfolio indicators
+  - portfolio allocation totals
+outputs:
+  - eligible portfolios, normalized metric scores, total scores, and ranking
+assumptions:
+  - "The SQLite database stores reported constituent indicators, not portfolio return series."
+  - "Reported indicators are allocation-weighted proxies; portfolio covariance is unavailable."
+  - "All numeric observations are decimal values, e.g. 0.10 equals 10 percent."
+procedure:
+  - "Reject allocations outside the configured tolerance or candidates lacking configured coverage."
+  - "Use min-max normalization across eligible candidates and sum configured weighted scores."
+  - "Break ties by portfolio name in ascending Unicode order."
+source_references:
+  - "data/knowledge/pdfs/PortfolioPython.pdf (Sharpe Ratio; VaR and CVaR concepts)"
+  - "data/knowledge/pdfs/Basic_Additional_info/Maximum Drawdown MDD Defined With Formula for Calculation.pdf"
+  - "data/knowledge/pdfs/Basic_Additional_info/What Is Value at Risk VaR and How to Calculate It.pdf"
+rationale: >-
+  The provisional ordering gives the most emphasis to drawdown and volatility,
+  then currency exposure, and treats one-year return as secondary. Numerical
+  values need investment-governance review before production use.
+eligibility:
+  target_allocation: 100.0
+  allocation_tolerance: 0.01
+  minimum_metric_coverage: 0.70
+  required_metrics:
+    - annualized_volatility
+    - maximum_drawdown
+scoring:
+  metrics:
+    maximum_drawdown:
+      weight: 0.35
+      direction: lower
+    annualized_volatility:
+      weight: 0.25
+      direction: lower
+    unhedged_allocation:
+      weight: 0.15
+      direction: lower
+    sharpe_ratio:
+      weight: 0.15
+      direction: higher
+    return_1y:
+      weight: 0.10
+      direction: higher

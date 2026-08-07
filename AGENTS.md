@@ -2,20 +2,12 @@
 
 ## Current implementation status
 
-This repository does not currently contain implemented software agents. A search
-of the Python source found no agent classes, agent functions, orchestration
-code, LLM integration, or agent-specific prompt files.
+This repository has no LLM or autonomous software agents. It now includes a
+deterministic advisor workflow, with all financial calculations and ranking
+performed by typed Python functions and reviewed configuration.
 
-The following packages exist but are currently empty apart from `__init__.py`
-files, so they are namespaces rather than agents:
-
-- `src/portfolio_advisor/advisor/`
-- `src/portfolio_advisor/knowledge/`
-- `src/portfolio_advisor/metrics/`
-- `src/portfolio_advisor/ranking/`
-
-`src/portfolio_advisor/main.py` is the application entry point and delegates to
-the database-import workflow; it does not start an agent workflow.
+`src/portfolio_advisor/main.py` emits the structured capital-preservation
+analysis result by default. `--import` retains the existing import workflow.
 
 ## Implemented application components (not agents)
 
@@ -94,47 +86,39 @@ are not agents:
 Use these wrappers rather than invoking `graphify query` from the project root,
 because Graphify expects its knowledge corpus to be the current directory.
 
-## Planned agent placeholders
+## Deterministic advisor workflow
 
-These are placeholders only. No behavior should be attributed to them until
-corresponding implementation files and tests are added.
+### Advisor orchestration
 
-### Portfolio advisor agent — not implemented
+`src/portfolio_advisor/advisor/service.py` exposes
+`CapitalPreservationAdvisor.evaluate()`. It reads the latest date through
+`database/repository.py`, calculates metrics, loads rules, filters, scores,
+and ranks. `AdvisorResult` contains the selection, alternatives, rejected
+candidates, score contributions, warnings, assumptions, and observation date.
+It does not contain financial formulas or mutate SQLite. Tests:
+`tests/test_advisor_integration.py`.
 
-- Intended role: `[describe the user-facing advisory responsibility]`
-- Intended inputs: `[portfolio data, constraints, risk profile, or query]`
-- Intended outputs: `[recommendation, explanation, report, or other result]`
-- Planned implementation file: `src/portfolio_advisor/advisor/[file].py`
-- Interactions: `[list the ranking, metrics, knowledge, and database components
-  it will call]`
+### Metrics
 
-### Knowledge agent — not implemented
+`src/portfolio_advisor/metrics/calculations.py` implements documented
+return-series formulas (return, volatility, drawdown, downside deviation,
+Sharpe, Sortino, historical VaR/CVaR). `portfolio.py` aggregates only the
+reported, latest-date database indicators with allocation coverage metadata.
+Unavailable data-dependent metrics are explicit. Tests:
+`tests/test_calculations.py`, `tests/test_portfolio_metrics.py`.
 
-- Intended role: `[describe how financial knowledge is retrieved or cited]`
-- Intended inputs: `[natural-language query or structured topic]`
-- Intended outputs: `[retrieved evidence or structured context]`
-- Planned implementation file: `src/portfolio_advisor/knowledge/[file].py`
-- Interaction constraint: Graphify `EXTRACTED` edges may provide
-  source-backed methodology context; `INFERRED` edges are for discovery and
-  navigation only and must not become executable financial rules unless the
-  rule also appears in a reviewed YAML or Markdown specification.
+### Ranking
 
-### Metrics agent — not implemented
+`src/portfolio_advisor/ranking/` separates rule loading, eligibility,
+normalization, scoring, and stable tie-broken ranking. Numeric policy is read
+from `data/knowledge/validated_rules/capital_preservation_ranking.yaml`; a
+proposed policy requires explicit opt-in. Tests: `tests/test_ranking.py`.
 
-- Intended role: `[describe the portfolio metrics it will calculate]`
-- Intended inputs: `[holdings, returns, benchmark, and time period]`
-- Intended outputs: `[metrics and calculation metadata]`
-- Planned implementation file: `src/portfolio_advisor/metrics/[file].py`
-- Interactions: `[describe how it will consume imported data and expose results]`
+### Knowledge boundary
 
-### Ranking agent — not implemented
-
-- Intended role: `[describe how portfolios or products will be ranked]`
-- Intended inputs: `[candidate portfolios, metrics, constraints, and preferences]`
-- Intended outputs: `[ordered candidates and rationale]`
-- Planned implementation file: `src/portfolio_advisor/ranking/[file].py`
-- Interactions: `[describe dependencies on the metrics, knowledge, and advisor
-  components]`
+Graphify is used only for methodology navigation. `EXTRACTED` edges may
+provide source-backed context; `INFERRED` edges must not become executable
+financial rules unless independently reviewed in a YAML or Markdown rule.
 
 ## Updating this document
 

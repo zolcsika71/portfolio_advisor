@@ -162,9 +162,15 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# Local data, including Graphify source documents
-data/
-database/
+# Local data, including Graphify source documents. The proposed ranking policy
+# is the one reviewed configuration exception.
+/data/*
+!/data/knowledge/
+/data/knowledge/*
+!/data/knowledge/validated_rules/
+/data/knowledge/validated_rules/*
+!/data/knowledge/validated_rules/capital_preservation_ranking.yaml
+/database/
 identifier.sqlite
 
 # macOS Finder metadata
