@@ -81,6 +81,23 @@ See [the methodology reference](docs/methodology.md) for the formulas,
 annualization assumptions, SQLite field mapping, reported-versus-recomputed
 metric boundary, ranking method, and policy controls.
 
+## Historical backtesting
+
+Milestone 3 adds a deterministic, read-only walk-forward layer that reuses the
+existing ranking engine at each historical observation date. The production
+database contains reported snapshot indicators, but no NAV/price or periodic
+return series; it therefore produces explicit incomplete forward outcomes
+rather than fabricated backtest returns. See
+[the backtesting methodology](docs/backtesting.md) for point-in-time rules,
+the proposed optional NAV-history schema, horizons, metrics, and baselines.
+
+Historical NAV acquisition records source precedence and provenance separately
+from ranking and backtesting. Erste Market is the configured primary source;
+there is currently no configured secondary provider. The seven unmapped ISINs
+therefore remain fail-closed as `SECONDARY_SOURCE_REQUIRED`, while conflicting
+history requires an independent-source reconciliation. See [the historical NAV
+source contract](docs/historical_nav_sources.md).
+
 ## Running the importer
 
 The existing Excel import workflow remains available:

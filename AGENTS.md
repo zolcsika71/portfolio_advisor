@@ -120,6 +120,23 @@ Graphify is used only for methodology navigation. `EXTRACTED` edges may
 provide source-backed context; `INFERRED` edges must not become executable
 financial rules unless independently reviewed in a YAML or Markdown rule.
 
+## Historical and backtesting workflow
+
+`src/portfolio_advisor/history/` provides chronological source-date discovery,
+point-in-time holdings access, fixed forward-window construction, and read-only
+access to an optional `portfolio_nav_history` table. The production SQLite
+database has snapshot indicators only; no NAV schema is added or migrated
+automatically. Invalid NAV history fails closed, while absent or incomplete
+windows are returned as explicit incomplete outcomes.
+
+`src/portfolio_advisor/backtesting/service.py` exposes
+`WalkForwardBacktester.run()`. It calls
+`CapitalPreservationAdvisor.evaluate(observation_date=...)` at each evaluation
+date, so all Milestone 2 eligibility, normalization, scoring, and tie-breaking
+remain shared. Forward metrics use only later NAV checkpoints within the
+requested 90-, 180-, or 365-day window. Tests:
+`tests/test_history.py`, `tests/test_backtesting.py`.
+
 ## Updating this document
 
 When an agent is implemented, replace its placeholder section with the actual

@@ -126,6 +126,45 @@ After upgrading Graphify, verify the installation again:
 
 ---
 
+### Audit Erste Market NAV acquisition diagnostics
+
+Validates the deterministic resolution sequence (fund detail page, exact-ISIN
+autocomplete fallback, then chart response) against a read-only SQLite source.
+It writes a machine-readable JSON audit by default and never inserts, removes,
+deduplicates, or repairs source observations.
+
+```bash
+poetry run python scripts/validate_erste_mapping.py \
+  --limit 66 \
+  --audit-output data/audit/erste_nav_diagnostics.json
+```
+
+Only `PASS` and `PASS_WITH_FILTERED_SENTINEL` records are marked
+`usable_for_backtest`. `NO_ERSTE_MAPPING`,
+`INVALID_NAV`, `CONFLICTING_HISTORY`, `NO_CHART_HISTORY`, and `SOURCE_ERROR`
+remain fail-closed. The JSON output records resolution attempts, date range,
+observation counts, and raw anomaly context; it is diagnostic evidence, not
+data cleaning or source acceptance.
+
+`SOURCE_SENTINEL` is the only normalization classification. It is restricted
+to the confirmed epoch-era `0.0` record for `IE00B7KFL990` and
+`IE00B84J9L26`: the known 1970-01-01 timestamp must be the sole invalid value,
+and the remaining source observations must be positive and begin at the
+confirmed substantially later source point. The raw record remains in the
+audit while exactly that row is omitted from the normalized series. No
+interpolation, generic zero/negative filtering, or other data repair occurs.
+
+The command also writes `data/audit/historical_nav_source_coverage.json` by
+default. It records source precedence and primary/fallback provenance. Erste
+remains priority 1; no secondary source is configured or contacted by this
+repository. A primary `NO_ERSTE_MAPPING` is therefore reported as
+`SECONDARY_SOURCE_REQUIRED`, and conflicting history as
+`RECONCILIATION_REQUIRED`, both fail closed. See
+[historical NAV source precedence](../docs/historical_nav_sources.md) for the
+source contract and acquisition acceptance conditions.
+
+---
+
 # Recommended Workflow
 
 ## First-time project setup
@@ -206,6 +245,7 @@ The wrapper scripts automatically switch to the Graphify knowledge corpus (`data
 | `gupdate.zsh` | Update the Graphify knowledge graph after knowledge changes |
 | `update_graphify.zsh` | Update the installed Graphify CLI |
 | `export_schema.zsh` | Export the SQLite database schema to SQL |
+| `validate_erste_mapping.py` | Audit Erste ISIN resolution and raw NAV history diagnostics |
 
 ## Validated rules
 

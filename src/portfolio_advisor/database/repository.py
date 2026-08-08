@@ -96,8 +96,8 @@ class ModelPortfolioRepository:
                 f"Table {TABLE_NAME!r} is missing required columns: {', '.join(missing)}"
             )
 
-    def latest_observation_date(self) -> date:
-        """Return the latest valid source date without relying on text sorting."""
+    def observation_dates(self) -> tuple[date, ...]:
+        """Return every valid source date in ascending chronological order."""
         with self._connection() as connection:
             self._validate_schema(connection)
             values = connection.execute(
@@ -111,7 +111,11 @@ class ModelPortfolioRepository:
                 raise RepositoryError(f"Invalid observation date in database: {row[0]!r}") from error
         if not parsed:
             raise RepositoryError("No portfolio observation dates are available")
-        return max(parsed)
+        return tuple(sorted(set(parsed)))
+
+    def latest_observation_date(self) -> date:
+        """Return the latest valid source date without relying on text sorting."""
+        return self.observation_dates()[-1]
 
     def load_holdings(self, observation_date: date) -> list[HoldingObservation]:
         """Load all rows for one date, preserving the original observation date."""

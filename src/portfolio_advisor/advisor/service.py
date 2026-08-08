@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 from portfolio_advisor.database.repository import ModelPortfolioRepository
@@ -20,13 +21,22 @@ class CapitalPreservationAdvisor:
         self.rules_path = rules_path
 
     def evaluate(
-        self, *, allow_proposed_rules: bool = False, alternative_count: int = 3
+        self,
+        *,
+        observation_date: date | None = None,
+        allow_proposed_rules: bool = False,
+        alternative_count: int = 3,
     ) -> AdvisorResult:
-        """Return a structured result and never mutate the source database."""
+        """Return a structured result for the requested point in time.
+
+        Omitting ``observation_date`` retains the Milestone 2 latest-date
+        behavior. A caller that supplies a date receives rankings calculated
+        from only that date's holdings.
+        """
         if alternative_count < 0:
             raise ValueError("alternative_count must not be negative")
-        observation_date = self.repository.latest_observation_date()
-        holdings = self.repository.load_holdings(observation_date)
+        resolved_date = observation_date or self.repository.latest_observation_date()
+        holdings = self.repository.load_holdings(resolved_date)
         metrics = calculate_all_portfolio_metrics(holdings)
         metric_warnings = tuple(warning for candidate in metrics for warning in candidate.warnings)
         unavailable = tuple(item for candidate in metrics for item in candidate.unavailable_metrics)
@@ -34,7 +44,7 @@ class CapitalPreservationAdvisor:
             rules = load_ranking_rules(self.rules_path, allow_proposed=allow_proposed_rules)
         except RuleConfigurationError as error:
             return AdvisorResult(
-                observation_date=observation_date,
+                observation_date=resolved_date,
                 calculated_metrics=tuple(metrics),
                 selected_portfolio=None,
                 ranking=(),
@@ -53,7 +63,7 @@ class CapitalPreservationAdvisor:
             item for item in ranking if item.rank is not None and 1 < item.rank <= alternative_count + 1
         )
         return AdvisorResult(
-            observation_date=observation_date,
+            observation_date=resolved_date,
             calculated_metrics=tuple(metrics),
             selected_portfolio=selected,
             ranking=tuple(ranking),
