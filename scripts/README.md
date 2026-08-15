@@ -248,6 +248,10 @@ The wrapper scripts automatically switch to the Graphify knowledge corpus (`data
 | `validate_erste_mapping.py` | Audit Erste ISIN resolution and raw NAV history diagnostics |
 | `validate_oekb.py` | Validate bounded public OeKB historical NAV acquisition and provenance |
 | `reconcile_at0000605324.py` | Compare AT0000605324 Erste conflicts against local validated Morningstar evidence, without network access |
+| `import_mnb_otc_reports.py` | Import manually downloaded MNB/KELER weekly OTC PDFs into dedicated non-NAV storage |
+| `inventory_mnb_otc_reports.py` | Recursively inventory local MNB/KELER PDF/text artifacts and emit manual acquisition manifests |
+| `generate_mnb_otc_coverage.py` | Generate audit-only MNB OTC source-quality evidence manifest |
+| `audit_hu0000554795_mnb_otc.py` | Diagnose HU0000554795 OTC evidence and lifecycle metadata without backtest approval |
 | `audit_backtest_window_coverage.py` | Audit actual SQLite windows against existing Erste, bounded-OeKB, and verified Morningstar fallback coverage evidence |
 
 ## Validated rules
