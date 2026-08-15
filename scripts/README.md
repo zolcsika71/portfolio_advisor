@@ -246,6 +246,9 @@ The wrapper scripts automatically switch to the Graphify knowledge corpus (`data
 | `update_graphify.zsh` | Update the installed Graphify CLI |
 | `export_schema.zsh` | Export the SQLite database schema to SQL |
 | `validate_erste_mapping.py` | Audit Erste ISIN resolution and raw NAV history diagnostics |
+| `validate_oekb.py` | Validate bounded public OeKB historical NAV acquisition and provenance |
+| `reconcile_at0000605324.py` | Compare AT0000605324 Erste conflicts against local validated Morningstar evidence, without network access |
+| `audit_backtest_window_coverage.py` | Audit actual SQLite windows against existing Erste, bounded-OeKB, and verified Morningstar fallback coverage evidence |
 
 ## Validated rules
 
