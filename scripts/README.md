@@ -19,6 +19,17 @@ prospective monitor, or the scheduler.
 | `build_official_forward_label_store.py` | Materialize official results or explicit unavailable labels. |
 | `validate_forward_rank_signal.py` | Assess an existing label store; never optimize policy weights. |
 
+## Event-driven XLS import
+
+| Script | Purpose |
+|---|---|
+| `process_watched_xls_import.py` | Run one bounded WatchPaths event through stable-file, lock, existing-importer, validation, prospective-recording, and audit stages. |
+| `install_xls_import_watch.py` | Validate or explicitly install the matching current-user WatchPaths LaunchAgent. |
+
+The watcher is event-driven rather than a polling loop. It never fetches a
+provider or admits an outcome; see `ops/launchd/README.md` for installation
+and operational constraints.
+
 ## Historical evidence and source audits
 
 | Script group | Purpose |
@@ -54,6 +65,24 @@ their provenance locally.
 | `assess_due_prospective_outcome_unavailable.py` | Append-only closure of one due slot with provenance and no metrics. |
 | `admit_prospective_portfolio_outcome.py` | Admit one due, direct, validated official outcome supplied locally. |
 | `schedule_prospective_outcome_due_checks.py` | Generate or explicitly install a monitor-only rolling launchd schedule. |
+
+## TBSZ observed-portfolio workflow
+
+The separate local TBSZ database records facts the user already owns or has
+already traded; it never connects to a broker or submits an order.
+
+| Script | Purpose |
+|---|---|
+| `initialize_tbsz_portfolio_from_pdfs.py` | Import only explicitly confirmed George PDF facts from `data/tbsz/source/`; `--write-template` creates a filename-only confirmation template when a screen cannot be reliably parsed. |
+| `show_tbsz_current_portfolio.py` | Show the latest observed source snapshot and the separate, non-netted manual transaction ledger for one account. |
+| `update_tbsz_transaction.py` | Append one user-completed BUY or SELL to the manual transaction ledger. It is not a brokerage command. |
+| `confirm_tbsz_instrument_mapping.py` | Add a reviewed manual ISIN/alias mapping; fuzzy similarity is never promoted. |
+| `reconcile_tbsz_pdf_snapshots.py` | Compare two retained, dated position snapshots without rewriting history. |
+| `compare_tbsz_portfolio.py` | Read-only TBSZ-vs-model allocation comparison with an explicit tolerance and no FX or provider fetch. |
+
+Source PDFs, manual confirmations, and `database/tbsz_portfolio.sqlite` are
+local-only and ignored by Git. Initial observed positions are not fabricated as
+historical transactions; later PDF evidence is appended and reconciled.
 
 ## Graphify and utility wrappers
 

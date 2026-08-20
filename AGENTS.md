@@ -30,6 +30,11 @@ is `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1.
   that retains unavailable candidates rather than fabricating labels.
 - `prospective/`: append-only live decision records, pending horizon slots,
   offline due monitoring, and provenance-gated direct-outcome admission.
+- `operations/`: the bounded, current-user WatchPaths XLS import wrapper and
+  its fail-closed LaunchAgent installer.
+- `tbsz/`: a separate local database of observed TBSZ evidence, manually
+  recorded completed transactions, reconciliation, and advisory-only model
+  portfolio comparison.
 
 ## Critical boundaries
 
@@ -50,10 +55,11 @@ is `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1.
 
 ## Local data conventions
 
-`database/`, generated `data/audit/`, retained `data/raw/`, and `tmp/` are
-local-only. They may contain provider-controlled evidence, generated audits,
-or machine-specific state. Their code, tests, deterministic schemas, and
-validated policy are versioned. Do not add credentials, tokens, cookies, or
+`database/`, generated `data/audit/`, retained `data/raw/`, `data/tbsz/`,
+`logs/`, and `tmp/` are local-only. They may contain provider-controlled
+evidence, generated audits, private TBSZ records, or machine-specific state.
+Their code, tests, deterministic schemas, and validated policy are versioned.
+Do not add credentials, tokens, cookies, private account data, or
 machine-specific paths.
 
 ## Operational commands
@@ -66,8 +72,12 @@ poetry run python -m portfolio_advisor.main --import
 poetry run python scripts/record_prospective_portfolio_decision.py --record-type live
 poetry run python scripts/check_due_prospective_outcomes.py
 poetry run python scripts/audit_prospective_portfolio_validation.py
+poetry run python scripts/process_watched_xls_import.py --dry-run
+poetry run python scripts/initialize_tbsz_portfolio_from_pdfs.py
 ```
 
-The launchd scheduler, when explicitly installed, invokes only the offline due
-monitor and prospective audit. It must never acquire a provider source or
-admit an outcome automatically.
+The due-monitor LaunchAgent, when explicitly installed, invokes only the
+offline due monitor and prospective audit. It must never acquire a provider
+source or admit an outcome automatically. The separate XLS WatchPaths
+LaunchAgent invokes only the watcher wrapper, which uses the existing importer
+and never acquires providers or admits outcomes.

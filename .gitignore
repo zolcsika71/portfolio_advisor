@@ -164,20 +164,30 @@ cython_debug/
 
 # Local data, including Graphify source documents. The proposed ranking policy
 # is the one reviewed configuration exception.
+# These explicit examples are also covered by the local-data default below.
+/data/audit/
+/data/raw/
+/data/tbsz/source/
+/data/tbsz/manual_confirmations.json
 /data/*
 !/data/knowledge/
 /data/knowledge/*
 !/data/knowledge/validated_rules/
 /data/knowledge/validated_rules/*
 !/data/knowledge/validated_rules/capital_preservation_ranking.yaml
+/database/tbsz_portfolio.sqlite
 /database/
 identifier.sqlite
+
+# Local environment or credentials.
+.env.*
 
 # Local research scratch output and operational logs. Retained raw evidence,
 # deterministic audit artifacts, and local SQLite stores are intentionally
 # local-only project data.
 /tmp/
 /history/
+/logs/
 *.log
 
 # macOS Finder metadata

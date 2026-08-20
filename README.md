@@ -2,9 +2,10 @@
 
 Portfolio Advisor imports dated model-portfolio workbooks, calculates
 point-in-time portfolio indicators, and applies a deterministic
-capital-preservation ranking policy. Financial calculations, eligibility, and
-ranking are typed Python code; Graphify is limited to source-backed
-methodology, constraints, and explainability.
+capital-preservation ranking policy. It also keeps a separate, local-only TBSZ
+observed-portfolio record for advisory comparison. Financial calculations,
+eligibility, and ranking are typed Python code; Graphify is limited to
+source-backed methodology, constraints, and explainability.
 
 ## Current operating boundaries
 
@@ -17,25 +18,25 @@ methodology, constraints, and explainability.
   portfolio evidence is absent.
 - The prospective ledger records finalized live decisions and pending 90/180/
   365-day outcome slots without fabricating outcomes.
+- Actual TBSZ evidence is separate from the model portfolio, remains local,
+  and never submits brokerage orders.
 
-## Setup and commands
+## Model-portfolio workflow
 
 Requirements: Python 3.12 and Poetry.
 
 ```bash
 poetry install
 poetry run python -m portfolio_advisor.main
-poetry run python -m portfolio_advisor.main --import
 ```
 
 The analysis command prints a structured JSON ranking from
-`database/model_portfolio.sqlite` and the reviewed policy in
+`database/model_portfolio.sqlite` and the reviewed v1.0.1 policy in
 `data/knowledge/validated_rules/capital_preservation_ranking.yaml`. The import
-command reads `data/xls/import`, moves successful `.xls` workbooks to
-`data/xls/processed`, and stores rows in `database/model_portfolio.sqlite`.
-Use the dedicated importer for custom paths:
+command retains the direct manual import path:
 
 ```bash
+poetry run python -m portfolio_advisor.main --import
 poetry run python -m portfolio_advisor.DB_creation.database_create \
   --input-directory /path/to/import \
   --processed-directory /path/to/processed \
@@ -45,6 +46,58 @@ poetry run python -m portfolio_advisor.DB_creation.database_create \
 Workbooks must expose a supported `modell portfóliók` worksheet and have an
 eight-digit date immediately before `.xls`, for example
 `portfolio_20250726.xls`.
+
+When the explicitly installed current-user WatchPaths LaunchAgent is enabled,
+normal monthly operation is:
+
+```text
+copy .xls to data/xls/import
+        ↓
+WatchPaths LaunchAgent
+        ↓
+stable-file and lock guard
+        ↓
+existing XLS importer
+        ↓
+database/model_portfolio.sqlite
+        ↓
+latest ranking validation
+        ↓
+prospective live-decision recording and audit
+```
+
+The wrapper waits for a positive-size file with unchanged size and mtime over
+a bounded window, prevents concurrent imports, and delegates workbook parsing
+to the existing importer. It does not fetch providers or admit outcomes. See
+[launchd operations](ops/launchd/README.md) for explicit dry-run and install
+commands.
+
+## TBSZ observed-portfolio workflow
+
+TBSZ records are separate from model-portfolio recommendations and are never
+used to change ranking policy or execute a trade:
+
+```text
+local George PDFs in data/tbsz/source/
+        ↓
+confirmed TBSZ source import
+        ↓
+database/tbsz_portfolio.sqlite
+        ↓
+append-only manual BUY/SELL ledger
+        ↓
+later PDF reconciliation
+        ↓
+read-only comparison with a recommended model portfolio
+```
+
+The source directory, manual confirmations, and TBSZ database are ignored by
+Git. The importer preserves filename/hash provenance and unknown source fields
+as `NULL`; it requires manual confirmation rather than OCR or fuzzy identity
+promotion. Manual BUY/SELL commands record an action the user has already
+executed—they are not brokerage orders. Cash remains separate by currency and
+comparison never fetches FX. See the [script catalog](scripts/README.md) for
+the operational commands.
 
 ## Architecture and evidence
 
@@ -57,13 +110,15 @@ eight-digit date immediately before `.xls`, for example
 | `src/portfolio_advisor/backtesting/` | Strict forward-window eligibility and canonical metric handling. |
 | `src/portfolio_advisor/features/` | Point-in-time features and explicit official-forward-label availability records. |
 | `src/portfolio_advisor/prospective/` | Append-only decision ledger, due monitoring, and provenance-gated future outcome admission. |
+| `src/portfolio_advisor/operations/` | Event-driven XLS watcher orchestration and current-user LaunchAgent installation safety. |
+| `src/portfolio_advisor/tbsz/` | Local observed TBSZ evidence, manual transactions, reconciliation, and read-only comparison. |
 
 Generated databases, audit JSON, raw evidence, and operational logs stay
 local under `database/` and `data/`; they are deliberately ignored because
 they may be large, provider-controlled, or machine-specific. The code and
 tests that reproduce their deterministic handling are versioned.
 
-See [methodology](docs/methodology.md), [historical source rules](docs/historical_nav_sources.md), [backtesting and prospective validation](docs/backtesting.md), and the [script catalog](scripts/README.md).
+See [methodology](docs/methodology.md), [historical source rules](docs/historical_nav_sources.md), [backtesting and prospective validation](docs/backtesting.md), [launchd operations](ops/launchd/README.md), and the [script catalog](scripts/README.md).
 
 ## Prospective validation operations
 
