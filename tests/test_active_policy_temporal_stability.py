@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+from portfolio_advisor.advisor.active_policy_validation import (
+    build_active_policy_validation,
+)
 from portfolio_advisor.advisor.temporal_policy_validation import (
     _transitions,
     _winner_history,
@@ -16,7 +20,6 @@ RULES = ROOT / "data/knowledge/validated_rules/capital_preservation_ranking.yaml
 CONTRACT = ROOT / "data/audit/capital_preservation_ranking_policy_contract.json"
 METHODOLOGY = ROOT / "data/audit/capital_preservation_metrics_ranking_validation.json"
 STRICT = ROOT / "data/audit/strict_backtest_pipeline_validation.json"
-CURRENT = ROOT / "data/audit/active_ranking_policy_current_universe_validation.json"
 
 
 def _summary(day: str, winner: str, rows: list[dict[str, object]]) -> dict[str, object]:
@@ -58,14 +61,24 @@ def test_winner_and_adjacent_turnover_diagnostics_are_deterministic() -> None:
     assert transitions["candidate_set_turnover"][1]["exits"] == ["A"]
 
 
-def test_historical_active_policy_validation_reconciles_current_universe() -> None:
+def test_temporal_validation_reconciles_the_dynamic_current_universe(tmp_path: Path) -> None:
+    """The latest temporal summary must reconcile to a freshly derived universe."""
+    current_universe = build_active_policy_validation(
+        database_path=DATABASE,
+        rules_path=RULES,
+        contract_path=CONTRACT,
+        methodology_path=METHODOLOGY,
+        strict_pipeline_path=STRICT,
+    )
+    current_path = tmp_path / "current_universe.json"
+    current_path.write_text(json.dumps(current_universe), encoding="utf-8")
     result = build_temporal_policy_validation(
         database_path=DATABASE,
         rules_path=RULES,
         contract_path=CONTRACT,
         methodology_path=METHODOLOGY,
         strict_pipeline_path=STRICT,
-        current_universe_path=CURRENT,
+        current_universe_path=current_path,
     )
 
     assert result["validation_status"] == "ACTIVE_POLICY_TEMPORAL_STABILITY_VALIDATED_WITH_CAVEATS"
@@ -80,5 +93,5 @@ def test_historical_active_policy_validation_reconciles_current_universe() -> No
         contract_path=CONTRACT,
         methodology_path=METHODOLOGY,
         strict_pipeline_path=STRICT,
-        current_universe_path=CURRENT,
+        current_universe_path=current_path,
     )

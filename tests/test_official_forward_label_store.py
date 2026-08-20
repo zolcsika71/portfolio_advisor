@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import csv
 import json
 from dataclasses import replace
+from hashlib import sha256
 from pathlib import Path
 from typing import TypedDict
 
@@ -29,6 +31,7 @@ from portfolio_advisor.features.official_forward_labels import (
     build_official_forward_label_store,
 )
 from portfolio_advisor.history.repository import HistoricalPortfolioRepository
+from tests.fixtures.model_portfolio_fixture import create_label_store_database
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -57,17 +60,84 @@ class _LabelBase(TypedDict):
     dataset_row_reference: str
 
 
-def _kwargs() -> _BuildArguments:
+@pytest.fixture
+def fixture_label_store_arguments(tmp_path: Path) -> _BuildArguments:
+    """Create an immutable label-store universe with no ignored local artifacts."""
+    database_path = tmp_path / "fixture.sqlite"
+    decision_date = create_label_store_database(database_path).isoformat()
+    rules_path = ROOT / "data/knowledge/validated_rules/capital_preservation_ranking.yaml"
+    dataset_path = tmp_path / "features.csv"
+    with dataset_path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=("decision_date", "portfolio_id", "portfolio_name", "portfolio_currency", "ranking_eligible"),
+        )
+        writer.writeheader()
+        writer.writerows(
+            [
+                {
+                    "decision_date": decision_date,
+                    "portfolio_id": "AT fixture",
+                    "portfolio_name": "AT fixture",
+                    "portfolio_currency": "EUR",
+                    "ranking_eligible": "True",
+                },
+                {
+                    "decision_date": decision_date,
+                    "portfolio_id": "HU fixture",
+                    "portfolio_name": "HU fixture",
+                    "portfolio_currency": "HUF",
+                    "ranking_eligible": "True",
+                },
+            ]
+        )
+    manifest_path = tmp_path / "features.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "dataset_status": "POINT_IN_TIME_FEATURE_DATASET_VALIDATED_WITH_CAVEATS",
+                "leakage_validation": {"result": "NO_POINT_IN_TIME_LEAKAGE"},
+                "source_references": {"active_policy": {"sha256": sha256(rules_path.read_bytes()).hexdigest()}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    paths = {
+        "contract_path": tmp_path / "contract.json",
+        "strict_pipeline_path": tmp_path / "strict.json",
+        "methodology_path": tmp_path / "methodology.json",
+        "current_universe_path": tmp_path / "current.json",
+        "temporal_path": tmp_path / "temporal.json",
+    }
+    paths["contract_path"].write_text(json.dumps({"final_policy_status": "RANKING_POLICY_ACTIVE"}), encoding="utf-8")
+    paths["strict_pipeline_path"].write_text(
+        json.dumps(
+            {
+                "validation_status": "STRICT_BACKTEST_PIPELINE_VALIDATED",
+                "dataset": {"total_windows": 6, "official_eligible_windows": 0, "rejected_windows": 6},
+            }
+        ),
+        encoding="utf-8",
+    )
+    paths["methodology_path"].write_text(
+        json.dumps({"validation_status": "CAPITAL_PRESERVATION_METHODOLOGY_VALIDATED_WITH_CAVEATS"}), encoding="utf-8"
+    )
+    paths["current_universe_path"].write_text(
+        json.dumps({"validation_status": "ACTIVE_RANKING_POLICY_CURRENT_UNIVERSE_VALIDATED"}), encoding="utf-8"
+    )
+    paths["temporal_path"].write_text(
+        json.dumps({"validation_status": "ACTIVE_POLICY_TEMPORAL_STABILITY_VALIDATED_WITH_CAVEATS"}), encoding="utf-8"
+    )
     return {
-        "feature_dataset_path": ROOT / "data/features/point_in_time_portfolio_features.csv",
-        "feature_manifest_path": ROOT / "data/audit/point_in_time_portfolio_feature_dataset.json",
-        "database_path": ROOT / "database/model_portfolio.sqlite",
-        "rules_path": ROOT / "data/knowledge/validated_rules/capital_preservation_ranking.yaml",
-        "contract_path": ROOT / "data/audit/capital_preservation_ranking_policy_contract.json",
-        "strict_pipeline_path": ROOT / "data/audit/strict_backtest_pipeline_validation.json",
-        "methodology_path": ROOT / "data/audit/capital_preservation_metrics_ranking_validation.json",
-        "current_universe_path": ROOT / "data/audit/active_ranking_policy_current_universe_validation.json",
-        "temporal_path": ROOT / "data/audit/active_ranking_policy_temporal_stability.json",
+        "feature_dataset_path": dataset_path,
+        "feature_manifest_path": manifest_path,
+        "database_path": database_path,
+        "rules_path": rules_path,
+        "contract_path": paths["contract_path"],
+        "strict_pipeline_path": paths["strict_pipeline_path"],
+        "methodology_path": paths["methodology_path"],
+        "current_universe_path": paths["current_universe_path"],
+        "temporal_path": paths["temporal_path"],
     }
 
 
@@ -114,32 +184,43 @@ def _metrics() -> ForwardMetrics:
     )
 
 
-def test_actual_label_store_enumerates_every_key_and_is_deterministic() -> None:
-    first_labels, first_manifest = build_official_forward_label_store(**_kwargs())
-    second_labels, second_manifest = build_official_forward_label_store(**_kwargs())
+def test_fixture_label_store_enumerates_every_key_and_is_deterministic(
+    fixture_label_store_arguments: _BuildArguments,
+) -> None:
+    gate = _FixtureEligibilityGate()
+    first_labels, first_manifest = build_official_forward_label_store(
+        **fixture_label_store_arguments, eligibility_gate=gate
+    )
+    second_labels, second_manifest = build_official_forward_label_store(
+        **fixture_label_store_arguments, eligibility_gate=gate
+    )
 
     assert first_labels == second_labels
     assert first_manifest == second_manifest
-    assert len(first_labels) == 384 * 3
+    assert len(first_labels) == 2 * 3
     assert len({item.key for item in first_labels}) == len(first_labels)
-    assert first_manifest["candidate_label_count"] == 1152
+    assert first_manifest["candidate_label_count"] == 6
     assert first_manifest["available_label_count"] == 0
-    assert first_manifest["unavailable_label_count"] == 1152
+    assert first_manifest["unavailable_label_count"] == 6
     assert first_manifest["validation_status"] == "OFFICIAL_FORWARD_LABEL_STORE_PARTIAL"
     accounting = first_manifest["coverage_accounting"]
     assert isinstance(accounting, dict)
     assert accounting["available_plus_unavailable_equals_candidates"] is True
     by_horizon = first_manifest["availability_by_horizon"]
     assert isinstance(by_horizon, dict)
-    assert all(by_horizon[str(horizon)]["candidate_labels"] == 384 for horizon in (90, 180, 365))
+    assert all(by_horizon[str(horizon)]["candidate_labels"] == 2 for horizon in (90, 180, 365))
     assert all(item.label_start_date == item.decision_date for item in first_labels)
     assert all(item.label_end_date > item.label_start_date for item in first_labels)
     assert all(not item.label_available or item.result_type == "OFFICIAL_BACKTEST" for item in first_labels)
     assert all("/Users/" not in json.dumps(item.source_provenance) for item in first_labels)
 
 
-def test_current_terminal_and_reconciliation_blockers_remain_explicit() -> None:
-    labels, manifest = build_official_forward_label_store(**_kwargs())
+def test_fixture_terminal_and_reconciliation_blockers_remain_explicit(
+    fixture_label_store_arguments: _BuildArguments,
+) -> None:
+    labels, manifest = build_official_forward_label_store(
+        **fixture_label_store_arguments, eligibility_gate=_FixtureEligibilityGate()
+    )
     hu = [item for item in labels if "HU0000554795" in item.blocking_isins]
     at = [item for item in labels if "AT0000605324" in item.blocking_isins]
 
@@ -197,9 +278,11 @@ def test_available_metrics_are_canonical_and_metric_safety_fails_closed() -> Non
         replace(label, forward_mdd=0.01)
 
 
-def test_source_join_rejects_missing_or_ambiguous_feature_identity() -> None:
-    rows = _load_feature_rows(_kwargs()["feature_dataset_path"])
-    history = HistoricalPortfolioRepository(ModelPortfolioRepository(_kwargs()["database_path"]))
+def test_source_join_rejects_missing_or_ambiguous_feature_identity(
+    fixture_label_store_arguments: _BuildArguments,
+) -> None:
+    rows = _load_feature_rows(fixture_label_store_arguments["feature_dataset_path"])
+    history = HistoricalPortfolioRepository(ModelPortfolioRepository(fixture_label_store_arguments["database_path"]))
     _validate_feature_source_join(rows, history)
     with pytest.raises(OfficialForwardLabelStoreError, match="exactly reconcile"):
         _validate_feature_source_join(rows[1:], history)
@@ -209,3 +292,15 @@ def test_source_join_rejects_missing_or_ambiguous_feature_identity() -> None:
         # also enforced by the final label-grid constructor.
         if len({(row["decision_date"], row["portfolio_id"]) for row in duplicate}) != len(duplicate):
             raise OfficialForwardLabelStoreError("duplicate point-in-time feature identity")
+
+
+class _FixtureEligibilityGate:
+    """Deterministic strict outcomes for the two immutable source identities."""
+
+    def evaluate(self, **kwargs: object) -> BacktestEligibility:
+        portfolio_name = kwargs["portfolio_name"]
+        if portfolio_name == "HU fixture":
+            return _eligibility(UnresolvedConstituent("HU0000554795", TERMINAL_UNRESOLVABLE, 100.0))
+        if portfolio_name == "AT fixture":
+            return _eligibility(UnresolvedConstituent("AT0000605324", RECONCILIATION_REQUIRED, 100.0))
+        raise AssertionError(f"unexpected fixture portfolio: {portfolio_name!r}")

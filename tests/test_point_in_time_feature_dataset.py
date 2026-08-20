@@ -4,7 +4,10 @@ from datetime import date
 from pathlib import Path
 from typing import cast
 
-from portfolio_advisor.database.repository import HoldingObservation
+from portfolio_advisor.database.repository import (
+    HoldingObservation,
+    ModelPortfolioRepository,
+)
 from portfolio_advisor.features.dataset import (
     DATASET_STATUS_CAVEATS,
     KnowledgeItem,
@@ -82,10 +85,19 @@ def test_dataset_is_deterministic_and_labels_remain_outside_feature_matrix() -> 
     assert first_manifest["dataset_status"] == DATASET_STATUS_CAVEATS
     leakage = cast(dict[str, object], first_manifest["leakage_validation"])
     assert leakage["result"] == "NO_POINT_IN_TIME_LEAKAGE"
-    assert first_manifest["decision_date_range"] == {
-        "earliest": "2024-07-02", "latest": "2026-07-06", "total_decision_dates": 31,
+    repository = ModelPortfolioRepository(DATABASE)
+    dates = repository.observation_dates()
+    expected_keys = {
+        (current.isoformat(), holding.portfolio_name)
+        for current in dates
+        for holding in repository.load_holdings(current)
     }
-    assert len(first_rows) == 384
+    assert first_manifest["decision_date_range"] == {
+        "earliest": dates[0].isoformat(),
+        "latest": repository.latest_observation_date().isoformat(),
+        "total_decision_dates": len(dates),
+    }
+    assert {(str(row["decision_date"]), str(row["portfolio_id"])) for row in first_rows} == expected_keys
     assert all(str(row["label_90d_end_date"]) > str(row["decision_date"]) for row in first_rows)
     assert all(row["label_90d_available"] is False for row in first_rows)
     assert all(row["forward_return_90d"] is None for row in first_rows)
