@@ -8,7 +8,7 @@ All return inputs are decimal returns (for example, ``0.01`` for one percent).
 from __future__ import annotations
 
 from collections.abc import Sequence
-from math import sqrt
+from math import isfinite, sqrt
 from statistics import fmean, stdev
 
 
@@ -17,7 +17,7 @@ def _clean_returns(returns: Sequence[float | None], minimum: int) -> list[float]
     if any(value is None for value in returns):
         return None
     values = [float(value) for value in returns if value is not None]
-    if len(values) < minimum:
+    if len(values) < minimum or any(not isfinite(value) or value < -1.0 for value in values):
         return None
     return values
 
@@ -30,6 +30,8 @@ def compounded_return(returns: Sequence[float | None]) -> float | None:
     wealth = 1.0
     for value in values:
         wealth *= 1.0 + value
+        if not isfinite(wealth):
+            return None
     return wealth - 1.0
 
 

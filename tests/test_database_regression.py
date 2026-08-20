@@ -24,32 +24,32 @@ RULES_PATH = (
 
 
 def test_2026_07_06_database_ranking_is_deterministic_and_read_only() -> None:
-    """Pin the current explicitly enabled proposed-policy outcome."""
+    """Pin the current approved-policy outcome without database mutation."""
     before = sha256(DATABASE_PATH.read_bytes()).digest()
 
     result = CapitalPreservationAdvisor(
         ModelPortfolioRepository(DATABASE_PATH), RULES_PATH
-    ).evaluate(allow_proposed_rules=True, alternative_count=20)
+    ).evaluate(alternative_count=20)
 
     assert result.observation_date is not None
     assert result.observation_date.isoformat() == "2026-07-06"
-    assert result.rule_set_version == "1.0.0"
-    assert result.rules_status == "proposed"
-    assert result.proposed_rules_explicitly_enabled
+    assert result.rule_set_version == "1.0.1"
+    assert result.rules_status == "approved"
+    assert not result.proposed_rules_explicitly_enabled
     assert result.selected_portfolio is not None
-    assert result.selected_portfolio.metrics.portfolio_name == "PB Dinamikus MultiCCY"
+    assert result.selected_portfolio.metrics.portfolio_name == "PB Konzervatív MultiCCY"
     assert [item.metrics.portfolio_name for item in result.ranking] == [
-        "PB Dinamikus MultiCCY",
-        "PB Dinamikus EUR",
-        "PB Kiegyensúlyozott MultiCCY",
-        "PB Dinamikus HUF",
         "PB Konzervatív MultiCCY",
-        "PB Kiegyensúlyozott HUF",
         "PB Konzervatív HUF",
-        "PB Kiegyensúlyozott USD",
-        "PB Kiegyensúlyozott EUR",
-        "PB Konzervatív USD",
         "PB Konzervatív EUR",
+        "PB Kiegyensúlyozott MultiCCY",
+        "PB Kiegyensúlyozott HUF",
+        "PB Konzervatív USD",
+        "PB Dinamikus MultiCCY",
+        "PB Dinamikus HUF",
+        "PB Kiegyensúlyozott EUR",
+        "PB Kiegyensúlyozott USD",
+        "PB Dinamikus EUR",
         "PB Dinamikus USD",
     ]
     assert [item.rank for item in result.ranking] == [*range(1, 12), None]

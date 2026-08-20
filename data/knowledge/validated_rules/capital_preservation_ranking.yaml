@@ -1,13 +1,23 @@
-status: proposed
-version: "1.0.0"
-review_status: proposed
-review_date: 2026-08-07
+status: approved
+version: "1.0.1"
+schema_version: 2
+policy_name: CAPITAL_PRESERVATION_RANKING_POLICY
+review_status: approved
+review_date: 2026-08-19
 purpose: >-
-  Proposed deterministic ranking policy for a 3-12 month capital-preservation
-  objective. It is not executable by default until independently reviewed.
+  Approved deterministic ranking policy for a 3-12 month capital-preservation
+  objective. It is active for production evaluation.
 inputs:
   - latest-date allocation-weighted reported portfolio indicators
   - portfolio allocation totals
+forbidden_ranking_inputs:
+  - future_return
+  - future_volatility
+  - future_sharpe
+  - future_maximum_drawdown
+  - future_var
+  - future_cvar
+  - forward_backtest_outcomes
 outputs:
   - eligible portfolios, normalized metric scores, total scores, and ranking
 assumptions:
@@ -24,8 +34,9 @@ source_references:
   - "data/knowledge/pdfs/Basic_Additional_info/What Is Value at Risk VaR and How to Calculate It.pdf"
 rationale: >-
   The provisional ordering gives the most emphasis to drawdown and volatility,
-  then currency exposure, and treats one-year return as secondary. Numerical
-  values need investment-governance review before production use.
+  then currency exposure, and treats one-year return as secondary. Maximum
+  drawdown is a non-positive loss, so its direction is higher (less negative
+  is better).
 eligibility:
   target_allocation: 100.0
   allocation_tolerance: 0.01
@@ -33,20 +44,108 @@ eligibility:
   required_metrics:
     - annualized_volatility
     - maximum_drawdown
+weight_total: 1.0
+weight_tolerance: 0.000000000001
+feature_definitions:
+  - feature_id: allocation_total
+    source: latest-date portfolio allocation total
+    availability_timing: POINT_IN_TIME_AT_OBSERVATION_DATE
+    direction: DISQUALIFIER_ONLY
+    weight: 0.0
+    normalization: NONE
+    threshold: allocation_total_within_tolerance
+    missing_behavior: REJECT_CANDIDATE
+    nonfinite_behavior: REJECT_CANDIDATE
+    ranking_role: ELIGIBILITY_DISQUALIFIER
+    capital_preservation_rationale: A fully allocated model portfolio is required before any risk comparison.
+  - feature_id: maximum_drawdown
+    source: latest-date reported Maximum Drawdown, allocation-weighted across holdings
+    availability_timing: POINT_IN_TIME_AT_OBSERVATION_DATE
+    direction: HIGHER_BETTER
+    weight: 0.35
+    normalization: CROSS_SECTIONAL_MIN_MAX_EQUAL_VALUES_ONE
+    threshold: required_metric_coverage
+    missing_behavior: REJECT_CANDIDATE
+    nonfinite_behavior: REJECT_CANDIDATE
+    ranking_role: PRIMARY_CAPITAL_PRESERVATION
+    capital_preservation_rationale: Stored drawdown is a non-positive loss; a less negative loss preserves capital better.
+  - feature_id: annualized_volatility
+    source: latest-date reported 1Y annualized volatility, allocation-weighted across holdings
+    availability_timing: POINT_IN_TIME_AT_OBSERVATION_DATE
+    direction: LOWER_BETTER
+    weight: 0.25
+    normalization: CROSS_SECTIONAL_MIN_MAX_EQUAL_VALUES_ONE
+    threshold: required_metric_coverage
+    missing_behavior: REJECT_CANDIDATE
+    nonfinite_behavior: REJECT_CANDIDATE
+    ranking_role: PRIMARY_CAPITAL_PRESERVATION
+    capital_preservation_rationale: Lower reported volatility is preferred, subject to drawdown and loss-path safeguards.
+  - feature_id: unhedged_allocation
+    source: latest-date allocation share whose Currency Risk is reported as unhedged
+    availability_timing: POINT_IN_TIME_AT_OBSERVATION_DATE
+    direction: LOWER_BETTER
+    weight: 0.15
+    normalization: CROSS_SECTIONAL_MIN_MAX_EQUAL_VALUES_ONE
+    threshold: NONE
+    missing_behavior: EXCLUDE_METRIC_FOR_ALL_ELIGIBLE_WITH_WARNING
+    nonfinite_behavior: REJECT_CANDIDATE
+    ranking_role: CAPITAL_PRESERVATION_SUPPORTING
+    capital_preservation_rationale: Lower unhedged allocation reduces unmodelled currency-exposure risk.
+  - feature_id: sharpe_ratio
+    source: latest-date reported 1Y Sharpe ratio, allocation-weighted across holdings
+    availability_timing: POINT_IN_TIME_AT_OBSERVATION_DATE
+    direction: HIGHER_BETTER
+    weight: 0.15
+    normalization: CROSS_SECTIONAL_MIN_MAX_EQUAL_VALUES_ONE
+    threshold: NONE
+    missing_behavior: EXCLUDE_METRIC_FOR_ALL_ELIGIBLE_WITH_WARNING
+    nonfinite_behavior: REJECT_CANDIDATE
+    ranking_role: RISK_ADJUSTED_RETURN_SUPPORTING
+    capital_preservation_rationale: Better reported risk-adjusted return supports preservation but cannot override materially worse drawdown.
+  - feature_id: return_1y
+    source: latest-date reported 1Y return, allocation-weighted across holdings
+    availability_timing: POINT_IN_TIME_AT_OBSERVATION_DATE
+    direction: HIGHER_BETTER
+    weight: 0.10
+    normalization: CROSS_SECTIONAL_MIN_MAX_EQUAL_VALUES_ONE
+    threshold: NONE
+    missing_behavior: EXCLUDE_METRIC_FOR_ALL_ELIGIBLE_WITH_WARNING
+    nonfinite_behavior: REJECT_CANDIDATE
+    ranking_role: SECONDARY_POSITIVE_RETURN
+    capital_preservation_rationale: Positive return is secondary to capital preservation and receives the smallest weight.
+thresholds:
+  - threshold_id: allocation_total_within_tolerance
+    feature: allocation_total
+    value: 0.01
+    unit: percentage_points
+    operator: "<="
+    effect: REJECT_CANDIDATE_IF_ABS_DEVIATION_EXCEEDS_VALUE
+    horizon: POINT_IN_TIME
+    approval_status: APPROVED
+    rationale: Allocation total must be within tolerance of the configured 100 percent target.
+  - threshold_id: required_metric_coverage
+    feature: required_metrics
+    value: 0.70
+    unit: allocation_fraction
+    operator: ">="
+    effect: REJECT_CANDIDATE_IF_REQUIRED_METRIC_COVERAGE_IS_BELOW_VALUE
+    horizon: POINT_IN_TIME
+    approval_status: APPROVED
+    rationale: Required drawdown and volatility indicators need sufficient reported allocation coverage.
 scoring:
   metrics:
     maximum_drawdown:
       weight: 0.35
-      direction: lower
+      direction: HIGHER_BETTER
     annualized_volatility:
       weight: 0.25
-      direction: lower
+      direction: LOWER_BETTER
     unhedged_allocation:
       weight: 0.15
-      direction: lower
+      direction: LOWER_BETTER
     sharpe_ratio:
       weight: 0.15
-      direction: higher
+      direction: HIGHER_BETTER
     return_1y:
       weight: 0.10
-      direction: higher
+      direction: HIGHER_BETTER

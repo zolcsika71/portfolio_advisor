@@ -30,6 +30,7 @@ SELECT_COLUMNS: Final = (
     "Product",
     "ISIN",
     "Allocation (%)",
+    "Asset Class",
     "Currency",
     "Currency Risk",
     "1 Year",
@@ -59,6 +60,7 @@ class HoldingObservation:
     volatility_1y: float | None
     downside_risk: float | None
     maximum_drawdown: float | None
+    asset_class: str | None = None
 
 
 class ModelPortfolioRepository:
@@ -120,9 +122,18 @@ class ModelPortfolioRepository:
     def load_holdings(self, observation_date: date) -> list[HoldingObservation]:
         """Load all rows for one date, preserving the original observation date."""
         date_value = observation_date.strftime("%Y/%m/%d")
-        quoted = ", ".join(f'"{column}"' for column in SELECT_COLUMNS)
         with self._connection() as connection:
             self._validate_schema(connection)
+            available_columns = {
+                row[1]
+                for row in connection.execute(f'PRAGMA table_info("{TABLE_NAME}")').fetchall()
+            }
+            selected_columns = (
+                SELECT_COLUMNS
+                if "Asset Class" in available_columns
+                else tuple(column for column in SELECT_COLUMNS if column != "Asset Class")
+            )
+            quoted = ", ".join(f'"{column}"' for column in selected_columns)
             rows = connection.execute(
                 f'SELECT {quoted} FROM "{TABLE_NAME}" WHERE "Date" = ? '
                 'ORDER BY "Portfolio Name", "ISIN", "Product"',
@@ -134,6 +145,7 @@ class ModelPortfolioRepository:
                 product=row["Product"],
                 isin=row["ISIN"],
                 allocation=row["Allocation (%)"],
+                asset_class=row["Asset Class"] if "Asset Class" in available_columns else None,
                 currency=row["Currency"],
                 currency_risk=row["Currency Risk"],
                 return_1y=row["1 Year"],

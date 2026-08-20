@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from math import isfinite
+
 from portfolio_advisor.metrics.models import PortfolioMetrics
 
 from .models import MetricRule, ScoreContribution
@@ -25,7 +27,12 @@ def calculate_contributions(
         complete = True
         for candidate in candidates:
             metric = getattr(candidate, name, None)
-            if metric is None or not metric.available or metric.value is None:
+            if (
+                metric is None
+                or not metric.available
+                or metric.value is None
+                or not isfinite(metric.value)
+            ):
                 complete = False
                 break
             raw[candidate.portfolio_name] = metric.value
@@ -35,6 +42,8 @@ def calculate_contributions(
         for candidate in candidates:
             value = raw[candidate.portfolio_name]
             score = normalized[candidate.portfolio_name]
+            if not isfinite(score) or not isfinite(score * rule.weight):
+                raise ValueError(f"non-finite normalized score for {name}")
             contributions[candidate.portfolio_name].append(
                 ScoreContribution(name, value, score, rule.weight, score * rule.weight)
             )

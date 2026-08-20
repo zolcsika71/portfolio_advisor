@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from math import isfinite
 
 from portfolio_advisor.metrics.models import PortfolioMetrics
 
@@ -34,16 +35,22 @@ def rank_portfolios(
         f"Scoring metric {name} was unavailable for at least one eligible portfolio and was excluded."
         for name in sorted(set(rules.metrics) - applied)
     )
-    scored = [
-        replace(
-            item,
-            contributions=contributions[item.metrics.portfolio_name],
-            total_score=sum(value.contribution for value in contributions[item.metrics.portfolio_name]),
+    scored = []
+    for item in preliminary:
+        if not item.eligible:
+            scored.append(item)
+            continue
+        total_score = sum(value.contribution for value in contributions[item.metrics.portfolio_name])
+        if not isfinite(total_score):
+            scored.append(replace(item, eligible=False, rejection_reasons=("non-finite aggregate score",)))
+            continue
+        scored.append(
+            replace(
+                item,
+                contributions=contributions[item.metrics.portfolio_name],
+                total_score=total_score,
+            )
         )
-        if item.eligible
-        else item
-        for item in preliminary
-    ]
     ordered_eligible = sorted(
         (item for item in scored if item.eligible),
         key=lambda item: (-(item.total_score or 0.0), item.metrics.portfolio_name),

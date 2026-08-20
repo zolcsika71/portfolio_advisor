@@ -1,145 +1,73 @@
-# Agents
+# Repository guide
 
-## Current implementation status
+## Implementation status
 
-This repository has no LLM or autonomous software agents. It now includes a
-deterministic advisor workflow, with all financial calculations and ranking
-performed by typed Python functions and reviewed configuration.
+This repository has no LLM or autonomous application agents. It provides a
+deterministic advisor workflow whose financial calculations, eligibility, and
+ranking are typed Python functions controlled by reviewed configuration.
 
-`src/portfolio_advisor/main.py` emits the structured capital-preservation
-analysis result by default. `--import` retains the existing import workflow.
+`src/portfolio_advisor/main.py` prints the current capital-preservation ranking
+by default. `--import` retains the workbook-import workflow. The active policy
+is `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1.
 
-## Implemented application components (not agents)
+## Core components
 
-Although there are no agents yet, the repository does contain a data-import
-pipeline that future agents may call or coordinate:
+- `DB_creation/`: reads the visible `modell portfóliók` workbook sheet,
+  translates supported headers/categories, validates rows, and imports dated
+  snapshots into `model_portfolios`.
+- `database/repository.py`: read-only date and holding access for analysis,
+  feature construction, and historical audits.
+- `metrics/`: allocation-weighted reported snapshot indicators and standalone
+  return-series formulas for an already approved series.
+- `ranking/`: policy validation, strict eligibility, normalization, scoring,
+  and deterministic tie-breaking.
+- `history/`: provenance-aware constituent history, lifecycle/reconciliation
+  evidence, strict resolvability, local source stores, and reconstruction
+  governance.
+- `backtesting/`: fixed forward-window construction and strict admission of
+  canonical official results.
+- `features/`: point-in-time feature data and an explicit forward-label store
+  that retains unavailable candidates rather than fabricating labels.
+- `prospective/`: append-only live decision records, pending horizon slots,
+  offline due monitoring, and provenance-gated direct-outcome admission.
 
-### Excel processing layer
+## Critical boundaries
 
-`src/portfolio_advisor/DB_creation/excel_processing.py` reads visible
-`Modell portfóliók` worksheets, fills merged cells, translates Hungarian and
-English headers and categorical values, validates the resulting columns, and
-normalizes values for database insertion.
+- Graphify provides methodology navigation and source-backed constraints only;
+  it never supplies financial inputs or realized outcomes.
+- A required unresolved constituent rejects a strict backtest. There is no
+  dropping, renormalization, proxy, cash/zero-return, interpolation, fill,
+  source stitching, or nearest-date substitution.
+- Synthetic constituent-to-portfolio NAV reconstruction is frozen as
+  `PORTFOLIO_NAV_RECONSTRUCTION_FROZEN_UNRESOLVED` until portfolio-specific
+  allocation, timing, currency, distribution, and duplicate-row semantics are
+  proven.
+- Direct official portfolio performance remains a separate possible path, but
+  outcomes are admitted only after their horizon is due and provenance,
+  identity, semantics, and interval checks pass.
+- Prospective historical schema replays use `RESEARCH_BACKFILL`; only
+  `PROSPECTIVE_LIVE_RECORD` entries count as live evidence.
 
-Relevant entry points include:
+## Local data conventions
 
-- `read_target_worksheet()` — loads the supported worksheet from a workbook.
-- `translate_headers()` — maps worksheet headers to the stable English schema.
-- `translate_values()` — maps supported categorical values and rejects unknown
-  categories.
-- `prepare_rows()` — prepares validated rows for import.
-- `add_date_field()` — adds one validated `Date` value to every normalized row.
+`database/`, generated `data/audit/`, retained `data/raw/`, and `tmp/` are
+local-only. They may contain provider-controlled evidence, generated audits,
+or machine-specific state. Their code, tests, deterministic schemas, and
+validated policy are versioned. Do not add credentials, tokens, cookies, or
+machine-specific paths.
 
-Only the visible `modell portfóliók` worksheet is accepted. Headers and
-supported categorical values are translated systematically into English.
+## Operational commands
 
-### SQLite import layer
-
-`src/portfolio_advisor/DB_creation/database_create.py` imports prepared workbook
-rows into SQLite. It extracts an import date from the filename, creates or
-validates the `model_portfolios` table, skips dates already present, and wraps
-each import in a commit/rollback context.
-
-Relevant entry points include:
-
-- `extract_date()` — converts an eight-digit filename date to `YYYY/MM/DD`.
-- `import_file()` — imports one supported workbook atomically.
-- `DatabaseSession` — owns SQLite connection and transaction lifecycle.
-- `ensure_data_table()` — creates or validates the expected schema without
-  silently altering an incompatible table.
-- `process_directory()` — finds all `.xls` files, ensures the database exists,
-  imports them in filename order, and moves successful files to the processed
-  directory.
-- `main()` — exposes the command-line importer.
-
-Default paths are:
-
-- Input: `/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/data/xls/import`
-- Processed: `/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/data/xls/processed`
-- Database: `/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/database/model_portfolio.sqlite`
-
-The SQLite table is `model_portfolios`. It contains `Date`, translated
-portfolio fields, allocation values, and portfolio risk/performance metrics.
-The filename must contain an eight-digit date immediately before `.xls`, such
-as `portfolio_20250726.xls`.
-
-Run the importer from the project root with:
+Run from the repository root:
 
 ```bash
 poetry run python -m portfolio_advisor.main
+poetry run python -m portfolio_advisor.main --import
+poetry run python scripts/record_prospective_portfolio_decision.py --record-type live
+poetry run python scripts/check_due_prospective_outcomes.py
+poetry run python scripts/audit_prospective_portfolio_validation.py
 ```
 
-PyCharm may also execute `src/portfolio_advisor/main.py` directly; the entry
-point supports both direct-script and package-module execution.
-
-### Knowledge-graph scripts
-
-The shell scripts in `scripts/` are operational wrappers around Graphify; they
-are not agents:
-
-- `scripts/gquery.zsh` — runs a query against `data/knowledge`.
-- `scripts/gupdate.zsh` — rebuilds the Graphify graph after knowledge changes.
-- `scripts/check_graphify.zsh` — validates Graphify outputs and runs a smoke
-  query.
-- `scripts/update_graphify.zsh` — upgrades the installed Graphify CLI.
-
-Use these wrappers rather than invoking `graphify query` from the project root,
-because Graphify expects its knowledge corpus to be the current directory.
-
-## Deterministic advisor workflow
-
-### Advisor orchestration
-
-`src/portfolio_advisor/advisor/service.py` exposes
-`CapitalPreservationAdvisor.evaluate()`. It reads the latest date through
-`database/repository.py`, calculates metrics, loads rules, filters, scores,
-and ranks. `AdvisorResult` contains the selection, alternatives, rejected
-candidates, score contributions, warnings, assumptions, and observation date.
-It does not contain financial formulas or mutate SQLite. Tests:
-`tests/test_advisor_integration.py`.
-
-### Metrics
-
-`src/portfolio_advisor/metrics/calculations.py` implements documented
-return-series formulas (return, volatility, drawdown, downside deviation,
-Sharpe, Sortino, historical VaR/CVaR). `portfolio.py` aggregates only the
-reported, latest-date database indicators with allocation coverage metadata.
-Unavailable data-dependent metrics are explicit. Tests:
-`tests/test_calculations.py`, `tests/test_portfolio_metrics.py`.
-
-### Ranking
-
-`src/portfolio_advisor/ranking/` separates rule loading, eligibility,
-normalization, scoring, and stable tie-broken ranking. Numeric policy is read
-from `data/knowledge/validated_rules/capital_preservation_ranking.yaml`; a
-proposed policy requires explicit opt-in. Tests: `tests/test_ranking.py`.
-
-### Knowledge boundary
-
-Graphify is used only for methodology navigation. `EXTRACTED` edges may
-provide source-backed context; `INFERRED` edges must not become executable
-financial rules unless independently reviewed in a YAML or Markdown rule.
-
-## Historical and backtesting workflow
-
-`src/portfolio_advisor/history/` provides chronological source-date discovery,
-point-in-time holdings access, fixed forward-window construction, and read-only
-access to an optional `portfolio_nav_history` table. The production SQLite
-database has snapshot indicators only; no NAV schema is added or migrated
-automatically. Invalid NAV history fails closed, while absent or incomplete
-windows are returned as explicit incomplete outcomes.
-
-`src/portfolio_advisor/backtesting/service.py` exposes
-`WalkForwardBacktester.run()`. It calls
-`CapitalPreservationAdvisor.evaluate(observation_date=...)` at each evaluation
-date, so all Milestone 2 eligibility, normalization, scoring, and tie-breaking
-remain shared. Forward metrics use only later NAV checkpoints within the
-requested 90-, 180-, or 365-day window. Tests:
-`tests/test_history.py`, `tests/test_backtesting.py`.
-
-## Updating this document
-
-When an agent is implemented, replace its placeholder section with the actual
-module path, public entry points, inputs, outputs, state, error behavior, and
-the callers or agents it interacts with. Add tests under `tests/` and link to
-those tests from the relevant section.
+The launchd scheduler, when explicitly installed, invokes only the offline due
+monitor and prospective audit. It must never acquire a provider source or
+admit an outcome automatically.

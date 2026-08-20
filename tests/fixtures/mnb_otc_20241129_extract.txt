@@ -1,0 +1,17 @@
+Rövid név             ISIN azonosító   Névérték (e Ft)   Vételár (e Ft)   Átlagár/árfolyam   Minimális   Maximális    Tételszám
+Összesítő a KELER Zrt-n keresztül lebonyolított tőkepiaci forgalomról
+
+2024.11.25 -
+2024.12.01
+Diszkont              ISIN azonosító   Névérték (e Ft)   Vételár (e Ft)   Átlagár/árfolyam   Minimális    Maximális    Tételszám
+kincstárjegy
+D241127 Diszkont      HU0000525035     5100.0            5098.169        99.964095          99.964091    99.9641      2.0
+Kincstárjegy
+
+Egyéves Magyar        ISIN azonosító   Névérték (e Ft)   Vételár (e Ft)   Átlagár/árfolyam   Minimális    Maximális    Tételszám
+Állampapír
+K250604 Egyéves       HU0000554795     51100.0           52586.805       102.909598         102.909597   102.9096     3.0
+Magyar Állampapír
+
+Jelzáloglevél         ISIN azonosító   Névérték (e Ft)   Vételár (e Ft)   Átlagár/árfolyam   Minimális    Maximális    Tételszám
+OJB2031/I             HU0000653456     50000.0           36305.15        72.6103            72.3603      72.8603      2.0

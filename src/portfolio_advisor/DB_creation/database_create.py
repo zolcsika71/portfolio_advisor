@@ -27,15 +27,9 @@ from typing import Final
 from .excel_processing import add_date_field, prepare_rows, read_target_worksheet
 from .text_normalization import normalized_key
 
-DEFAULT_INPUT_DIR: Final = Path(
-    "/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/data/xls/import"
-)
-DEFAULT_PROCESSED_DIR: Final = Path(
-    "/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/data/xls/processed"
-)
-DEFAULT_DATABASE_PATH: Final = Path(
-    "/Users/zoltanka/Documents/Prog/Python/portfolio_advisor/database/model_portfolio.sqlite"
-)
+DEFAULT_INPUT_DIR: Final = Path("data/xls/import")
+DEFAULT_PROCESSED_DIR: Final = Path("data/xls/processed")
+DEFAULT_DATABASE_PATH: Final = Path("database/model_portfolio.sqlite")
 
 # Matches an eight-digit date immediately before the file extension.
 # Example: ``portfolio_20250726.xlsx`` -> ``20250726``.

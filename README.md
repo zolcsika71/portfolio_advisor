@@ -1,112 +1,39 @@
 # Portfolio Advisor
 
-Portfolio Advisor imports model-portfolio Excel data into SQLite and provides a
-deterministic capital-preservation analytics and ranking workflow. No LLM is
-used for calculations, scoring, ranking, or selection.
+Portfolio Advisor imports dated model-portfolio workbooks, calculates
+point-in-time portfolio indicators, and applies a deterministic
+capital-preservation ranking policy. Financial calculations, eligibility, and
+ranking are typed Python code; Graphify is limited to source-backed
+methodology, constraints, and explainability.
 
-## Requirements
+## Current operating boundaries
 
-- Python 3.12
-- Poetry
-- Excel `.xls` files containing a visible `modell portfóliók` worksheet
+- `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1 is the active policy.
+- Ranking uses only decision-date, allocation-weighted reported indicators.
+- Historical constituent NAV evidence is retained separately from ranking.
+- Synthetic constituent-to-portfolio NAV reconstruction is frozen as
+  `PORTFOLIO_NAV_RECONSTRUCTION_FROZEN_UNRESOLVED`.
+- No historical portfolio forward label is manufactured when direct official
+  portfolio evidence is absent.
+- The prospective ledger records finalized live decisions and pending 90/180/
+  365-day outcome slots without fabricating outcomes.
 
-Install dependencies with:
+## Setup and commands
+
+Requirements: Python 3.12 and Poetry.
 
 ```bash
 poetry install
-```
-
-## Import workflow
-
-The importer:
-
-1. Finds `.xls` files in the input directory.
-2. Reads only the visible `modell portfóliók` worksheet.
-3. Fills merged cells and removes empty rows and columns.
-4. Translates supported headers and categorical values into English.
-5. Creates one `Date` field per row from the eight-digit date in the filename.
-6. Inserts the normalized data into SQLite.
-7. Moves successfully processed files to the processed directory.
-
-## Default paths
-
-| Purpose | Path |
-|---|---|
-| Input Excel files | `data/xls/import` |
-| Processed files | `data/xls/processed` |
-| SQLite database | `database/model_portfolio.sqlite` |
-
-The processed directory and database parent directory are created
-automatically.
-
-## Running deterministic analysis
-
-From the project root:
-
-```bash
 poetry run python -m portfolio_advisor.main
-```
-
-The command emits a structured JSON result, discovers the latest observation
-date automatically, and opens SQLite in read-only mode. The shipped policy is
-deliberately marked `proposed`; the default command reports this and makes no
-selection until it has independent review. To evaluate that proposal in a
-controlled setting, opt in explicitly:
-
-```bash
-poetry run python -m portfolio_advisor.main \
-  --allow-proposed-rules \
-  --top-alternatives 3
-```
-
-Use `--rules` and `--database` to supply reviewed rules and an alternative
-source database. Rules, weights, directions, coverage requirements, and
-allocation tolerances live in
-`data/knowledge/validated_rules/capital_preservation_ranking.yaml`.
-
-Supported current-schema indicators are allocation-weighted one-year return,
-reported annualized volatility, maximum drawdown, downside risk, Sharpe ratio,
-unhedged allocation, and currency concentration. VaR/CVaR, Sortino, reconstructed
-drawdown, liquidity, cost, and true currency mismatch need data not present in
-the source schema and are reported as unavailable.
-
-Every analysis result records its source observation date, policy status,
-rule-set version, and whether `--allow-proposed-rules` was explicitly supplied.
-If the selected rules file is missing, malformed, lacks a version, or is a
-proposed policy without that opt-in, the advisor fails closed: it returns no
-selection and no ranking, with `rules_status: "unavailable"` and the reason in
-`warnings`. It never substitutes a default policy.
-
-See [the methodology reference](docs/methodology.md) for the formulas,
-annualization assumptions, SQLite field mapping, reported-versus-recomputed
-metric boundary, ranking method, and policy controls.
-
-## Historical backtesting
-
-Milestone 3 adds a deterministic, read-only walk-forward layer that reuses the
-existing ranking engine at each historical observation date. The production
-database contains reported snapshot indicators, but no NAV/price or periodic
-return series; it therefore produces explicit incomplete forward outcomes
-rather than fabricated backtest returns. See
-[the backtesting methodology](docs/backtesting.md) for point-in-time rules,
-the proposed optional NAV-history schema, horizons, metrics, and baselines.
-
-Historical NAV acquisition records source precedence and provenance separately
-from ranking and backtesting. Erste Market is the configured primary source;
-there is currently no configured secondary provider. The seven unmapped ISINs
-therefore remain fail-closed as `SECONDARY_SOURCE_REQUIRED`, while conflicting
-history requires an independent-source reconciliation. See [the historical NAV
-source contract](docs/historical_nav_sources.md).
-
-## Running the importer
-
-The existing Excel import workflow remains available:
-
-```bash
 poetry run python -m portfolio_advisor.main --import
 ```
 
-For custom importer paths, run the dedicated importer module:
+The analysis command prints a structured JSON ranking from
+`database/model_portfolio.sqlite` and the reviewed policy in
+`data/knowledge/validated_rules/capital_preservation_ranking.yaml`. The import
+command reads `data/xls/import`, moves successful `.xls` workbooks to
+`data/xls/processed`, and stores rows in `database/model_portfolio.sqlite`.
+Use the dedicated importer for custom paths:
 
 ```bash
 poetry run python -m portfolio_advisor.DB_creation.database_create \
@@ -115,47 +42,55 @@ poetry run python -m portfolio_advisor.DB_creation.database_create \
   --database /path/to/model_portfolio.sqlite
 ```
 
-## Input filename requirements
+Workbooks must expose a supported `modell portfóliók` worksheet and have an
+eight-digit date immediately before `.xls`, for example
+`portfolio_20250726.xls`.
 
-Each workbook must have the `.xls` extension and contain an eight-digit date
-immediately before the extension. For example:
+## Architecture and evidence
 
-```text
-portfolio_20250726.xls
+| Layer | Responsibility |
+|---|---|
+| `src/portfolio_advisor/DB_creation/` | Validates and imports visible model-portfolio worksheets. |
+| `database/model_portfolio.sqlite` | Local snapshot source; never mutated by ranking/backtesting. |
+| `src/portfolio_advisor/ranking/` | Approved policy loading, fail-closed eligibility, normalization, scoring, and stable ranking. |
+| `src/portfolio_advisor/history/` | Provenance-aware source resolution, lifecycle evidence, local official constituent history, and reconstruction freeze. |
+| `src/portfolio_advisor/backtesting/` | Strict forward-window eligibility and canonical metric handling. |
+| `src/portfolio_advisor/features/` | Point-in-time features and explicit official-forward-label availability records. |
+| `src/portfolio_advisor/prospective/` | Append-only decision ledger, due monitoring, and provenance-gated future outcome admission. |
+
+Generated databases, audit JSON, raw evidence, and operational logs stay
+local under `database/` and `data/`; they are deliberately ignored because
+they may be large, provider-controlled, or machine-specific. The code and
+tests that reproduce their deterministic handling are versioned.
+
+See [methodology](docs/methodology.md), [historical source rules](docs/historical_nav_sources.md), [backtesting and prospective validation](docs/backtesting.md), and the [script catalog](scripts/README.md).
+
+## Prospective validation operations
+
+Record the current, latest canonical decision before any outcome is known:
+
+```bash
+poetry run python scripts/record_prospective_portfolio_decision.py --record-type live --dry-run
+poetry run python scripts/record_prospective_portfolio_decision.py --record-type live
+poetry run python scripts/audit_prospective_portfolio_validation.py
 ```
 
-The date is stored as `2025/07/26` in the database. Workbooks without a valid
-date or supported target worksheet remain in the input directory when
-processing fails.
+The due monitor is offline and never acquires or admits an outcome:
 
-## Database schema
+```bash
+poetry run python scripts/check_due_prospective_outcomes.py
+poetry run python scripts/schedule_prospective_outcome_due_checks.py
+```
 
-The importer creates the `model_portfolios` table with:
-
-- `Date`
-- `Portfolio Name`
-- `Product`
-- `ISIN`
-- `Allocation (%)`
-- `Asset Class`
-- `Sub-Asset Class`
-- `Currency`
-- `Currency Risk`
-- `Sustainability`
-- `YTD`, `1 Year`, `3 Years`, `5 Years`
-- `1Y Sharpe Ratio`, `3Y Sharpe Ratio`, `5Y Sharpe Ratio`
-- `1Y Volatility`, `3Y Volatility`
-- `Downside Risk`, `Information Ratio`, `Maximum Drawdown`
-
-See [`src/portfolio_advisor/DB_creation/README.md`](src/portfolio_advisor/DB_creation/README.md)
-for implementation details.
+On macOS, an explicitly requested `--install` installs the generated
+monitor-only LaunchAgent for the current user. It is not a provider-acquisition
+or outcome-admission workflow.
 
 ## Development checks
 
-Run Ruff and compile the package with:
-
 ```bash
-poetry run ruff check src
 poetry run pytest
-poetry run mypy src
+poetry run ruff check src tests scripts
+poetry run mypy src tests
+git diff --check
 ```

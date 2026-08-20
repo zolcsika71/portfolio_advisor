@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from math import isfinite
+
 from portfolio_advisor.metrics.models import PortfolioMetrics
 
 from .models import EligibilityRule
@@ -10,6 +12,8 @@ from .models import EligibilityRule
 def evaluate_eligibility(metrics: PortfolioMetrics, rule: EligibilityRule) -> tuple[str, ...]:
     """Return all failures; no candidate is discarded without an explanation."""
     reasons: list[str] = []
+    if not isfinite(metrics.allocation_total):
+        return ("allocation total is non-finite",)
     difference = abs(metrics.allocation_total - rule.target_allocation)
     if difference > rule.allocation_tolerance:
         reasons.append(
@@ -22,6 +26,8 @@ def evaluate_eligibility(metrics: PortfolioMetrics, rule: EligibilityRule) -> tu
             reasons.append(f"required metric is not supported by the application: {metric_name}")
         elif not value.available:
             reasons.append(f"required metric is unavailable: {metric_name}")
+        elif value.value is None or not isfinite(value.value):
+            reasons.append(f"required metric is non-finite: {metric_name}")
         elif value.coverage < rule.minimum_metric_coverage:
             reasons.append(
                 f"required metric {metric_name} coverage {value.coverage:.1%} is below "

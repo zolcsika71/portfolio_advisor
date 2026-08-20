@@ -9,6 +9,13 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from portfolio_advisor.history.mnb_keler_absence_semantics import (
+    classify_frozen_absence,
+)
+from portfolio_advisor.history.mnb_keler_report_scope import (
+    ReportScopeEvidenceChain,
+    ScopeEvidenceDocument,
+)
 from portfolio_advisor.history.mnb_otc import (
     REQUIRED_HEADERS,
     TARGET_HU_ISIN,
@@ -58,6 +65,118 @@ def load_maturity(path: Path) -> date:
         return date.fromisoformat(value)
     except ValueError as exc:
         raise SparseAuditError("Lifecycle audit maturity date is malformed") from exc
+
+
+def load_report_scope_semantics(path: Path) -> tuple[ReportScopeEvidenceChain, str]:
+    """Read the separately generated offline scope-evidence conclusion."""
+    payload = load_json(path, "MNB/KELER report-scope semantics audit")
+    if payload.get("source") != "mnb_otc":
+        raise SparseAuditError("Report-scope semantics audit has an unexpected source")
+    evidence = payload.get("evidence_chain")
+    if not isinstance(evidence, dict):
+        raise SparseAuditError("Report-scope semantics audit has no evidence chain")
+    fields = (
+        "report_scope_validated",
+        "report_completeness_validated",
+        "row_inclusion_rule_validated",
+        "zero_transaction_omission_validated",
+        "transaction_count_semantics_validated",
+    )
+    if any(not isinstance(evidence.get(field), bool) for field in fields):
+        raise SparseAuditError("Report-scope semantics evidence chain is malformed")
+    status = payload.get("semantic_status")
+    if status not in {
+        "REPORT_SCOPE_SEMANTICS_VALIDATED",
+        "REPORT_SCOPE_SEMANTICS_PARTIAL",
+        "REPORT_SCOPE_SEMANTICS_NOT_FOUND",
+        "REPORT_SCOPE_SEMANTICS_UNKNOWN",
+        "REPORT_SCOPE_SEMANTICS_CONFLICT",
+    }:
+        raise SparseAuditError("Report-scope semantics status is invalid")
+    if (
+        payload.get("nav_equivalent") is not False
+        or payload.get("backtest_return_series_approved") is not False
+        or payload.get("usable_for_backtest") is not False
+    ):
+        raise SparseAuditError("Report-scope semantics audit has unsafe approval flags")
+    documents = payload.get("retained_source_documents")
+    if not isinstance(documents, list) or not documents:
+        raise SparseAuditError("Report-scope semantics audit has no retained documents")
+    evidence_documents: list[ScopeEvidenceDocument] = []
+    for document in documents:
+        if not isinstance(document, dict):
+            raise SparseAuditError("Report-scope source document is malformed")
+        filename = document.get("filename")
+        sha256 = document.get("sha256")
+        authority = document.get("authority")
+        host = document.get("host")
+        if not all(isinstance(value, str) for value in (filename, sha256, authority, host)):
+            raise SparseAuditError("Report-scope source provenance is malformed")
+        evidence_documents.append(
+            ScopeEvidenceDocument(
+                filename=filename,
+                sha256=sha256,
+                authority=authority,
+                host=host,
+                locally_retained=True,
+                official=True,
+            )
+        )
+    chain = ReportScopeEvidenceChain(
+        report_scope_validated=evidence["report_scope_validated"],
+        report_completeness_validated=evidence["report_completeness_validated"],
+        row_inclusion_rule_validated=evidence["row_inclusion_rule_validated"],
+        zero_transaction_omission_validated=evidence[
+            "zero_transaction_omission_validated"
+        ],
+        transaction_count_semantics_validated=evidence[
+            "transaction_count_semantics_validated"
+        ],
+        conflicting_authoritative_evidence=status == "REPORT_SCOPE_SEMANTICS_CONFLICT",
+        documents=tuple(evidence_documents),
+        bounded_research_completed=status == "REPORT_SCOPE_SEMANTICS_NOT_FOUND",
+        no_additional_adequate_evidence_found=(
+            status == "REPORT_SCOPE_SEMANTICS_NOT_FOUND"
+        ),
+    )
+    if chain.semantic_status != status:
+        raise SparseAuditError("Report-scope semantics status does not match evidence")
+    return chain, status
+
+
+def load_absence_freeze(path: Path) -> dict[str, object]:
+    """Read the terminal, non-promoting absent-row decision."""
+    payload = load_json(path, "MNB/KELER absence-semantics freeze")
+    if (
+        payload.get("absence_semantics_status")
+        != "AUTHORITATIVE_EVIDENCE_NOT_FOUND"
+        or payload.get("frozen_interpretation") != "ABSENCE_SEMANTICS_UNKNOWN"
+        or payload.get("absence_semantics_research_closed") is not True
+        or payload.get("absence_semantics_validated") is not False
+        or payload.get("absent_report_classification") != "NO_EXACT_ISIN_OBSERVATION"
+    ):
+        raise SparseAuditError("Absence-semantics freeze is malformed or unsafe")
+    return payload
+
+
+def load_price_semantics(path: Path) -> dict[str, object]:
+    """Read additive quotation research without granting return approval."""
+    payload = load_json(path, "MNB/KELER price-semantics audit")
+    if (
+        payload.get("isin") != TARGET_HU_ISIN
+        or payload.get("price_semantics_status")
+        not in {
+            "MNB_OTC_PRICE_SEMANTICS_VALIDATED",
+            "MNB_OTC_PRICE_SEMANTICS_PARTIAL",
+            "MNB_OTC_PRICE_SEMANTICS_NOT_FOUND",
+            "MNB_OTC_PRICE_SEMANTICS_CONFLICT",
+        }
+        or payload.get("nav_equivalent") is not False
+        or payload.get("backtest_return_series_approved") is not False
+        or payload.get("usable_for_backtest") is not False
+    ):
+        raise SparseAuditError("Price-semantics audit is malformed or unsafe")
+    return payload
 
 
 def _source_records(manifest: dict[str, object]) -> list[dict[str, object]]:
@@ -185,6 +304,9 @@ def build_audit(
     raw_directory: Path,
     database_path: Path,
     lifecycle_path: Path,
+    report_scope_semantics_path: Path,
+    absence_semantics_freeze_path: Path,
+    price_semantics_path: Path,
 ) -> dict[str, object]:
     manifest = load_json(acquisition_manifest_path, "MNB acquisition manifest")
     authority = manifest.get("source_authority")
@@ -192,14 +314,30 @@ def build_audit(
         raise SparseAuditError("MNB acquisition manifest source authority is missing")
     records = _source_records(manifest)
     documents = validate_report_scope_documents(records, raw_directory)
+    scope_chain, scope_status = load_report_scope_semantics(report_scope_semantics_path)
+    absence_freeze = load_absence_freeze(absence_semantics_freeze_path)
+    price_semantics = load_price_semantics(price_semantics_path)
+    # A completed UNKNOWN decision is an audit-domain guard, not a heuristic.
+    # Neither repeated no-row reports nor table structure may reach the stronger
+    # no-reported-activity class through this path.
+    if (
+        scope_chain.absence_semantics_validated
+        or classify_frozen_absence(exact_isin_present=False)
+        != "NO_EXACT_ISIN_OBSERVATION"
+    ):
+        raise SparseAuditError("Frozen absent-row semantics would be promoted unsafely")
     evidence = ReportScopeEvidence(
         authoritative=True,
         scope_statement=REPORT_SCOPE_STATEMENT,
         transaction_count_column_present=True,
-        complete_period_absence_policy_validated=False,
+        complete_period_absence_policy_validated=scope_chain.absence_semantics_validated,
         absence_policy_reason=(
-            "Retained report wording establishes KELER-mediated OTC turnover scope and a transaction-count column, "
-            "but not an explicit zero-row/completeness policy for every security-period."
+            "The separately retained report-scope evidence chain is incomplete for "
+            "report completeness, qualifying-row inclusion, zero-row omission, and "
+            "formal Tételszám semantics."
+            if not scope_chain.absence_semantics_validated
+            else "The retained report-scope evidence chain validates the limited "
+            "no-reported-KELER-OTC-activity conclusion."
         ),
     )
     report_evidence = [
@@ -231,8 +369,64 @@ def build_audit(
             "scope_statement": REPORT_SCOPE_STATEMENT,
             "transaction_count_column": "Tételszám",
             "scope_established": "KELER-mediated OTC securities turnover report",
-            "complete_period_absence_policy_validated": False,
+            "complete_period_absence_policy_validated": scope_chain.absence_semantics_validated,
             "absence_policy_reason": evidence.absence_policy_reason,
+        },
+        "report_scope_semantics": {
+            "artifact": str(report_scope_semantics_path),
+            "semantic_status": scope_status,
+            "evidence_chain": {
+                "report_scope_validated": scope_chain.report_scope_validated,
+                "report_completeness_validated": scope_chain.report_completeness_validated,
+                "row_inclusion_rule_validated": scope_chain.row_inclusion_rule_validated,
+                "zero_transaction_omission_validated": scope_chain.zero_transaction_omission_validated,
+                "transaction_count_semantics_validated": scope_chain.transaction_count_semantics_validated,
+                "absence_semantics_validated": scope_chain.absence_semantics_validated,
+            },
+            "research_status": scope_status,
+            "absent_row_semantic_status": (
+                "NO_REPORTED_KELER_OTC_ACTIVITY"
+                if scope_chain.absence_semantics_validated
+                else "NO_EXACT_ISIN_OBSERVATION"
+            ),
+            "missing_evidence_links": [
+                name
+                for name, validated in (
+                    (
+                        "B_report_completeness",
+                        scope_chain.report_completeness_validated,
+                    ),
+                    ("C_row_inclusion", scope_chain.row_inclusion_rule_validated),
+                    (
+                        "D_zero_transaction_omission",
+                        scope_chain.zero_transaction_omission_validated,
+                    ),
+                    (
+                        "transaction_count_semantics",
+                        scope_chain.transaction_count_semantics_validated,
+                    ),
+                )
+                if not validated
+            ],
+        },
+        "absence_semantics_freeze": {
+            "artifact": str(absence_semantics_freeze_path),
+            "status": absence_freeze["absence_semantics_status"],
+            "frozen_interpretation": absence_freeze["frozen_interpretation"],
+            "research_closed": True,
+            "absent_report_classification": "NO_EXACT_ISIN_OBSERVATION",
+            "reopen_policy": absence_freeze.get("reopen_policy"),
+        },
+        "price_semantics": {
+            "artifact": str(price_semantics_path),
+            "status": price_semantics["price_semantics_status"],
+            "validated_price_properties": price_semantics.get(
+                "validated_price_properties"
+            ),
+            "unknown_price_properties": price_semantics.get(
+                "unknown_price_properties"
+            ),
+            "return_suitability": price_semantics.get("return_suitability"),
         },
         "source_document_provenance": documents,
         **metrics,
@@ -266,12 +460,14 @@ def build_audit(
         },
         "methodology_questions": methodology_questions(),
         "unresolved_questions": [
-            "Whether an absent ISIN from a retained report proves zero reportable KELER-settled OTC transactions.",
-            "MNB OTC clean/dirty quotation convention.",
+            "MNB/KELER absence semantics are frozen as unknown pending qualifying new primary evidence.",
+            "MNB OTC clean/dirty quotation convention and field semantics.",
             "Day-count/accrual convention relevant to an economic return methodology.",
             "Approved pre-maturity valuation series and post-maturity portfolio policy.",
         ],
-        "recommended_next_action": "RESEARCH_AUTHORITATIVE_MNB_KELER_REPORT_SCOPE_SEMANTICS",
+        "recommended_next_action": "ASSESS_ALTERNATIVE_AUTHORITATIVE_PRICE_SOURCE_FOR_HU0000554795"
+        if price_semantics["price_semantics_status"] == "MNB_OTC_PRICE_SEMANTICS_NOT_FOUND"
+        else "RESOLVE_REMAINING_MNB_OTC_PRICE_SEMANTICS_GAPS",
         "nav_equivalent": False,
         "backtest_return_series_approved": False,
         "usable_for_backtest": False,
@@ -297,6 +493,21 @@ def main() -> int:
         "--lifecycle", type=Path, default=Path("data/audit/hu0000554795_lifecycle.json")
     )
     parser.add_argument(
+        "--report-scope-semantics",
+        type=Path,
+        default=Path("data/audit/mnb_keler_report_scope_semantics.json"),
+    )
+    parser.add_argument(
+        "--absence-semantics-freeze",
+        type=Path,
+        default=Path("data/audit/mnb_keler_absence_semantics_freeze.json"),
+    )
+    parser.add_argument(
+        "--price-semantics",
+        type=Path,
+        default=Path("data/audit/mnb_keler_price_semantics.json"),
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=Path("data/audit/hu0000554795_sparse_trading_semantics.json"),
@@ -304,7 +515,13 @@ def main() -> int:
     args = parser.parse_args()
     try:
         audit = build_audit(
-            args.acquisition_manifest, args.raw_directory, args.database, args.lifecycle
+            args.acquisition_manifest,
+            args.raw_directory,
+            args.database,
+            args.lifecycle,
+            args.report_scope_semantics,
+            args.absence_semantics_freeze,
+            args.price_semantics,
         )
     except SparseAuditError as exc:
         print(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from math import isfinite
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,6 +14,15 @@ class MetricValue:
     coverage: float
     available: bool
     warning: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isfinite(self.coverage) or not 0.0 <= self.coverage <= 1.0:
+            raise ValueError("metric coverage must be finite and between zero and one")
+        if self.available:
+            if self.value is None or not isfinite(self.value):
+                raise ValueError("available metric values must be finite")
+        elif self.value is not None:
+            raise ValueError("unavailable metric values must be None")
 
 
 @dataclass(frozen=True, slots=True)

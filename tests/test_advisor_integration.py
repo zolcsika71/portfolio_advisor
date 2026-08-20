@@ -6,6 +6,8 @@ from pathlib import Path
 from portfolio_advisor.advisor.service import CapitalPreservationAdvisor
 from portfolio_advisor.database.repository import ModelPortfolioRepository
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 def _create_database(path: Path) -> None:
     connection = sqlite3.connect(path)
@@ -32,21 +34,11 @@ def _create_database(path: Path) -> None:
 def _rules(path: Path) -> Path:
     rules = path / "rules.yaml"
     rules.write_text(
-        '''version: "test-1"
-status: approved
-purpose: test
-assumptions: [test assumption]
-source_references: [test source]
-eligibility:
-  target_allocation: 100
-  allocation_tolerance: 0.01
-  minimum_metric_coverage: 1
-  required_metrics: [annualized_volatility, maximum_drawdown]
-scoring:
-  metrics:
-    maximum_drawdown: {weight: 0.5, direction: lower}
-    annualized_volatility: {weight: 0.5, direction: lower}
-''',
+        (ROOT / "data/knowledge/validated_rules/capital_preservation_ranking.yaml")
+        .read_text(encoding="utf-8")
+        .replace('version: "1.0.1"', 'version: "test-1"', 1)
+        .replace("status: proposed", "status: approved", 1)
+        .replace("minimum_metric_coverage: 0.70", "minimum_metric_coverage: 1", 1),
         encoding="utf-8",
     )
     return rules

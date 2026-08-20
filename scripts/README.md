@@ -1,262 +1,69 @@
-# Scripts
+# Operational scripts
 
-This project provides wrapper scripts to simplify working with the Graphify knowledge base.
+Run scripts from the repository root with `poetry run python scripts/<name>.py
+--help`. Most scripts are offline audits; acquisition scripts are explicit and
+must never be invoked by ranking, backtesting, label construction, tests, the
+prospective monitor, or the scheduler.
 
-The portfolio database importer is run through the application entry point:
-
-```bash
-poetry run python -m portfolio_advisor.main
-```
-
-It reads `.xls` files from `data/xls/import`, writes to
-`database/model_portfolio.sqlite`, and moves successfully processed files to
-`data/xls/processed`. Custom paths can be supplied with `--input-directory`,
-`--processed-directory`, and `--database`.
-
-## Available Commands
-
-### Verify the Graphify installation
-
-Checks:
-
-- Graphify installation
-- Graphify version
-- Generated graph files
-- JSON validity
-- Graph statistics
-- Graph query functionality
-
-```bash
-./scripts/check_graphify.zsh
-```
-
-The verification script checks the Graphify executable, generated graph files,
-JSON structure, graph statistics, and query functionality. After a successful
-check it prints the recommended wrapper-script workflow.
-
----
-
-### Query the knowledge graph
-
-Use this script instead of calling `graphify query` directly.
-
-```bash
-./scripts/gquery.zsh "<query>"
-```
-
-Examples:
-
-```bash
-./scripts/gquery.zsh "Maximum Drawdown"
-```
-
-```bash
-./scripts/gquery.zsh "Capital Asset Pricing Model (CAPM)"
-```
-
-```bash
-./scripts/gquery.zsh "Black-Litterman Model"
-```
-
-```bash
-./scripts/gquery.zsh "Conditional Value at Risk"
-```
-
-```bash
-./scripts/gquery.zsh "Sharpe Ratio"
-```
-
----
-
-### Update the knowledge graph
-
-After adding, removing, or modifying files in:
-
-```text
-data/knowledge/
-```
-
-run:
-
-```bash
-./scripts/gupdate.zsh
-```
-
-After adding or changing reviewed rules in:
-
-```text
-data/knowledge/validated_rules/
-```
-
-run the same graph update and verification workflow. Only reviewed YAML or
-Markdown rules in that directory may define executable financial logic.
-
----
-
-### Update Graphify
-
-Updates the installed Graphify CLI to the latest version.
-
-```bash
-./scripts/update_graphify.zsh
-```
-
----
-
-### Export the SQLite schema
-
-Exports the schema from the default portfolio database to
-`database/schema.sql`:
-
-```bash
-./scripts/export_schema.zsh
-```
-
-Optional arguments can override the database and output paths:
-
-```bash
-./scripts/export_schema.zsh /path/to/database.sqlite /path/to/schema.sql
-```
-
-After upgrading Graphify, verify the installation again:
-
-```bash
-./scripts/check_graphify.zsh
-```
-
----
-
-### Audit Erste Market NAV acquisition diagnostics
-
-Validates the deterministic resolution sequence (fund detail page, exact-ISIN
-autocomplete fallback, then chart response) against a read-only SQLite source.
-It writes a machine-readable JSON audit by default and never inserts, removes,
-deduplicates, or repairs source observations.
-
-```bash
-poetry run python scripts/validate_erste_mapping.py \
-  --limit 66 \
-  --audit-output data/audit/erste_nav_diagnostics.json
-```
-
-Only `PASS` and `PASS_WITH_FILTERED_SENTINEL` records are marked
-`usable_for_backtest`. `NO_ERSTE_MAPPING`,
-`INVALID_NAV`, `CONFLICTING_HISTORY`, `NO_CHART_HISTORY`, and `SOURCE_ERROR`
-remain fail-closed. The JSON output records resolution attempts, date range,
-observation counts, and raw anomaly context; it is diagnostic evidence, not
-data cleaning or source acceptance.
-
-`SOURCE_SENTINEL` is the only normalization classification. It is restricted
-to the confirmed epoch-era `0.0` record for `IE00B7KFL990` and
-`IE00B84J9L26`: the known 1970-01-01 timestamp must be the sole invalid value,
-and the remaining source observations must be positive and begin at the
-confirmed substantially later source point. The raw record remains in the
-audit while exactly that row is omitted from the normalized series. No
-interpolation, generic zero/negative filtering, or other data repair occurs.
-
-The command also writes `data/audit/historical_nav_source_coverage.json` by
-default. It records source precedence and primary/fallback provenance. Erste
-remains priority 1; no secondary source is configured or contacted by this
-repository. A primary `NO_ERSTE_MAPPING` is therefore reported as
-`SECONDARY_SOURCE_REQUIRED`, and conflicting history as
-`RECONCILIATION_REQUIRED`, both fail closed. See
-[historical NAV source precedence](../docs/historical_nav_sources.md) for the
-source contract and acquisition acceptance conditions.
-
----
-
-# Recommended Workflow
-
-## First-time project setup
-
-```bash
-poetry install
-
-./scripts/check_graphify.zsh
-```
-
-To syntax-check the shell wrappers:
-
-```bash
-zsh -n scripts/check_graphify.zsh
-zsh -n scripts/export_schema.zsh
-```
-
----
-
-## After adding new portfolio PDFs
-
-```bash
-./scripts/gupdate.zsh
-
-./scripts/check_graphify.zsh
-```
-
----
-
-## Query the knowledge base
-
-```bash
-./scripts/gquery.zsh "Maximum Drawdown"
-```
-
-```bash
-./scripts/gquery.zsh "Portfolio Optimization"
-```
-
-```bash
-./scripts/gquery.zsh "Capital Preservation"
-```
-
----
-
-## After updating Graphify
-
-```bash
-./scripts/update_graphify.zsh
-
-./scripts/check_graphify.zsh
-```
-
----
-
-# Official Graphify Workflow
-
-Always use the wrapper scripts provided in the `scripts/` directory.
-
-Do **not** execute:
-
-```bash
-graphify query "<query>"
-```
-
-from the project root.
-
-The wrapper scripts automatically switch to the Graphify knowledge corpus (`data/knowledge`) before executing the Graphify command, ensuring the correct knowledge graph is used regardless of the current working directory.
-
----
-
-# Script Overview
+## Core validation
 
 | Script | Purpose |
-|---------|---------|
-| `check_graphify.zsh` | Verify the Graphify installation and generated knowledge graph |
-| `gquery.zsh` | Query the Graphify knowledge graph |
-| `gupdate.zsh` | Update the Graphify knowledge graph after knowledge changes |
-| `update_graphify.zsh` | Update the installed Graphify CLI |
-| `export_schema.zsh` | Export the SQLite database schema to SQL |
-| `validate_erste_mapping.py` | Audit Erste ISIN resolution and raw NAV history diagnostics |
-| `validate_oekb.py` | Validate bounded public OeKB historical NAV acquisition and provenance |
-| `reconcile_at0000605324.py` | Compare AT0000605324 Erste conflicts against local validated Morningstar evidence, without network access |
-| `import_mnb_otc_reports.py` | Import manually downloaded MNB/KELER weekly OTC PDFs into dedicated non-NAV storage |
-| `inventory_mnb_otc_reports.py` | Recursively inventory local MNB/KELER PDF/text artifacts and emit manual acquisition manifests |
-| `generate_mnb_otc_coverage.py` | Generate audit-only MNB OTC source-quality evidence manifest |
-| `audit_hu0000554795_mnb_otc.py` | Diagnose HU0000554795 OTC evidence and lifecycle metadata without backtest approval |
-| `audit_backtest_window_coverage.py` | Audit actual SQLite windows against existing Erste, bounded-OeKB, and verified Morningstar fallback coverage evidence |
+|---|---|
+| `formalize_capital_preservation_ranking_policy.py` | Build the policy contract from reviewed local evidence. |
+| `validate_capital_preservation_methodology.py` | Validate metric directions, formulas, and point-in-time safeguards. |
+| `validate_active_ranking_policy_current_universe.py` | Validate the active policy on the current candidate universe. |
+| `validate_active_policy_temporal_stability.py` | Audit deterministic temporal ranking behavior. |
+| `build_point_in_time_feature_dataset.py` | Build point-in-time features without forward labels. |
+| `validate_strict_backtest_pipeline.py` | Reconcile strict backtest eligibility and source evidence. |
+| `audit_backtest_window_coverage.py` | Audit exact source/window coverage. |
+| `build_official_forward_label_store.py` | Materialize official results or explicit unavailable labels. |
+| `validate_forward_rank_signal.py` | Assess an existing label store; never optimize policy weights. |
 
-## Validated rules
+## Historical evidence and source audits
 
-`data/knowledge/validated_rules/README.md` documents the requirements for
-reviewed rules. `codex.yaml` records the Codex-facing policy, including the
-restriction that Graphify `INFERRED` edges are for discovery only and cannot be
-used as executable financial rules without independent review.
+| Script group | Purpose |
+|---|---|
+| `plan_historical_nav_acquisition.py`, `acquire_missing_historical_nav_series.py` | Plan and explicitly acquire bounded constituent history. |
+| `validate_erste_mapping.py`, `validate_oekb.py` | Validate provider-specific retained history. |
+| `reconcile_at0000605324.py`, `check_at0000605324_*.py`, `analyze_at0000605324_conflict_patterns.py` | Audit, never auto-resolve, the AT0000605324 conflict. |
+| `audit_hu0000554795_*.py`, `analyze_hu0000554795_coverage_gap.py`, `research_hu0000554795_alternative_price_sources.py` | Preserve evidence and fail-closed terminal status for HU0000554795. |
+| `inventory_mnb_otc_reports.py`, `import_mnb_otc_reports.py`, `generate_mnb_otc_coverage.py`, `audit_mnb_keler_*.py` | Handle MNB/KELER OTC evidence as non-NAV audit material. |
+| `audit_backtest_missing_data_policies.py`, `freeze_mnb_keler_absence_semantics.py` | Audit missing-data semantics without changing strict eligibility. |
+
+MNB/KELER acquisition and external-source research commands are deliberate,
+bounded operations. They are not ordinary validation commands and must retain
+their provenance locally.
+
+## Portfolio-NAV governance and direct-source research
+
+| Script | Purpose |
+|---|---|
+| `audit_portfolio_nav_aggregation_rebalancing_methodology.py` | Assess whether snapshot semantics support a portfolio-NAV methodology. |
+| `resolve_portfolio_nav_methodology_blockers.py` | Resolve only provenance-backed methodology blockers. |
+| `freeze_portfolio_nav_reconstruction.py` | Freeze unproven synthetic reconstruction fail closed. |
+| `reassess_forward_validation_strategy.py` | Classify the validation evidence currently available. |
+| `research_official_portfolio_performance_source.py` | Perform bounded direct official portfolio-performance research. |
+
+## Prospective validation
+
+| Script | Purpose |
+|---|---|
+| `record_prospective_portfolio_decision.py` | Finalize a live decision record, or an explicitly marked research backfill. |
+| `audit_prospective_portfolio_validation.py` | Produce the deterministic append-only ledger audit. |
+| `check_due_prospective_outcomes.py` | Offline classification of live outcome slots; no fetch or admission. |
+| `assess_due_prospective_outcome_unavailable.py` | Append-only closure of one due slot with provenance and no metrics. |
+| `admit_prospective_portfolio_outcome.py` | Admit one due, direct, validated official outcome supplied locally. |
+| `schedule_prospective_outcome_due_checks.py` | Generate or explicitly install a monitor-only rolling launchd schedule. |
+
+## Graphify and utility wrappers
+
+`gquery.zsh`, `gupdate.zsh`, and `check_graphify.zsh` change into
+`data/knowledge` before using Graphify. `update_graphify.zsh` updates the
+external CLI; it is not part of financial validation. `export_schema.zsh`
+exports the local SQLite schema.
+
+## Safety
+
+No script may turn constituent history, Graphify knowledge, snapshot indicators,
+or a missing value into realized portfolio performance. See the repository
+README and the documentation in `docs/` for the governing architecture.
