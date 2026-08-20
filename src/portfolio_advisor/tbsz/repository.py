@@ -30,6 +30,11 @@ from .models import (
 
 _ISIN = re.compile(r"^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
 _CURRENCY = re.compile(r"^[A-Z]{3}$")
+CURRENT_SCHEMA_VERSION = 1
+
+
+class TbszSchemaMigrationError(TbszError):
+    """The local evidence schema cannot be safely recognized or upgraded."""
 
 
 class TbszPortfolioRepository:
@@ -41,7 +46,7 @@ class TbszPortfolioRepository:
     def initialize(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._write_connection() as connection:
-            connection.executescript(_SCHEMA)
+            _initialize_schema(connection)
 
     @contextmanager
     def _write_connection(self) -> Iterator[sqlite3.Connection]:
@@ -628,3 +633,220 @@ CREATE TABLE IF NOT EXISTS transactions (
     UNIQUE(account_id, client_reference)
 );
 """
+
+
+_EXPECTED_COLUMN_CONTRACT: dict[str, tuple[tuple[str, str, int, str | None, int], ...]] = {
+    "tbsz_accounts": (
+        ("account_id", "INTEGER", 0, None, 1),
+        ("label", "TEXT", 1, None, 0),
+        ("created_at", "TEXT", 1, "CURRENT_TIMESTAMP", 0),
+    ),
+    "source_snapshots": (
+        ("snapshot_id", "INTEGER", 0, None, 1),
+        ("account_id", "INTEGER", 1, None, 0),
+        ("source_filename", "TEXT", 1, None, 0),
+        ("content_sha256", "TEXT", 1, None, 0),
+        ("source_type", "TEXT", 1, None, 0),
+        ("view_type", "TEXT", 1, None, 0),
+        ("source_date", "TEXT", 0, None, 0),
+        ("ingested_at", "TEXT", 1, None, 0),
+        ("evidence_status", "TEXT", 1, None, 0),
+        ("evidence_fingerprint", "TEXT", 1, None, 0),
+    ),
+    "instruments": (
+        ("instrument_id", "INTEGER", 0, None, 1),
+        ("canonical_name", "TEXT", 1, None, 0),
+        ("normalized_name", "TEXT", 1, None, 0),
+        ("isin", "TEXT", 0, None, 0),
+        ("identity_status", "TEXT", 1, None, 0),
+    ),
+    "instrument_aliases": (
+        ("alias_id", "INTEGER", 0, None, 1),
+        ("instrument_id", "INTEGER", 1, None, 0),
+        ("alias_name", "TEXT", 1, None, 0),
+        ("normalized_alias", "TEXT", 1, None, 0),
+        ("mapping_method", "TEXT", 1, None, 0),
+        ("source_snapshot_id", "INTEGER", 0, None, 0),
+    ),
+    "position_snapshots": (
+        ("position_id", "INTEGER", 0, None, 1),
+        ("snapshot_id", "INTEGER", 1, None, 0),
+        ("account_id", "INTEGER", 1, None, 0),
+        ("instrument_id", "INTEGER", 1, None, 0),
+        ("provider_name", "TEXT", 1, None, 0),
+        ("normalized_provider_name", "TEXT", 1, None, 0),
+        ("quantity", "TEXT", 0, None, 0),
+        ("unit_price", "TEXT", 0, None, 0),
+        ("market_value", "TEXT", 0, None, 0),
+        ("market_currency", "TEXT", 0, None, 0),
+        ("reporting_value", "TEXT", 0, None, 0),
+        ("reporting_currency", "TEXT", 0, None, 0),
+        ("data_quality_status", "TEXT", 1, None, 0),
+    ),
+    "cash_snapshots": (
+        ("cash_id", "INTEGER", 0, None, 1),
+        ("snapshot_id", "INTEGER", 1, None, 0),
+        ("account_id", "INTEGER", 1, None, 0),
+        ("currency", "TEXT", 1, None, 0),
+        ("balance", "TEXT", 1, None, 0),
+        ("data_quality_status", "TEXT", 1, None, 0),
+    ),
+    "transactions": (
+        ("transaction_id", "TEXT", 0, None, 1),
+        ("account_id", "INTEGER", 1, None, 0),
+        ("instrument_id", "INTEGER", 1, None, 0),
+        ("action", "TEXT", 1, None, 0),
+        ("quantity", "TEXT", 1, None, 0),
+        ("price", "TEXT", 1, None, 0),
+        ("currency", "TEXT", 1, None, 0),
+        ("transaction_date", "TEXT", 1, None, 0),
+        ("recorded_at", "TEXT", 1, None, 0),
+        ("client_reference", "TEXT", 0, None, 0),
+        ("record_type", "TEXT", 1, None, 0),
+    ),
+}
+
+_EXPECTED_FOREIGN_KEYS: dict[str, tuple[tuple[str, str, str], ...]] = {
+    "tbsz_accounts": (),
+    "source_snapshots": (("account_id", "tbsz_accounts", "account_id"),),
+    "instruments": (),
+    "instrument_aliases": (
+        ("instrument_id", "instruments", "instrument_id"),
+        ("source_snapshot_id", "source_snapshots", "snapshot_id"),
+    ),
+    "position_snapshots": (
+        ("account_id", "tbsz_accounts", "account_id"),
+        ("instrument_id", "instruments", "instrument_id"),
+        ("snapshot_id", "source_snapshots", "snapshot_id"),
+    ),
+    "cash_snapshots": (
+        ("account_id", "tbsz_accounts", "account_id"),
+        ("snapshot_id", "source_snapshots", "snapshot_id"),
+    ),
+    "transactions": (
+        ("account_id", "tbsz_accounts", "account_id"),
+        ("instrument_id", "instruments", "instrument_id"),
+    ),
+}
+
+_EXPECTED_UNIQUE_CONSTRAINTS: dict[str, tuple[tuple[str, ...], ...]] = {
+    "tbsz_accounts": (("label",),),
+    "source_snapshots": (("source_filename",),),
+    "instruments": (("isin",), ("normalized_name",)),
+    "instrument_aliases": (("instrument_id", "normalized_alias", "mapping_method", "source_snapshot_id"),),
+    "position_snapshots": (("snapshot_id", "normalized_provider_name"),),
+    "cash_snapshots": (("snapshot_id", "currency"),),
+    "transactions": (("account_id", "client_reference"),),
+}
+
+_EXPECTED_CHECK_SNIPPETS: dict[str, tuple[str, ...]] = {
+    "source_snapshots": (
+        "check(source_type='george_pdf')",
+        "check(view_typein('positions','cash'))",
+    ),
+    "instruments": (
+        "check(identity_statusin('exact_isin','manual_confirmed','provider_name_exact_candidate','identity_unresolved'))",
+    ),
+    "instrument_aliases": ("check(mapping_methodin('exact_provider_name','manual_confirmed'))",),
+    "transactions": (
+        "check(actionin('buy','sell'))",
+        "check(record_type='manual_user_executed')",
+    ),
+}
+
+
+def tbsz_schema_issues(connection: sqlite3.Connection) -> tuple[str, ...]:
+    """Return structural differences from the canonical TBSZ v1 schema."""
+    actual_tables = {
+        str(row[0])
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+        )
+    }
+    expected_tables = set(_EXPECTED_COLUMN_CONTRACT)
+    issues: list[str] = []
+    if missing := sorted(expected_tables - actual_tables):
+        issues.append(f"missing tables: {', '.join(missing)}")
+    if unexpected := sorted(actual_tables - expected_tables):
+        issues.append(f"unexpected tables: {', '.join(unexpected)}")
+    for table in sorted(expected_tables & actual_tables):
+        columns = tuple(
+            (str(row[1]), str(row[2]).upper(), int(row[3]), row[4], int(row[5]))
+            for row in connection.execute(f"PRAGMA table_info({_quote_identifier(table)})")
+        )
+        if columns != _EXPECTED_COLUMN_CONTRACT[table]:
+            issues.append(f"column contract differs for {table}")
+        foreign_keys = tuple(
+            sorted(
+                (str(row[3]), str(row[2]), str(row[4]))
+                for row in connection.execute(f"PRAGMA foreign_key_list({_quote_identifier(table)})")
+            )
+        )
+        if foreign_keys != _EXPECTED_FOREIGN_KEYS[table]:
+            issues.append(f"foreign-key contract differs for {table}")
+        unique_constraints = tuple(
+            sorted(
+                tuple(
+                    str(column[2])
+                    for column in connection.execute(f"PRAGMA index_info({_quote_identifier(str(index[1]))})")
+                )
+                for index in connection.execute(f"PRAGMA index_list({_quote_identifier(table)})")
+                if str(index[3]) == "u"
+            )
+        )
+        if unique_constraints != _EXPECTED_UNIQUE_CONSTRAINTS[table]:
+            issues.append(f"unique-constraint contract differs for {table}")
+        ddl_row = connection.execute(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)
+        ).fetchone()
+        ddl = _normalized_sql(str(ddl_row[0])) if ddl_row and ddl_row[0] else ""
+        if any(check not in ddl for check in _EXPECTED_CHECK_SNIPPETS.get(table, ())):
+            issues.append(f"check-constraint contract differs for {table}")
+    return tuple(issues)
+
+
+def _initialize_schema(connection: sqlite3.Connection) -> None:
+    """Create v1 or apply the only supported, data-preserving v0 -> v1 migration."""
+    version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+    if version == CURRENT_SCHEMA_VERSION:
+        _require_current_schema(connection)
+        return
+    if version != 0:
+        raise TbszSchemaMigrationError(
+            f"unsupported TBSZ schema version {version}; expected 0 or {CURRENT_SCHEMA_VERSION}"
+        )
+
+    existing_tables = {
+        str(row[0])
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+        )
+    }
+    if existing_tables:
+        _require_current_schema(connection)
+
+    connection.execute("BEGIN IMMEDIATE")
+    if not existing_tables:
+        for statement in _SCHEMA.split(";"):
+            if statement := statement.strip():
+                connection.execute(statement)
+    connection.execute(f"PRAGMA user_version = {CURRENT_SCHEMA_VERSION}")
+    _require_current_schema(connection)
+
+
+def _require_current_schema(connection: sqlite3.Connection) -> None:
+    if issues := tbsz_schema_issues(connection):
+        raise TbszSchemaMigrationError(
+            "TBSZ schema is not a recognized migration source: " + "; ".join(issues)
+        )
+    foreign_key_violations = connection.execute("PRAGMA foreign_key_check").fetchall()
+    if foreign_key_violations:
+        raise TbszSchemaMigrationError("TBSZ schema has foreign-key violations; migration is blocked")
+
+
+def _quote_identifier(identifier: str) -> str:
+    return '"' + identifier.replace('"', '""') + '"'
+
+
+def _normalized_sql(value: str) -> str:
+    return "".join(value.casefold().split())
