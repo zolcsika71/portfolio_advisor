@@ -44,6 +44,13 @@ class ReconciliationStatus(StrEnum):
     INSUFFICIENT_SOURCE_DETAIL = "INSUFFICIENT_SOURCE_DETAIL"
 
 
+class CurrentPortfolioRecordType(StrEnum):
+    """Display-only classification; source evidence stays normalized in SQLite."""
+
+    ASSET = "ASSET"
+    CASH = "CASH"
+
+
 @dataclass(frozen=True, slots=True)
 class TbszAccount:
     account_id: int
@@ -84,6 +91,7 @@ class PositionSnapshot:
     market_currency: str | None
     reporting_value: Decimal | None
     reporting_currency: str | None
+    observed_roi: Decimal | None
     data_quality_status: str
 
 
@@ -95,6 +103,22 @@ class CashSnapshot:
     currency: str
     balance: Decimal
     data_quality_status: str
+
+
+@dataclass(frozen=True, slots=True)
+class CurrentPortfolioRecord:
+    """One unified, read-only current-portfolio record for display/API use."""
+
+    account: str
+    record_type: CurrentPortfolioRecordType
+    asset_name: str
+    isin: str | None
+    currency: str | None
+    amount: Decimal | None
+    roi: Decimal | None
+    source_snapshot_id: int
+    data_quality_status: str
+    value_status: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,6 +145,7 @@ class SourcePositionInput:
     quantity: Decimal | None = None
     unit_price: Decimal | None = None
     isin: str | None = None
+    observed_roi: Decimal | None = None
     data_quality_status: str = "SOURCE_SUPPORTED"
 
 

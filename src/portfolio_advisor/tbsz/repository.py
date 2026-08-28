@@ -7,7 +7,7 @@ import json
 import re
 import sqlite3
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
@@ -30,7 +30,7 @@ from .models import (
 
 _ISIN = re.compile(r"^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
 _CURRENCY = re.compile(r"^[A-Z]{3}$")
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 
 
 class TbszSchemaMigrationError(TbszError):
@@ -43,10 +43,36 @@ class TbszPortfolioRepository:
     def __init__(self, path: Path) -> None:
         self.path = path
 
-    def initialize(self) -> None:
+    def initialize(self) -> Path | None:
+        """Create or migrate the local schema, returning any verified backup.
+
+        This is deliberately separate from the read-only comparison path.  An
+        existing v1 ledger is backed up before any live migration is attempted.
+        """
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        backup_path = self._create_migration_backup_if_needed()
         with self._write_connection() as connection:
             _initialize_schema(connection)
+        return backup_path
+
+    def _create_migration_backup_if_needed(self) -> Path | None:
+        """Back up only a recognized existing schema that needs migration."""
+        if not self.path.is_file():
+            return None
+        with self._read_connection() as connection:
+            version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+            existing_tables = _application_tables(connection)
+            if version == CURRENT_SCHEMA_VERSION:
+                _require_current_schema(connection)
+                return None
+            if version not in {0, 1}:
+                raise TbszSchemaMigrationError(
+                    f"unsupported TBSZ schema version {version}; expected 0, 1, or {CURRENT_SCHEMA_VERSION}"
+                )
+            if not existing_tables:
+                return None
+            _require_v1_schema(connection)
+        return _create_verified_backup(self.path, source_version=version)
 
     @contextmanager
     def _write_connection(self) -> Iterator[sqlite3.Connection]:
@@ -133,8 +159,8 @@ class TbszPortfolioRepository:
             instrument = self._instrument_for_source(connection, position, snapshot_id)
             connection.execute(
                 "INSERT INTO position_snapshots "
-                "(snapshot_id, account_id, instrument_id, provider_name, normalized_provider_name, quantity, unit_price, market_value, market_currency, reporting_value, reporting_currency, data_quality_status) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "(snapshot_id, account_id, instrument_id, provider_name, normalized_provider_name, quantity, unit_price, market_value, market_currency, reporting_value, reporting_currency, observed_roi, data_quality_status) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     snapshot_id,
                     account_id,
@@ -147,6 +173,7 @@ class TbszPortfolioRepository:
                     position.market_currency,
                     _decimal_text(position.reporting_value),
                     position.reporting_currency,
+                    _decimal_text(position.observed_roi),
                     position.data_quality_status,
                 ),
             )
@@ -163,6 +190,11 @@ class TbszPortfolioRepository:
         with self._read_connection() as connection:
             rows = connection.execute("SELECT account_id, label FROM tbsz_accounts ORDER BY label").fetchall()
         return tuple(TbszAccount(int(row["account_id"]), str(row["label"])) for row in rows)
+
+    def schema_version(self) -> int:
+        """Read the declared schema version without opening the ledger for writes."""
+        with self._read_connection() as connection:
+            return int(connection.execute("PRAGMA user_version").fetchone()[0])
 
     def account(self, label: str) -> TbszAccount:
         with self._read_connection() as connection:
@@ -384,6 +416,7 @@ def validate_source_document(document: SourceDocumentInput) -> None:
         _nullable_nonnegative(position.reporting_value, "reporting value")
         _nullable_nonnegative(position.quantity, "quantity")
         _nullable_nonnegative(position.unit_price, "unit price")
+        _nullable_finite(position.observed_roi, "observed ROI")
         if position.market_currency is not None:
             _validate_currency(position.market_currency)
         if position.reporting_currency is not None:
@@ -436,6 +469,14 @@ def _nullable_nonnegative(value: Decimal | None, field: str) -> Decimal | None:
     return value
 
 
+def _nullable_finite(value: Decimal | None, field: str) -> Decimal | None:
+    if value is None:
+        return None
+    if not value.is_finite():
+        raise TbszError(f"{field} must be finite when supplied")
+    return value
+
+
 def _decimal_text(value: Decimal | None) -> str | None:
     return format(value, "f") if value is not None else None
 
@@ -480,6 +521,7 @@ def _document_fingerprint(document: SourceDocumentInput) -> str:
                 "quantity": _decimal_text(item.quantity),
                 "unit_price": _decimal_text(item.unit_price),
                 "isin": item.isin,
+                "observed_roi": _decimal_text(item.observed_roi),
                 "data_quality_status": item.data_quality_status,
             }
             for item in document.positions
@@ -535,6 +577,7 @@ def _position(row: sqlite3.Row) -> PositionSnapshot:
         market_currency=str(row["market_currency"]) if row["market_currency"] else None,
         reporting_value=_decimal(row["reporting_value"]),
         reporting_currency=str(row["reporting_currency"]) if row["reporting_currency"] else None,
+        observed_roi=_decimal(row["observed_roi"]),
         data_quality_status=str(row["data_quality_status"]),
     )
 
@@ -607,6 +650,7 @@ CREATE TABLE IF NOT EXISTS position_snapshots (
     reporting_value TEXT NULL,
     reporting_currency TEXT NULL,
     data_quality_status TEXT NOT NULL,
+    observed_roi TEXT NULL,
     UNIQUE(snapshot_id, normalized_provider_name)
 );
 CREATE TABLE IF NOT EXISTS cash_snapshots (
@@ -633,6 +677,10 @@ CREATE TABLE IF NOT EXISTS transactions (
     UNIQUE(account_id, client_reference)
 );
 """
+
+# Kept as a derived test/migration-recognition fixture, not a second schema
+# authority: v2 is the only schema emitted for a newly created database.
+_V1_SCHEMA = _SCHEMA.replace("    observed_roi TEXT NULL,\n", "")
 
 
 _EXPECTED_COLUMN_CONTRACT: dict[str, tuple[tuple[str, str, int, str | None, int], ...]] = {
@@ -682,6 +730,7 @@ _EXPECTED_COLUMN_CONTRACT: dict[str, tuple[tuple[str, str, int, str | None, int]
         ("reporting_value", "TEXT", 0, None, 0),
         ("reporting_currency", "TEXT", 0, None, 0),
         ("data_quality_status", "TEXT", 1, None, 0),
+        ("observed_roi", "TEXT", 0, None, 0),
     ),
     "cash_snapshots": (
         ("cash_id", "INTEGER", 0, None, 1),
@@ -755,15 +804,32 @@ _EXPECTED_CHECK_SNIPPETS: dict[str, tuple[str, ...]] = {
 }
 
 
+_EXPECTED_V1_COLUMN_CONTRACT: dict[str, tuple[tuple[str, str, int, str | None, int], ...]] = {
+    **_EXPECTED_COLUMN_CONTRACT,
+    "position_snapshots": tuple(
+        column
+        for column in _EXPECTED_COLUMN_CONTRACT["position_snapshots"]
+        if column[0] != "observed_roi"
+    ),
+}
+
+
 def tbsz_schema_issues(connection: sqlite3.Connection) -> tuple[str, ...]:
-    """Return structural differences from the canonical TBSZ v1 schema."""
-    actual_tables = {
-        str(row[0])
-        for row in connection.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
-        )
-    }
-    expected_tables = set(_EXPECTED_COLUMN_CONTRACT)
+    """Return structural differences from the canonical current TBSZ schema."""
+    return _schema_issues(connection, _EXPECTED_COLUMN_CONTRACT)
+
+
+def tbsz_v1_schema_issues(connection: sqlite3.Connection) -> tuple[str, ...]:
+    """Recognize the only supported migration source schema exactly."""
+    return _schema_issues(connection, _EXPECTED_V1_COLUMN_CONTRACT)
+
+
+def _schema_issues(
+    connection: sqlite3.Connection,
+    expected_columns: dict[str, tuple[tuple[str, str, int, str | None, int], ...]],
+) -> tuple[str, ...]:
+    actual_tables = _application_tables(connection)
+    expected_tables = set(expected_columns)
     issues: list[str] = []
     if missing := sorted(expected_tables - actual_tables):
         issues.append(f"missing tables: {', '.join(missing)}")
@@ -774,7 +840,7 @@ def tbsz_schema_issues(connection: sqlite3.Connection) -> tuple[str, ...]:
             (str(row[1]), str(row[2]).upper(), int(row[3]), row[4], int(row[5]))
             for row in connection.execute(f"PRAGMA table_info({_quote_identifier(table)})")
         )
-        if columns != _EXPECTED_COLUMN_CONTRACT[table]:
+        if columns != expected_columns[table]:
             issues.append(f"column contract differs for {table}")
         foreign_keys = tuple(
             sorted(
@@ -806,42 +872,88 @@ def tbsz_schema_issues(connection: sqlite3.Connection) -> tuple[str, ...]:
 
 
 def _initialize_schema(connection: sqlite3.Connection) -> None:
-    """Create v1 or apply the only supported, data-preserving v0 -> v1 migration."""
+    """Create v2 or apply the only supported data-preserving upgrade chain."""
     version = int(connection.execute("PRAGMA user_version").fetchone()[0])
     if version == CURRENT_SCHEMA_VERSION:
         _require_current_schema(connection)
         return
-    if version != 0:
+    if version not in {0, 1}:
         raise TbszSchemaMigrationError(
-            f"unsupported TBSZ schema version {version}; expected 0 or {CURRENT_SCHEMA_VERSION}"
+            f"unsupported TBSZ schema version {version}; expected 0, 1, or {CURRENT_SCHEMA_VERSION}"
         )
-
-    existing_tables = {
-        str(row[0])
-        for row in connection.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
-        )
-    }
+    existing_tables = _application_tables(connection)
     if existing_tables:
-        _require_current_schema(connection)
+        _require_v1_schema(connection)
 
     connection.execute("BEGIN IMMEDIATE")
     if not existing_tables:
         for statement in _SCHEMA.split(";"):
             if statement := statement.strip():
                 connection.execute(statement)
+    else:
+        if version == 0:
+            connection.execute("PRAGMA user_version = 1")
+        connection.execute("ALTER TABLE position_snapshots ADD COLUMN observed_roi TEXT NULL")
     connection.execute(f"PRAGMA user_version = {CURRENT_SCHEMA_VERSION}")
     _require_current_schema(connection)
 
 
 def _require_current_schema(connection: sqlite3.Connection) -> None:
-    if issues := tbsz_schema_issues(connection):
+    _require_schema(connection, tbsz_schema_issues)
+
+
+def _require_v1_schema(connection: sqlite3.Connection) -> None:
+    _require_schema(connection, tbsz_v1_schema_issues)
+
+
+def _require_schema(
+    connection: sqlite3.Connection,
+    issue_detector: Callable[[sqlite3.Connection], tuple[str, ...]],
+) -> None:
+    if issues := issue_detector(connection):
         raise TbszSchemaMigrationError(
             "TBSZ schema is not a recognized migration source: " + "; ".join(issues)
         )
+    integrity = tuple(str(row[0]) for row in connection.execute("PRAGMA integrity_check"))
+    if integrity != ("ok",):
+        raise TbszSchemaMigrationError("TBSZ schema integrity_check did not return ok; migration is blocked")
     foreign_key_violations = connection.execute("PRAGMA foreign_key_check").fetchall()
     if foreign_key_violations:
         raise TbszSchemaMigrationError("TBSZ schema has foreign-key violations; migration is blocked")
+
+
+def _application_tables(connection: sqlite3.Connection) -> set[str]:
+    return {
+        str(row[0])
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+        )
+    }
+
+
+def _create_verified_backup(path: Path, *, source_version: int) -> Path:
+    """Create an SQLite-consistent, verified, non-overwriting migration backup."""
+    backup_directory = path.parent / "backups"
+    backup_directory.mkdir(parents=True, exist_ok=True)
+    timestamp = _now().strftime("%Y%m%dT%H%M%S%fZ")
+    backup_path = backup_directory / f"{path.stem}-v{source_version}-before-v2-{timestamp}-{uuid.uuid4().hex}.sqlite"
+    temporary_path = backup_directory / f".{backup_path.name}.tmp"
+    if backup_path.exists() or temporary_path.exists():
+        raise TbszSchemaMigrationError("refusing to overwrite an existing TBSZ migration backup")
+    try:
+        with (
+            sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True) as source,
+            sqlite3.connect(temporary_path) as destination,
+        ):
+            source.backup(destination)
+        with sqlite3.connect(f"file:{temporary_path.resolve()}?mode=ro", uri=True) as backup:
+            if int(backup.execute("PRAGMA user_version").fetchone()[0]) != source_version:
+                raise TbszSchemaMigrationError("TBSZ migration backup version does not match the migration source")
+            _require_v1_schema(backup)
+        temporary_path.rename(backup_path)
+    except (OSError, sqlite3.Error) as error:
+        raise TbszSchemaMigrationError("could not create and verify TBSZ migration backup") from error
+    return backup_path
 
 
 def _quote_identifier(identifier: str) -> str:

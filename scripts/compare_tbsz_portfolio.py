@@ -38,6 +38,7 @@ def main(argv: list[str] | None = None) -> int:
     scope.add_argument("--all-tbsz", action="store_true")
     parser.add_argument("--target-portfolio")
     parser.add_argument("--tolerance", required=True, type=_decimal, help="Fraction; 0.01 means one percentage point")
+    parser.add_argument("--output", choices=("json",), default="json", help="Structured read-only report format")
     parser.add_argument("--tbsz-database", type=Path, default=Path("database/tbsz_portfolio.sqlite"))
     parser.add_argument("--model-database", type=Path, default=Path("database/model_portfolio.sqlite"))
     parser.add_argument("--rules", type=Path, default=Path("data/knowledge/validated_rules/capital_preservation_ranking.yaml"))

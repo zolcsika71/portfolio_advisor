@@ -197,6 +197,7 @@ def _position(value: Any) -> SourcePositionInput:
         quantity=_decimal_or_none(value.get("quantity"), "quantity"),
         unit_price=_decimal_or_none(value.get("unit_price"), "unit_price"),
         isin=_optional_string(value.get("isin")),
+        observed_roi=_decimal_or_none(value.get("observed_roi"), "observed_roi"),
         data_quality_status=str(value.get("data_quality_status", "MANUALLY_CONFIRMED_FROM_VISIBLE_PDF")),
     )
 

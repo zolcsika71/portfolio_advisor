@@ -74,11 +74,13 @@ already traded; it never connects to a broker or submits an order.
 | Script | Purpose |
 |---|---|
 | `initialize_tbsz_portfolio_from_pdfs.py` | Import only explicitly confirmed George PDF facts from `data/tbsz/source/`; `--write-template` creates a filename-only confirmation template when a screen cannot be reliably parsed. |
-| `show_tbsz_current_portfolio.py` | Show the latest observed source snapshot and the separate, non-netted manual transaction ledger for one account. |
+| `migrate_tbsz_portfolio.py` | Apply only the recognized local schema migration after creating and verifying an ignored backup; it does not import sources or compare portfolios. |
+| `show_tbsz_current_portfolio.py` | Show one read-only, unified current view for one account: explicit `ASSET` and `CASH` rows retain native source currencies and separate position/cash snapshot provenance. |
 | `update_tbsz_transaction.py` | Append one user-completed BUY or SELL to the manual transaction ledger. It is not a brokerage command. |
 | `confirm_tbsz_instrument_mapping.py` | Add a reviewed manual ISIN/alias mapping; fuzzy similarity is never promoted. |
 | `reconcile_tbsz_pdf_snapshots.py` | Compare two retained, dated position snapshots without rewriting history. |
-| `compare_tbsz_portfolio.py` | Read-only TBSZ-vs-model allocation comparison with an explicit tolerance and no FX or provider fetch. |
+| `compare_tbsz_portfolio.py` | Read-only TBSZ-vs-model target-allocation comparison with an explicit tolerance, identity/FX blockers, separate cash, and no provider or FX fetch. |
+| `create_tbsz_current_portfolio_once.py` | One-time isolated current-standings read model from retained, manually confirmed TBSZ PDFs. It contains current ASSET and CASH rows only; normal reruns refuse overwrite and `--force` first creates a verified ignored backup. |
 
 Source PDFs, manual confirmations, and `database/tbsz_portfolio.sqlite` are
 local-only and ignored by Git. Initial observed positions are not fabricated as

@@ -12,7 +12,10 @@ from enum import Enum
 from pathlib import Path
 
 from portfolio_advisor.tbsz.repository import TbszPortfolioRepository
-from portfolio_advisor.tbsz.service import current_account_state
+from portfolio_advisor.tbsz.service import (
+    current_account_state,
+    current_portfolio_records_from_state,
+)
 
 
 def _json_default(value: object) -> object:
@@ -33,7 +36,20 @@ def main(argv: list[str] | None = None) -> int:
     except RuntimeError as error:
         print(f"TBSZ_CURRENT_PORTFOLIO_READ_FAILED detail={error}", file=sys.stderr)
         return 2
-    print(json.dumps(asdict(result), default=_json_default, indent=2, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "account": result.account.label,
+                "position_snapshot_id": result.position_snapshot.snapshot_id if result.position_snapshot else None,
+                "cash_snapshot_id": result.cash_snapshot.snapshot_id if result.cash_snapshot else None,
+                "records": [asdict(item) for item in current_portfolio_records_from_state(result)],
+                "manual_transactions": [asdict(item) for item in result.manual_transactions],
+            },
+            default=_json_default,
+            indent=2,
+            sort_keys=True,
+        )
+    )
     return 0
 
 
