@@ -178,6 +178,10 @@ cython_debug/
 /database/tbsz_portfolio.sqlite
 /database/
 identifier.sqlite
+# Root-level local identifier cache SQLite sidecars.
+identifier.sqlite-wal
+identifier.sqlite-shm
+identifier.sqlite-journal
 
 # Local environment or credentials.
 .env.*
