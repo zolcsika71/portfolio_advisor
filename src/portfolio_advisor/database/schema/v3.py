@@ -102,6 +102,18 @@ def initialize_schema(connection: sqlite3.Connection) -> None:
     validate_schema(connection)
 
 
+def upgrade_schema_v3_nav_extension(connection: sqlite3.Connection) -> None:
+    """Explicit, guarded additive v3 transition for historical NAV evidence."""
+    if detect_schema_version(connection) != SCHEMA_VERSION:
+        raise SchemaVersionError("historical NAV extension requires recognized schema v3")
+    existing = {str(row[0]) for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if "instrument_nav_observation" not in existing:
+        statement = _SCHEMA_SQL.split("CREATE TABLE instrument_nav_observation", 1)[1]
+        with transaction(connection):
+            connection.execute("CREATE TABLE instrument_nav_observation" + statement.split(";", 1)[0])
+    validate_schema(connection)
+
+
 def validate_schema(connection: sqlite3.Connection) -> None:
     """Fail closed on a missing table, integrity error, or FK violation."""
     enable_foreign_keys(connection)
@@ -268,7 +280,7 @@ _REQUIRED_TABLES = frozenset({
     "portfolio", "portfolio_snapshot", "portfolio_holding_source_occurrence",
     "portfolio_holding", "portfolio_holding_lineage", "portfolio_cash", "metric_definition",
     "instrument_metric_observation", "portfolio_metric_observation", "shortlist_snapshot",
-    "shortlist_entry", "migration_build_manifest",
+    "shortlist_entry", "migration_build_manifest", "instrument_nav_observation",
 })
 
 _SOURCE_OCCURRENCE_IMMUTABILITY_STATEMENTS = (
@@ -484,5 +496,21 @@ CREATE TABLE migration_build_manifest (
     database_fingerprint TEXT NULL,
     build_status TEXT NOT NULL CHECK(build_status IN ('PARALLEL_VALIDATED', 'FAILED_NO_PUBLICATION')),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE instrument_nav_observation (
+    instrument_nav_observation_id INTEGER PRIMARY KEY,
+    instrument_id INTEGER NOT NULL REFERENCES instrument(instrument_id),
+    observation_date TEXT NOT NULL,
+    nav_value REAL NOT NULL CHECK(nav_value > 0 AND nav_value < 1.0e308),
+    currency_code TEXT NOT NULL CHECK(length(currency_code) = 3),
+    value_type TEXT NOT NULL CHECK(value_type = 'NAV'),
+    source_provider TEXT NOT NULL,
+    source_identifier TEXT NOT NULL,
+    provenance_reference TEXT NOT NULL,
+    quality_status TEXT NOT NULL,
+    source_fingerprint TEXT NOT NULL CHECK(length(source_fingerprint) = 64),
+    imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(instrument_id, observation_date, source_provider, value_type, source_identifier)
 );
 """
