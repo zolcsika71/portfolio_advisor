@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Final, cast
 
 from portfolio_advisor.advisor.models import AdvisorResult
+from portfolio_advisor.canonical import canonical_fingerprint, canonical_json
 from portfolio_advisor.database.repository import (
     HoldingObservation,
     ModelPortfolioRepository,
@@ -1091,8 +1092,8 @@ def _json_value(value: object) -> Any:
 
 
 def _canonical_json(value: object) -> str:
-    return json.dumps(_json_value(value), ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    return canonical_json(_json_value(value))
 
 
 def _fingerprint(value: object) -> str:
-    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
+    return canonical_fingerprint(_json_value(value))
