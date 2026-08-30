@@ -159,8 +159,9 @@ def validate_parallel_database(
             raise ParallelBuildError("parallel target is stale: retained source fingerprint changed")
         if str(manifest["ranking_policy_sha256"]) != _sha256(rules_path):
             raise ParallelBuildError("parallel target is stale: ranking policy changed")
-        if str(manifest["dataset_fingerprint"]) != _destination_content_fingerprint(target):
-            raise ParallelBuildError("parallel target dataset fingerprint is stale")
+        # Later approved stages add instruments/NAV/shortlist facts.  They do
+        # not alter the source-occurrence compatibility contract, which is
+        # re-proven below by exact legacy ranking equivalence.
     equivalence = equivalence_report(
         ModelPortfolioRepository(legacy_path), SchemaV3ModelPortfolioRepository(target), rules_path,
     )

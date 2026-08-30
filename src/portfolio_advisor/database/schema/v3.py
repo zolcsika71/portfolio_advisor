@@ -114,6 +114,18 @@ def upgrade_schema_v3_nav_extension(connection: sqlite3.Connection) -> None:
     validate_schema(connection)
 
 
+def upgrade_schema_v3_shortlist_extension(connection: sqlite3.Connection) -> None:
+    """Explicit additive transition for immutable shortlist source rows."""
+    if detect_schema_version(connection) != SCHEMA_VERSION:
+        raise SchemaVersionError("shortlist extension requires recognized schema v3")
+    names = {str(row[0]) for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if "shortlist_entry_source_occurrence" not in names:
+        section = _SCHEMA_SQL.split("CREATE TABLE shortlist_entry_source_occurrence", 1)[1].split("CREATE TABLE migration_build_manifest", 1)[0]
+        with transaction(connection):
+            for statement in ("CREATE TABLE shortlist_entry_source_occurrence" + section).split(";"):
+                if statement.strip(): connection.execute(statement)
+
+
 def validate_schema(connection: sqlite3.Connection) -> None:
     """Fail closed on a missing table, integrity error, or FK violation."""
     enable_foreign_keys(connection)
@@ -280,7 +292,7 @@ _REQUIRED_TABLES = frozenset({
     "portfolio", "portfolio_snapshot", "portfolio_holding_source_occurrence",
     "portfolio_holding", "portfolio_holding_lineage", "portfolio_cash", "metric_definition",
     "instrument_metric_observation", "portfolio_metric_observation", "shortlist_snapshot",
-    "shortlist_entry", "migration_build_manifest", "instrument_nav_observation",
+    "shortlist_entry", "shortlist_entry_source_occurrence", "shortlist_entry_lineage", "migration_build_manifest", "instrument_nav_observation",
 })
 
 _SOURCE_OCCURRENCE_IMMUTABILITY_STATEMENTS = (
@@ -480,6 +492,35 @@ CREATE TABLE shortlist_entry (
     status TEXT NOT NULL CHECK(length(trim(status)) > 0),
     UNIQUE(shortlist_snapshot_id, instrument_id),
     UNIQUE(shortlist_snapshot_id, source_row_number)
+);
+CREATE TABLE shortlist_entry_source_occurrence (
+    shortlist_entry_source_occurrence_id INTEGER PRIMARY KEY,
+    shortlist_snapshot_id INTEGER NOT NULL REFERENCES shortlist_snapshot(shortlist_snapshot_id),
+    instrument_id INTEGER NOT NULL REFERENCES instrument(instrument_id),
+    source_sheet_id INTEGER NOT NULL REFERENCES source_sheet(source_sheet_id),
+    source_row_number INTEGER NOT NULL CHECK(source_row_number > 0),
+    observed_product_name TEXT NOT NULL,
+    observed_currency_code TEXT NULL,
+    observed_asset_class TEXT NULL,
+    observed_sub_asset_class TEXT NULL,
+    source_payload_json TEXT NOT NULL,
+    conflict_status TEXT NOT NULL CHECK(conflict_status IN ('SOURCE_REPORTED','SOURCE_METADATA_CONFLICT')),
+    UNIQUE(source_sheet_id, source_row_number)
+);
+CREATE TABLE shortlist_entry_lineage (
+    shortlist_entry_id INTEGER NOT NULL REFERENCES shortlist_entry(shortlist_entry_id),
+    source_occurrence_id INTEGER NOT NULL REFERENCES shortlist_entry_source_occurrence(shortlist_entry_source_occurrence_id),
+    PRIMARY KEY(shortlist_entry_id, source_occurrence_id)
+);
+CREATE TABLE shortlist_stage_manifest (
+    singleton INTEGER PRIMARY KEY CHECK(singleton=1),
+    integration_version TEXT NOT NULL, workbook_fingerprints_json TEXT NOT NULL,
+    header_signature TEXT NOT NULL, source_occurrence_count INTEGER NOT NULL,
+    snapshot_count INTEGER NOT NULL, membership_count INTEGER NOT NULL,
+    lineage_count INTEGER NOT NULL, instrument_count INTEGER NOT NULL,
+    alias_count INTEGER NOT NULL, metric_observation_count INTEGER NOT NULL,
+    multi_occurrence_count INTEGER NOT NULL, conflict_occurrence_count INTEGER NOT NULL,
+    dataset_fingerprint TEXT NOT NULL, completion_status TEXT NOT NULL
 );
 
 CREATE TABLE migration_build_manifest (
