@@ -29,7 +29,7 @@ def _arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _source_contract(audit: dict[str, Any]) -> tuple[dict[str, str], str]:
+def source_contract(audit: dict[str, Any]) -> tuple[dict[str, str], str]:
     sheets = [
         sheet
         for sheet in audit["files"]
@@ -46,7 +46,7 @@ def main() -> int:
     arguments = _arguments()
     root = _REPOSITORY_ROOT
     audit = audit_workbooks(arguments.workbooks)
-    fingerprints, dataset = _source_contract(audit)
+    fingerprints, dataset = source_contract(audit)
     stage_validation = validate_shortlist_stage(arguments.database, audit)
     result = construct_capital_conservation_shortlist(
         database_path=arguments.database,
@@ -62,7 +62,7 @@ def main() -> int:
             "allocation": "NOT_PERFORMED",
             "cash_deployment": "NOT_PERFORMED",
             "database_access": "READ_ONLY",
-            "finalist_comparison": "NOT_IMPLEMENTED",
+            "finalist_comparison": "AVAILABLE_REVIEWED",
             "fx_conversion": "NOT_PERFORMED",
             "outcome_success_criteria": "NOT_IMPLEMENTED",
             "production_cutover": "NOT_AUTHORIZED",

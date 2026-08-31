@@ -242,7 +242,7 @@ def build_default_policy_registry(repository_root: Path | None = None) -> Policy
             eligibility=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
             ranking=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
             construction=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
-            finalist_comparison=PolicyCapabilityStatus.NOT_IMPLEMENTED,
+            finalist_comparison=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
             outcome_success_criteria=PolicyCapabilityStatus.NOT_IMPLEMENTED,
         ),
     )

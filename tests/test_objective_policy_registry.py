@@ -57,7 +57,7 @@ def _capabilities() -> PolicyCapabilities:
         eligibility=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
         ranking=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
         construction=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
-        finalist_comparison=PolicyCapabilityStatus.NOT_IMPLEMENTED,
+        finalist_comparison=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
         outcome_success_criteria=PolicyCapabilityStatus.NOT_IMPLEMENTED,
     )
 
@@ -247,7 +247,10 @@ def test_capabilities_report_reviewed_construction_without_overclaiming_later_wo
     assert capital.capabilities.eligibility is PolicyCapabilityStatus.AVAILABLE_REVIEWED
     assert capital.capabilities.ranking is PolicyCapabilityStatus.AVAILABLE_REVIEWED
     assert capital.capabilities.construction is PolicyCapabilityStatus.AVAILABLE_REVIEWED
-    assert capital.capabilities.finalist_comparison is PolicyCapabilityStatus.NOT_IMPLEMENTED
+    assert (
+        capital.capabilities.finalist_comparison
+        is PolicyCapabilityStatus.AVAILABLE_REVIEWED
+    )
     assert capital.capabilities.outcome_success_criteria is PolicyCapabilityStatus.NOT_IMPLEMENTED
     objectives = cast(list[dict[str, object]], registry.to_audit_dict()["objectives"])
     dividend_capabilities = cast(dict[str, str], objectives[1]["capabilities"])

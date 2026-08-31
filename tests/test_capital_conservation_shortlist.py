@@ -176,14 +176,21 @@ def _build_target(tmp_path: Path) -> tuple[Path, dict[str, str]]:
 def _construct(
     target: Path,
     fingerprints: dict[str, str],
-    **kwargs: object,
+    *,
+    objective: PortfolioObjective | str = PortfolioObjective.CAPITAL_CONSERVATION,
+    as_of: date | None = None,
+    limit: int | None = None,
+    registry: PolicyRegistry | None = None,
 ):
     return construct_capital_conservation_shortlist(
         database_path=target,
         repository_root=ROOT,
         expected_workbook_fingerprints=fingerprints,
         expected_manifest_fingerprint=DATASET_FINGERPRINT,
-        **kwargs,
+        objective=objective,
+        as_of=as_of,
+        limit=limit,
+        registry=registry,
     )
 
 
@@ -211,7 +218,7 @@ def test_success_is_governed_deterministic_ranked_and_read_only(tmp_path: Path) 
     assert dict(first.provenance.capability_states) == {
         "construction": "AVAILABLE_REVIEWED",
         "eligibility": "AVAILABLE_REVIEWED",
-        "finalist_comparison": "NOT_IMPLEMENTED",
+        "finalist_comparison": "AVAILABLE_REVIEWED",
         "outcome_success_criteria": "NOT_IMPLEMENTED",
         "ranking": "AVAILABLE_REVIEWED",
     }
