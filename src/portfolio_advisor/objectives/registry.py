@@ -241,7 +241,7 @@ def build_default_policy_registry(repository_root: Path | None = None) -> Policy
         capabilities=PolicyCapabilities(
             eligibility=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
             ranking=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
-            construction=PolicyCapabilityStatus.NOT_IMPLEMENTED,
+            construction=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
             finalist_comparison=PolicyCapabilityStatus.NOT_IMPLEMENTED,
             outcome_success_criteria=PolicyCapabilityStatus.NOT_IMPLEMENTED,
         ),

@@ -56,7 +56,7 @@ def _capabilities() -> PolicyCapabilities:
     return PolicyCapabilities(
         eligibility=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
         ranking=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
-        construction=PolicyCapabilityStatus.NOT_IMPLEMENTED,
+        construction=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
         finalist_comparison=PolicyCapabilityStatus.NOT_IMPLEMENTED,
         outcome_success_criteria=PolicyCapabilityStatus.NOT_IMPLEMENTED,
     )
@@ -241,12 +241,12 @@ def test_registry_audit_is_deterministic_private_free_and_objective_neutral(
     assert len(payload["registry_fingerprint"]) == 64
 
 
-def test_capabilities_do_not_overclaim_milestone_11_work() -> None:
+def test_capabilities_report_reviewed_construction_without_overclaiming_later_work() -> None:
     registry = build_default_policy_registry(ROOT)
     capital = registry.resolve_active_policy(PortfolioObjective.CAPITAL_CONSERVATION)
     assert capital.capabilities.eligibility is PolicyCapabilityStatus.AVAILABLE_REVIEWED
     assert capital.capabilities.ranking is PolicyCapabilityStatus.AVAILABLE_REVIEWED
-    assert capital.capabilities.construction is PolicyCapabilityStatus.NOT_IMPLEMENTED
+    assert capital.capabilities.construction is PolicyCapabilityStatus.AVAILABLE_REVIEWED
     assert capital.capabilities.finalist_comparison is PolicyCapabilityStatus.NOT_IMPLEMENTED
     assert capital.capabilities.outcome_success_criteria is PolicyCapabilityStatus.NOT_IMPLEMENTED
     objectives = cast(list[dict[str, object]], registry.to_audit_dict()["objectives"])
