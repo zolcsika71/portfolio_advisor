@@ -3,8 +3,9 @@
 Forward correction: this commit remains valid history, but the implementation below ranks
 singleton instruments. It is deprecated intermediate instrument screening, not the
 roadmap-complete Milestone 11 portfolio constructor. The reviewed construction policy is defined
-by Milestone 11A; real construction is blocked pending schema, current NAV, and official
-reference-rate ingestion.
+by Milestone 11A. Milestone 11B supplies the additive schema, allocation engine, lineage,
+and persistence foundation; production construction remains blocked by incomplete/stale NAV,
+missing official reference-rate evidence, and unavailable portfolio metrics.
 
 ## Contract
 
@@ -58,8 +59,9 @@ Allocation, cash deployment, and FX conversion are explicitly
 ## Capability boundary
 
 Capital conservation has reviewed eligibility, instrument screening/ranking, and a separate
-Milestone 11A construction policy. Constructed-portfolio runtime, finalist comparison, and
-outcome-success criteria remain `NOT_IMPLEMENTED`.
+Milestone 11A construction policy. The production constructed-portfolio runtime is
+`IMPLEMENTED_BLOCKED_BY_DATA`; finalist comparison and outcome-success criteria remain
+`NOT_IMPLEMENTED`.
 The dividend objective remains supported but has
 `NO_VALIDATED_ACTIVE_POLICY`; there is no fallback to the capital policy.
 

@@ -30,8 +30,9 @@ from .models import (
     UnknownObjectiveError,
 )
 
-REGISTRY_SCHEMA_VERSION = 2
+REGISTRY_SCHEMA_VERSION = 3
 HISTORICAL_REGISTRY_SCHEMA_VERSION = 1
+MILESTONE_11A_REGISTRY_SCHEMA_VERSION = 2
 CAPITAL_POLICY_ARTIFACT = "data/knowledge/validated_rules/capital_preservation_ranking.yaml"
 CAPITAL_POLICY_ID = "CAPITAL_PRESERVATION_RANKING_POLICY"
 CAPITAL_POLICY_VERSION = "1.0.1"
@@ -266,7 +267,10 @@ class PolicyRegistry:
             "historical_registry_fingerprints": {
                 str(HISTORICAL_REGISTRY_SCHEMA_VERSION): self.registry_fingerprint(
                     schema_version=HISTORICAL_REGISTRY_SCHEMA_VERSION
-                )
+                ),
+                str(MILESTONE_11A_REGISTRY_SCHEMA_VERSION): self.registry_fingerprint(
+                    schema_version=MILESTONE_11A_REGISTRY_SCHEMA_VERSION
+                ),
             },
             "supported_objectives": [objective.value for objective in self.supported_objectives],
         }
@@ -276,6 +280,17 @@ class PolicyRegistry:
             return {
                 "policies": [policy.historical_v1_dict() for policy in self.policies],
                 "registry_schema_version": HISTORICAL_REGISTRY_SCHEMA_VERSION,
+                "supported_objectives": [
+                    objective.value for objective in self.supported_objectives
+                ],
+            }
+        if schema_version == MILESTONE_11A_REGISTRY_SCHEMA_VERSION:
+            return {
+                "construction_policies": [
+                    policy.registry_dict() for policy in self.construction_policies
+                ],
+                "policies": [policy.historical_v2_dict() for policy in self.policies],
+                "registry_schema_version": MILESTONE_11A_REGISTRY_SCHEMA_VERSION,
                 "supported_objectives": [
                     objective.value for objective in self.supported_objectives
                 ],
@@ -326,7 +341,7 @@ def build_default_policy_registry(repository_root: Path | None = None) -> Policy
             eligibility=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
             instrument_screening_ranking=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
             construction_policy=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
-            constructed_portfolio_runtime=PolicyCapabilityStatus.NOT_IMPLEMENTED,
+            constructed_portfolio_runtime=PolicyCapabilityStatus.IMPLEMENTED_BLOCKED_BY_DATA,
             finalist_comparison=PolicyCapabilityStatus.NOT_IMPLEMENTED,
             outcome_success_criteria=PolicyCapabilityStatus.NOT_IMPLEMENTED,
         ),

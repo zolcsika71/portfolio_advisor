@@ -13,7 +13,21 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
+from portfolio_advisor.canonical import canonical_fingerprint
+
 SCHEMA_VERSION = 3
+CONSTRUCTED_PORTFOLIO_FEATURE_ID = "MILESTONE_11B_CONSTRUCTED_PORTFOLIO"
+CONSTRUCTED_PORTFOLIO_FEATURE_REVISION = 1
+CONSTRUCTED_PORTFOLIO_FEATURE_FINGERPRINT = canonical_fingerprint(
+    {
+        "feature_id": CONSTRUCTED_PORTFOLIO_FEATURE_ID,
+        "revision": CONSTRUCTED_PORTFOLIO_FEATURE_REVISION,
+        "tables": (
+            "constructed_portfolio_holding_lineage",
+            "constructed_portfolio_metadata",
+        ),
+    }
+)
 _ISIN = re.compile(r"^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
 _APPROVED_DERIVATION_STATUSES = frozenset({
     "APPROVED_DIRECT_OCCURRENCE",
@@ -98,6 +112,7 @@ def initialize_schema(connection: sqlite3.Connection) -> None:
         for statement in _SOURCE_OCCURRENCE_IMMUTABILITY_STATEMENTS:
             connection.execute(statement)
         connection.execute("INSERT INTO schema_version (singleton, version) VALUES (1, ?)", (SCHEMA_VERSION,))
+        _insert_constructed_portfolio_feature_marker(connection)
         connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     validate_schema(connection)
 
@@ -126,6 +141,33 @@ def upgrade_schema_v3_shortlist_extension(connection: sqlite3.Connection) -> Non
                 if statement.strip(): connection.execute(statement)
 
 
+def upgrade_schema_v3_constructed_portfolio_extension(
+    connection: sqlite3.Connection,
+) -> None:
+    """Install the reviewed Milestone 11B additive schema feature atomically."""
+    if detect_schema_version(connection) != SCHEMA_VERSION:
+        raise SchemaVersionError("constructed-portfolio extension requires recognized schema v3")
+    names = {
+        str(row[0])
+        for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    feature_tables = {
+        "schema_feature_contract",
+        "constructed_portfolio_metadata",
+        "constructed_portfolio_holding_lineage",
+    }
+    present = feature_tables & names
+    if present and present != feature_tables:
+        raise SchemaVersionError("constructed-portfolio schema feature is partially installed")
+    with transaction(connection):
+        if not present:
+            for statement in _CONSTRUCTED_PORTFOLIO_SCHEMA_SQL.split(";"):
+                if statement.strip():
+                    connection.execute(statement)
+        _insert_constructed_portfolio_feature_marker(connection)
+    validate_schema(connection)
+
+
 def validate_schema(connection: sqlite3.Connection) -> None:
     """Fail closed on a missing table, integrity error, or FK violation."""
     enable_foreign_keys(connection)
@@ -141,6 +183,15 @@ def validate_schema(connection: sqlite3.Connection) -> None:
     missing = _REQUIRED_TABLES - names
     if missing:
         raise SchemaVersionError(f"schema v3 is missing tables: {', '.join(sorted(missing))}")
+    marker = connection.execute(
+        """SELECT revision, contract_fingerprint
+           FROM schema_feature_contract WHERE feature_id=?""",
+        (CONSTRUCTED_PORTFOLIO_FEATURE_ID,),
+    ).fetchall()
+    if [tuple(row) for row in marker] != [
+        (CONSTRUCTED_PORTFOLIO_FEATURE_REVISION, CONSTRUCTED_PORTFOLIO_FEATURE_FINGERPRINT)
+    ]:
+        raise SchemaVersionError("constructed-portfolio schema feature marker is missing or stale")
     integrity = tuple(str(row[0]) for row in connection.execute("PRAGMA integrity_check"))
     if integrity != ("ok",):
         raise SchemaVersionError("integrity_check did not return ok")
@@ -287,12 +338,37 @@ def _valid_isin(isin: str) -> bool:
     return total % 10 == 0
 
 
+def _insert_constructed_portfolio_feature_marker(
+    connection: sqlite3.Connection,
+) -> None:
+    existing = connection.execute(
+        """SELECT revision, contract_fingerprint
+           FROM schema_feature_contract WHERE feature_id=?""",
+        (CONSTRUCTED_PORTFOLIO_FEATURE_ID,),
+    ).fetchall()
+    expected = (
+        CONSTRUCTED_PORTFOLIO_FEATURE_REVISION,
+        CONSTRUCTED_PORTFOLIO_FEATURE_FINGERPRINT,
+    )
+    if existing:
+        if len(existing) != 1 or tuple(existing[0]) != expected:
+            raise SchemaVersionError("conflicting constructed-portfolio schema feature marker")
+        return
+    connection.execute(
+        """INSERT INTO schema_feature_contract(feature_id, revision, contract_fingerprint)
+           VALUES (?, ?, ?)""",
+        (CONSTRUCTED_PORTFOLIO_FEATURE_ID, *expected),
+    )
+
+
 _REQUIRED_TABLES = frozenset({
     "schema_version", "source_file", "source_sheet", "instrument", "instrument_alias",
     "portfolio", "portfolio_snapshot", "portfolio_holding_source_occurrence",
     "portfolio_holding", "portfolio_holding_lineage", "portfolio_cash", "metric_definition",
     "instrument_metric_observation", "portfolio_metric_observation", "shortlist_snapshot",
     "shortlist_entry", "shortlist_entry_source_occurrence", "shortlist_entry_lineage", "migration_build_manifest", "instrument_nav_observation",
+    "schema_feature_contract", "constructed_portfolio_metadata",
+    "constructed_portfolio_holding_lineage",
 })
 
 _SOURCE_OCCURRENCE_IMMUTABILITY_STATEMENTS = (
@@ -309,7 +385,7 @@ _SOURCE_OCCURRENCE_IMMUTABILITY_STATEMENTS = (
 )
 
 
-_SCHEMA_SQL = """
+_BASE_SCHEMA_SQL = """
 CREATE TABLE schema_version (
     singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
     version INTEGER NOT NULL
@@ -555,3 +631,68 @@ CREATE TABLE instrument_nav_observation (
     UNIQUE(instrument_id, observation_date, source_provider, value_type, source_identifier)
 );
 """
+
+
+_CONSTRUCTED_PORTFOLIO_SCHEMA_SQL = """
+CREATE TABLE schema_feature_contract (
+    feature_id TEXT PRIMARY KEY CHECK(length(trim(feature_id)) > 0),
+    revision INTEGER NOT NULL CHECK(revision > 0),
+    contract_fingerprint TEXT NOT NULL
+        CHECK(length(contract_fingerprint) = 64
+              AND contract_fingerprint NOT GLOB '*[^0-9a-f]*')
+);
+
+CREATE TABLE constructed_portfolio_metadata (
+    portfolio_snapshot_id INTEGER PRIMARY KEY
+        REFERENCES portfolio_snapshot(portfolio_snapshot_id),
+    shortlist_snapshot_id INTEGER NOT NULL
+        REFERENCES shortlist_snapshot(shortlist_snapshot_id),
+    objective_code TEXT NOT NULL CHECK(objective_code = 'CAPITAL_CONSERVATION'),
+    construction_policy_id TEXT NOT NULL CHECK(length(trim(construction_policy_id)) > 0),
+    construction_policy_version TEXT NOT NULL
+        CHECK(length(trim(construction_policy_version)) > 0),
+    construction_policy_fingerprint TEXT NOT NULL
+        CHECK(length(construction_policy_fingerprint) = 64
+              AND construction_policy_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    construction_strategy TEXT NOT NULL CHECK(construction_strategy = 'CAPITAL_DEFENSIVE'),
+    cash_currency TEXT NOT NULL CHECK(cash_currency IN ('EUR', 'USD', 'HUF')),
+    portfolio_identity_fingerprint TEXT NOT NULL
+        CHECK(length(portfolio_identity_fingerprint) = 64
+              AND portfolio_identity_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    eligible_universe_fingerprint TEXT NOT NULL
+        CHECK(length(eligible_universe_fingerprint) = 64
+              AND eligible_universe_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    selected_universe_fingerprint TEXT NOT NULL
+        CHECK(length(selected_universe_fingerprint) = 64
+              AND selected_universe_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    candidate_fingerprint TEXT NOT NULL UNIQUE
+        CHECK(length(candidate_fingerprint) = 64
+              AND candidate_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    construction_status TEXT NOT NULL CHECK(construction_status = 'CONSTRUCTED_VALIDATED'),
+    deterministic_provenance_json TEXT NOT NULL
+        CHECK(length(trim(deterministic_provenance_json)) > 0),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(portfolio_identity_fingerprint, shortlist_snapshot_id)
+);
+CREATE INDEX constructed_portfolio_metadata_shortlist_snapshot
+ON constructed_portfolio_metadata(shortlist_snapshot_id);
+
+CREATE TABLE constructed_portfolio_holding_lineage (
+    portfolio_holding_id INTEGER PRIMARY KEY
+        REFERENCES portfolio_holding(portfolio_holding_id) ON DELETE CASCADE,
+    shortlist_entry_id INTEGER NOT NULL
+        REFERENCES shortlist_entry(shortlist_entry_id),
+    selected_instrument_rank INTEGER NOT NULL CHECK(selected_instrument_rank > 0),
+    allocation_basis TEXT NOT NULL
+        CHECK(allocation_basis = 'FIXED_TOTAL_PORTFOLIO_WEIGHT'),
+    allocation_weight_decimal TEXT NOT NULL CHECK(allocation_weight_decimal = '0.10'),
+    constraint_evidence_fingerprint TEXT NOT NULL
+        CHECK(length(constraint_evidence_fingerprint) = 64
+              AND constraint_evidence_fingerprint NOT GLOB '*[^0-9a-f]*')
+);
+CREATE INDEX constructed_portfolio_holding_lineage_membership
+ON constructed_portfolio_holding_lineage(shortlist_entry_id);
+"""
+
+
+_SCHEMA_SQL = _BASE_SCHEMA_SQL + _CONSTRUCTED_PORTFOLIO_SCHEMA_SQL

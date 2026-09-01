@@ -38,6 +38,9 @@ RANKING_FINGERPRINT = "d3cc192857459963eab539d93457396756b341ad8941e6c0832cedf74
 HISTORICAL_REGISTRY_FINGERPRINT = (
     "409cf497029938e6f754c7dd51993b794cabc394f92bc7d1dd99ca1ce2c5c55d"
 )
+MILESTONE_11A_REGISTRY_FINGERPRINT = (
+    "ddc2fc0d45a8e2f9788a6e36589c3956cf30d2347b081b22b4a66465ed244d57"
+)
 
 
 def _policy_file(tmp_path: Path, mutate) -> Path:  # type: ignore[no-untyped-def]
@@ -222,7 +225,9 @@ def test_registry_fingerprints_are_deterministic_and_historical_v1_is_reproducib
     second = build_default_policy_registry(ROOT)
     assert first.registry_fingerprint() == second.registry_fingerprint()
     assert first.registry_fingerprint(schema_version=1) == HISTORICAL_REGISTRY_FINGERPRINT
+    assert first.registry_fingerprint(schema_version=2) == MILESTONE_11A_REGISTRY_FINGERPRINT
     assert first.registry_fingerprint() != HISTORICAL_REGISTRY_FINGERPRINT
+    assert first.registry_fingerprint() != MILESTONE_11A_REGISTRY_FINGERPRINT
     assert sha256(RANKING.read_bytes()).hexdigest() == RANKING_FINGERPRINT
 
 
@@ -237,7 +242,7 @@ def test_capability_corrections_and_dividend_unavailability() -> None:
     assert capital.capabilities.construction_policy is PolicyCapabilityStatus.AVAILABLE_REVIEWED
     assert (
         capital.capabilities.constructed_portfolio_runtime
-        is PolicyCapabilityStatus.NOT_IMPLEMENTED
+        is PolicyCapabilityStatus.IMPLEMENTED_BLOCKED_BY_DATA
     )
     assert capital.capabilities.finalist_comparison is PolicyCapabilityStatus.NOT_IMPLEMENTED
     assert capital.capabilities.outcome_success_criteria is PolicyCapabilityStatus.NOT_IMPLEMENTED
@@ -253,7 +258,10 @@ def test_intermediate_apis_remain_import_compatible_but_are_not_capabilities() -
     capital = build_default_policy_registry(ROOT).resolve_active_policy(
         PortfolioObjective.CAPITAL_CONSERVATION
     )
-    assert capital.capabilities.constructed_portfolio_runtime.value == "NOT_IMPLEMENTED"
+    assert (
+        capital.capabilities.constructed_portfolio_runtime.value
+        == "IMPLEMENTED_BLOCKED_BY_DATA"
+    )
     assert capital.capabilities.finalist_comparison.value == "NOT_IMPLEMENTED"
 
 

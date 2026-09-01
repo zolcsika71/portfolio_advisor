@@ -80,9 +80,12 @@ screening. The Milestone 12 model-versus-instrument workflow remains import-comp
 deprecated exploratory comparison. Neither is roadmap-complete portfolio construction or
 portfolio-versus-portfolio comparison. Their historical commits remain valid forward history.
 
-Construction is blocked pending the required schema, current admitted NAV, and official
-reference-rate ingestion. This milestone performs no allocation, candidate generation, schema
-migration, NAV/reference-rate ingestion, persistence, or portfolio metric calculation.
+This document records the 11A boundary at approval time. Milestone 11B subsequently implements
+the schema, deterministic allocation engine, lineage, and persistence foundation without changing
+this artifact or its fingerprint. Production remains blocked by incomplete and stale admitted NAV,
+missing official reference-rate evidence, and unavailable portfolio metrics. Milestone 11A itself
+performed no allocation, candidate generation, schema migration, NAV/reference-rate ingestion,
+persistence, or portfolio metric calculation.
 Production remains `NOT_AUTHORIZED`.
 
 ## Audit

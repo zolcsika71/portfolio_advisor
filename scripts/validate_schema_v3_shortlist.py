@@ -1,6 +1,7 @@
 """Read-only complete-stage reconciliation of schema-v3 shortlist evidence."""
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import sqlite3
@@ -105,7 +106,14 @@ def validate_shortlist_stage(target: Path, workbook_audit: dict[str, Any]) -> di
     return {"snapshots":actual[0],"memberships":actual[1],"occurrences":actual[2],"lineage":actual[3],"conflict_occurrences":conflict}
 
 
-def main() -> int:
-    result = validate_shortlist_stage(Path("database/portfolio_advisor.sqlite"), audit_workbooks(Path("data/xls/processed")))
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--target", type=Path, default=Path("database/portfolio_advisor.sqlite"))
+    parser.add_argument("--workbooks", type=Path, default=Path("data/xls/processed"))
+    arguments = parser.parse_args(argv)
+    result = validate_shortlist_stage(
+        arguments.target,
+        audit_workbooks(arguments.workbooks),
+    )
     print(json.dumps({**result,"status":"PASS"},sort_keys=True)); return 0
 if __name__=="__main__": raise SystemExit(main())

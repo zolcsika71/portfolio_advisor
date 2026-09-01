@@ -56,15 +56,16 @@ required dimension returns `INSUFFICIENT_COMPARABLE_EVIDENCE`.
 ## Capability and safety boundaries
 
 Capital eligibility, instrument screening/ranking, and the Milestone 11A construction policy are
-`AVAILABLE_REVIEWED`. Constructed-portfolio runtime, roadmap finalist comparison, and
-outcome-success criteria are `NOT_IMPLEMENTED`. Dividend remains
+`AVAILABLE_REVIEWED`. Milestone 11B makes allocation/schema/persistence machinery available but
+the production constructed-portfolio runtime is `IMPLEMENTED_BLOCKED_BY_DATA`. Roadmap finalist
+comparison and outcome-success criteria are `NOT_IMPLEMENTED`. Dividend remains
 `NO_VALIDATED_ACTIVE_POLICY` with no fallback.
 
 The workflow is read-only. It performs no allocation, optimization, cash deployment, FX
 conversion, persistence, brokerage action, suitability determination, outcome tracking, or
 Graphify/LTIA operation. Schema v3 remains objective-neutral. Production cutover remains
-`NOT_AUTHORIZED`. Real construction remains blocked pending schema, current NAV, and official
-reference-rate ingestion; historical commits remain valid forward history.
+`NOT_AUTHORIZED`. Production construction remains blocked pending current admitted NAV, official
+reference-rate ingestion, and portfolio metrics; historical commits remain valid forward history.
 
 Fail-closed conditions include unknown/dividend objectives, missing or ambiguous active policy,
 capability or fingerprint mismatch, stale source manifests, incompatible/corrupted SQLite,

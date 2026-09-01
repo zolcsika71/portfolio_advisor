@@ -7,7 +7,11 @@ from typing import cast
 
 from .construction_policy import CapitalDefensiveConstructionPolicy
 from .models import PortfolioObjective
-from .registry import HISTORICAL_REGISTRY_SCHEMA_VERSION, PolicyRegistry
+from .registry import (
+    HISTORICAL_REGISTRY_SCHEMA_VERSION,
+    MILESTONE_11A_REGISTRY_SCHEMA_VERSION,
+    PolicyRegistry,
+)
 
 
 def construction_policy_audit_payload(
@@ -47,7 +51,10 @@ def construction_policy_audit_payload(
         "historical_registry_fingerprints": {
             str(HISTORICAL_REGISTRY_SCHEMA_VERSION): registry.registry_fingerprint(
                 schema_version=HISTORICAL_REGISTRY_SCHEMA_VERSION
-            )
+            ),
+            str(MILESTONE_11A_REGISTRY_SCHEMA_VERSION): registry.registry_fingerprint(
+                schema_version=MILESTONE_11A_REGISTRY_SCHEMA_VERSION
+            ),
         },
         "objective": policy.objective,
         "official_reference_rate_mappings": {

@@ -253,7 +253,7 @@ def test_capabilities_separate_policy_from_unimplemented_runtime_and_comparison(
     assert capital.capabilities.construction_policy is PolicyCapabilityStatus.AVAILABLE_REVIEWED
     assert (
         capital.capabilities.constructed_portfolio_runtime
-        is PolicyCapabilityStatus.NOT_IMPLEMENTED
+        is PolicyCapabilityStatus.IMPLEMENTED_BLOCKED_BY_DATA
     )
     assert capital.capabilities.finalist_comparison is PolicyCapabilityStatus.NOT_IMPLEMENTED
     assert capital.capabilities.outcome_success_criteria is PolicyCapabilityStatus.NOT_IMPLEMENTED

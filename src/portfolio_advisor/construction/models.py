@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 from enum import StrEnum
 
 from portfolio_advisor.canonical import canonical_fingerprint, canonical_json
@@ -143,3 +144,236 @@ class CapitalConservationShortlist:
 
     def canonical_json(self) -> str:
         return canonical_json(self.to_dict())
+
+
+class ConstructionRuntimeStatus(StrEnum):
+    """Governed result states for the real construction foundation."""
+
+    CONSTRUCTED_VALIDATED = "CONSTRUCTED_VALIDATED"
+    IMPLEMENTED_BLOCKED_BY_DATA = "IMPLEMENTED_BLOCKED_BY_DATA"
+    UNAVAILABLE = "UNAVAILABLE"
+    REJECTED = "REJECTED"
+
+
+class ConstructionReasonCode(StrEnum):
+    """Stable fail-closed reason identities; no fallback is implied."""
+
+    INSUFFICIENT_ADMITTED_NAV_COVERAGE = "INSUFFICIENT_ADMITTED_NAV_COVERAGE"
+    STALE_NAV = "STALE_NAV"
+    INSUFFICIENT_NAV_HISTORY = "INSUFFICIENT_NAV_HISTORY"
+    INSUFFICIENT_ALIGNED_RETURN_INTERVALS = "INSUFFICIENT_ALIGNED_RETURN_INTERVALS"
+    NO_COMMON_ALIGNED_RETURN_WINDOW = "NO_COMMON_ALIGNED_RETURN_WINDOW"
+    MISSING_OFFICIAL_REFERENCE_RATE_EVIDENCE = (
+        "MISSING_OFFICIAL_REFERENCE_RATE_EVIDENCE"
+    )
+    UNAVAILABLE_PORTFOLIO_RISK_METRICS = "UNAVAILABLE_PORTFOLIO_RISK_METRICS"
+    INSUFFICIENT_SAME_CURRENCY_INSTRUMENTS = "INSUFFICIENT_SAME_CURRENCY_INSTRUMENTS"
+    NO_FEASIBLE_DIVERSIFIED_SET = "NO_FEASIBLE_DIVERSIFIED_SET"
+    INVALID_CATEGORY_EVIDENCE = "INVALID_CATEGORY_EVIDENCE"
+    INVALID_SCREENING_OR_LINEAGE_EVIDENCE = "INVALID_SCREENING_OR_LINEAGE_EVIDENCE"
+
+
+@dataclass(frozen=True, slots=True)
+class NavReadinessEvidence:
+    """Exact dates and admission semantics needed to prove NAV constraints."""
+
+    observation_dates: tuple[date, ...]
+    quality: str
+    interpolation_used: bool = False
+    nearest_date_substitution_used: bool = False
+    proxy_instrument_used: bool = False
+
+    def fingerprint_payload(self) -> dict[str, object]:
+        return {
+            "interpolation_used": self.interpolation_used,
+            "nearest_date_substitution_used": self.nearest_date_substitution_used,
+            "observation_dates": [value.isoformat() for value in self.observation_dates],
+            "proxy_instrument_used": self.proxy_instrument_used,
+            "quality": self.quality,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class RankedConstructionInstrument:
+    """One reviewed screening result enriched with exact construction evidence."""
+
+    instrument_id: int
+    isin: str
+    canonical_name: str
+    rank: int
+    screening_eligible: bool
+    currency: str
+    asset_class: str | None
+    sub_asset_class: str | None
+    category_conflict: bool
+    shortlist_snapshot_id: int
+    shortlist_entry_id: int
+    source_occurrence_ids: tuple[int, ...]
+    nav: NavReadinessEvidence
+
+    @property
+    def group(self) -> tuple[str, str] | None:
+        if (
+            self.category_conflict
+            or self.asset_class is None
+            or self.sub_asset_class is None
+            or not self.asset_class.strip()
+            or not self.sub_asset_class.strip()
+        ):
+            return None
+        return (self.asset_class.strip(), self.sub_asset_class.strip())
+
+    def fingerprint_payload(self) -> dict[str, object]:
+        return {
+            "asset_class": self.asset_class,
+            "currency": self.currency,
+            "group": list(self.group) if self.group is not None else None,
+            "isin": self.isin,
+            "nav": self.nav.fingerprint_payload(),
+            "rank": self.rank,
+            "screening_eligible": self.screening_eligible,
+            "sub_asset_class": self.sub_asset_class,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ConstructionEvidenceReadiness:
+    """Non-fabricated global evidence states supplied to one run."""
+
+    official_reference_rate_observations_validated: bool
+    official_reference_rate_methodology_validated: bool
+    portfolio_risk_metrics_available: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ShortlistConstructionProvenance:
+    """Local FK plus stable source identity for the exact shortlist snapshot."""
+
+    shortlist_snapshot_id: int
+    snapshot_date: date
+    source_file_sha256: str
+    source_sheet_name: str
+    shortlist_manifest_fingerprint: str
+    shortlist_integration_version: str
+
+    def stable_payload(self) -> dict[str, object]:
+        return {
+            "shortlist_integration_version": self.shortlist_integration_version,
+            "shortlist_manifest_fingerprint": self.shortlist_manifest_fingerprint,
+            "snapshot_date": self.snapshot_date.isoformat(),
+            "source_file_sha256": self.source_file_sha256,
+            "source_sheet_name": self.source_sheet_name,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ConstructedHolding:
+    """One normalized 10% holding with exact membership lineage."""
+
+    instrument_id: int
+    isin: str
+    canonical_name: str
+    rank: int
+    weight: Decimal
+    currency: str
+    group: tuple[str, str]
+    shortlist_entry_id: int
+    source_occurrence_ids: tuple[int, ...]
+    constraint_evidence_fingerprint: str
+
+    def fingerprint_payload(self) -> dict[str, object]:
+        return {
+            "constraint_evidence_fingerprint": self.constraint_evidence_fingerprint,
+            "currency": self.currency,
+            "group": list(self.group),
+            "isin": self.isin,
+            "rank": self.rank,
+            "weight": format(self.weight, "f"),
+        }
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            **self.fingerprint_payload(),
+            "canonical_name": self.canonical_name,
+            "instrument_id": self.instrument_id,
+            "shortlist_entry_id": self.shortlist_entry_id,
+            "source_occurrence_ids": list(self.source_occurrence_ids),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ConstructedPortfolioCandidate:
+    """Immutable normalized candidate; the private cash amount is intentionally absent."""
+
+    objective: str
+    strategy: str
+    currency: str
+    policy_id: str
+    policy_version: str
+    policy_fingerprint: str
+    provenance: ShortlistConstructionProvenance
+    eligible_universe_fingerprint: str
+    selected_universe_fingerprint: str
+    holdings: tuple[ConstructedHolding, ...]
+    cash_weight: Decimal
+    status: ConstructionRuntimeStatus = ConstructionRuntimeStatus.CONSTRUCTED_VALIDATED
+
+    @property
+    def portfolio_identity_fingerprint(self) -> str:
+        return canonical_fingerprint(
+            {
+                "currency": self.currency,
+                "objective": self.objective,
+                "policy_id": self.policy_id,
+                "policy_version": self.policy_version,
+                "strategy": self.strategy,
+            }
+        )
+
+    def fingerprint_payload(self) -> dict[str, object]:
+        return {
+            "cash": {"currency": self.currency, "weight": format(self.cash_weight, "f")},
+            "eligible_universe_fingerprint": self.eligible_universe_fingerprint,
+            "holdings": [holding.fingerprint_payload() for holding in self.holdings],
+            "objective": self.objective,
+            "policy_fingerprint": self.policy_fingerprint,
+            "policy_id": self.policy_id,
+            "policy_version": self.policy_version,
+            "portfolio_identity_fingerprint": self.portfolio_identity_fingerprint,
+            "provenance": self.provenance.stable_payload(),
+            "selected_universe_fingerprint": self.selected_universe_fingerprint,
+            "status": self.status.value,
+            "strategy": self.strategy,
+        }
+
+    @property
+    def candidate_fingerprint(self) -> str:
+        return canonical_fingerprint(self.fingerprint_payload())
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            **self.fingerprint_payload(),
+            "candidate_fingerprint": self.candidate_fingerprint,
+            "holdings": [holding.to_dict() for holding in self.holdings],
+            "shortlist_snapshot_id": self.provenance.shortlist_snapshot_id,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ConstructionResult:
+    """One candidate or an explicit unavailable/rejected state."""
+
+    status: ConstructionRuntimeStatus
+    reason_codes: tuple[ConstructionReasonCode, ...]
+    candidate: ConstructedPortfolioCandidate | None
+    screened_eligible_count: int
+    admitted_nav_instrument_count: int
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "admitted_nav_instrument_count": self.admitted_nav_instrument_count,
+            "candidate": self.candidate.to_dict() if self.candidate is not None else None,
+            "reason_codes": [reason.value for reason in self.reason_codes],
+            "screened_eligible_count": self.screened_eligible_count,
+            "status": self.status.value,
+        }

@@ -218,7 +218,7 @@ def test_success_is_governed_deterministic_ranked_and_read_only(tmp_path: Path) 
     assert first.provenance.policy_version == "1.0.1"
     assert first.provenance.policy_fingerprint == POLICY_FINGERPRINT
     assert dict(first.provenance.capability_states) == {
-        "constructed_portfolio_runtime": "NOT_IMPLEMENTED",
+        "constructed_portfolio_runtime": "IMPLEMENTED_BLOCKED_BY_DATA",
         "construction_policy": "AVAILABLE_REVIEWED",
         "eligibility": "AVAILABLE_REVIEWED",
         "finalist_comparison": "NOT_IMPLEMENTED",

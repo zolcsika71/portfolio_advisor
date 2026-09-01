@@ -28,8 +28,10 @@ construction rule, or success criterion.
 
 The active capital policy has reviewed eligibility and instrument-screening/ranking
 capabilities. Milestone 11A adds a separate reviewed construction-policy contract without
-changing the ranking-policy artifact identity. Constructed-portfolio runtime, finalist
-comparison, and outcome success criteria remain `NOT_IMPLEMENTED`. An objective without an active validated
+changing the ranking-policy artifact identity. Milestone 11B implements allocation, schema,
+and persistence machinery, while the production constructed-portfolio runtime reports
+`IMPLEMENTED_BLOCKED_BY_DATA`. Finalist comparison and outcome success criteria remain
+`NOT_IMPLEMENTED`. An objective without an active validated
 policy reports `NO_VALIDATED_ACTIVE_POLICY` for every capability. Policy
 activation does not authorize schema-v3 application cutover.
 

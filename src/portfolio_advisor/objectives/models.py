@@ -43,6 +43,7 @@ class PolicyCapabilityStatus(StrEnum):
     """Availability of one explicitly governed policy capability."""
 
     AVAILABLE_REVIEWED = "AVAILABLE_REVIEWED"
+    IMPLEMENTED_BLOCKED_BY_DATA = "IMPLEMENTED_BLOCKED_BY_DATA"
     NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
     NO_VALIDATED_ACTIVE_POLICY = "NO_VALIDATED_ACTIVE_POLICY"
 
@@ -118,6 +119,12 @@ class PolicyCapabilities:
             "outcome_success_criteria": self.outcome_success_criteria.value,
             "ranking": self.instrument_screening_ranking.value,
         }
+
+    def historical_v2_dict(self) -> dict[str, str]:
+        """Reproduce the Milestone 11A capability serialization exactly."""
+        value = self.to_dict()
+        value["constructed_portfolio_runtime"] = PolicyCapabilityStatus.NOT_IMPLEMENTED.value
+        return value
 
 
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
@@ -197,4 +204,10 @@ class InvestmentPolicy:
         """Reproduce the registry-schema-v1 policy payload for historical audits."""
         value = self.to_dict()
         value["capabilities"] = self.capabilities.historical_v1_dict()
+        return value
+
+    def historical_v2_dict(self) -> dict[str, object]:
+        """Reproduce registry schema v2 before the 11B runtime correction."""
+        value = self.to_dict()
+        value["capabilities"] = self.capabilities.historical_v2_dict()
         return value

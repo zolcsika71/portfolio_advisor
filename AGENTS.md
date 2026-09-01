@@ -10,9 +10,11 @@ ranking are typed Python functions controlled by reviewed configuration.
 by default. `--import` retains the workbook-import workflow. The active policy
 is `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1.
 
-Milestone 11A adds the reviewed `CAPITAL_DEFENSIVE_CONSTRUCTION_POLICY` v1.0.0
-contract. Constructed-portfolio runtime and roadmap-complete finalist comparison
-remain `NOT_IMPLEMENTED`; production cutover remains `NOT_AUTHORIZED`.
+Milestone 11B adds the constructed-portfolio domain, deterministic allocation
+engine, additive schema feature, lineage, and transactional persistence. The
+production runtime is `IMPLEMENTED_BLOCKED_BY_DATA`; roadmap-complete portfolio
+metrics/ranking and finalist comparison remain unavailable. Production cutover
+remains `NOT_AUTHORIZED`.
 
 ## Core components
 
@@ -25,6 +27,9 @@ remain `NOT_IMPLEMENTED`; production cutover remains `NOT_AUTHORIZED`.
   return-series formulas for an already approved series.
 - `ranking/`: policy validation, strict eligibility, normalization, scoring,
   and deterministic tie-breaking.
+- `construction/`: deprecated instrument-screening compatibility plus the
+  Milestone 11B normalized 80/20 candidate engine, evidence checks, lineage,
+  persistence, and read-only foundation audit.
 - `history/`: provenance-aware constituent history, lifecycle/reconciliation
   evidence, strict resolvability, local source stores, and reconstruction
   governance.
