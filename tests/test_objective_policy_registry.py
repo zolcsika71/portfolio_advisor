@@ -55,9 +55,10 @@ RETAINED_DATABASES = (
 def _capabilities() -> PolicyCapabilities:
     return PolicyCapabilities(
         eligibility=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
-        ranking=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
-        construction=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
-        finalist_comparison=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
+        instrument_screening_ranking=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
+        construction_policy=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
+        constructed_portfolio_runtime=PolicyCapabilityStatus.NOT_IMPLEMENTED,
+        finalist_comparison=PolicyCapabilityStatus.NOT_IMPLEMENTED,
         outcome_success_criteria=PolicyCapabilityStatus.NOT_IMPLEMENTED,
     )
 
@@ -241,16 +242,20 @@ def test_registry_audit_is_deterministic_private_free_and_objective_neutral(
     assert len(payload["registry_fingerprint"]) == 64
 
 
-def test_capabilities_report_reviewed_construction_without_overclaiming_later_work() -> None:
+def test_capabilities_separate_policy_from_unimplemented_runtime_and_comparison() -> None:
     registry = build_default_policy_registry(ROOT)
     capital = registry.resolve_active_policy(PortfolioObjective.CAPITAL_CONSERVATION)
     assert capital.capabilities.eligibility is PolicyCapabilityStatus.AVAILABLE_REVIEWED
-    assert capital.capabilities.ranking is PolicyCapabilityStatus.AVAILABLE_REVIEWED
-    assert capital.capabilities.construction is PolicyCapabilityStatus.AVAILABLE_REVIEWED
     assert (
-        capital.capabilities.finalist_comparison
+        capital.capabilities.instrument_screening_ranking
         is PolicyCapabilityStatus.AVAILABLE_REVIEWED
     )
+    assert capital.capabilities.construction_policy is PolicyCapabilityStatus.AVAILABLE_REVIEWED
+    assert (
+        capital.capabilities.constructed_portfolio_runtime
+        is PolicyCapabilityStatus.NOT_IMPLEMENTED
+    )
+    assert capital.capabilities.finalist_comparison is PolicyCapabilityStatus.NOT_IMPLEMENTED
     assert capital.capabilities.outcome_success_criteria is PolicyCapabilityStatus.NOT_IMPLEMENTED
     objectives = cast(list[dict[str, object]], registry.to_audit_dict()["objectives"])
     dividend_capabilities = cast(dict[str, str], objectives[1]["capabilities"])

@@ -1,4 +1,4 @@
-"""Public governed shortlist-construction API."""
+"""Deprecated intermediate instrument-screening API; no portfolio is constructed."""
 
 from .capital_conservation import (
     CAPITAL_DEFENSIVE,

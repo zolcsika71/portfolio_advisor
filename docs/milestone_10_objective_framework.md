@@ -26,10 +26,10 @@ construction rule, or success criterion.
 
 ## Capability boundary
 
-The active capital policy has reviewed eligibility and ranking capabilities.
-Milestone 11 prospectively adds the reviewed construction capability without
-changing the policy artifact identity. Finalist comparison and outcome success
-criteria remain `NOT_IMPLEMENTED`. An objective without an active validated
+The active capital policy has reviewed eligibility and instrument-screening/ranking
+capabilities. Milestone 11A adds a separate reviewed construction-policy contract without
+changing the ranking-policy artifact identity. Constructed-portfolio runtime, finalist
+comparison, and outcome success criteria remain `NOT_IMPLEMENTED`. An objective without an active validated
 policy reports `NO_VALIDATED_ACTIVE_POLICY` for every capability. Policy
 activation does not authorize schema-v3 application cutover.
 
@@ -61,8 +61,8 @@ environment.
 
 ## Deferred work and cutover
 
-Milestone 11 uses the registered capital policy for the separately reviewed,
-read-only `CAPITAL_DEFENSIVE` instrument-shortlist constructor. Dividend data
+The historical Milestone 11 API is retained as deprecated intermediate instrument screening;
+it is not roadmap-complete construction. Dividend data
 and policy remain deferred to later milestones until reviewed evidence and
 explicit rules exist. This milestone does not construct or rank shortlist
 portfolios and does not generate recommendations. Production cutover remains

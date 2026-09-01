@@ -1,0 +1,107 @@
+schema_version: 1
+policy_id: CAPITAL_DEFENSIVE_CONSTRUCTION_POLICY
+version: "1.0.0"
+objective: CAPITAL_CONSERVATION
+strategy: CAPITAL_DEFENSIVE
+status: APPROVED
+runtime_construction_readiness: NOT_IMPLEMENTED
+cash_input:
+  input: PER_RUN_CASH_AMOUNTS_BY_CURRENCY
+  exactly_one_positive_currency_amount: true
+  supported_initial_currencies:
+    - EUR
+    - USD
+    - HUF
+  amount_semantics: EXACT_DECIMAL
+  binary_floating_point_inputs: REJECTED
+  implicit_conversion: PROHIBITED
+currency_behavior:
+  currencies_per_run: 1
+  instrument_currency_match: REQUIRED
+  fx_conversion: PROHIBITED
+  fewer_than_required_same_currency_instruments: UNAVAILABLE
+  currency_substitution: PROHIBITED
+allocation:
+  cash_reserve_weight: "0.20"
+  security_count: 8
+  weight_per_security: "0.10"
+  total_security_weight: "0.80"
+  total_cash_weight: "0.20"
+  weights_are_governed_allocation_contract: true
+  ranking_feature_weights_are_portfolio_weights: false
+  transaction_units: OUTSIDE_SCOPE
+  order_quantities: OUTSIDE_SCOPE
+  brokerage_rounding: OUTSIDE_SCOPE
+diversification:
+  minimum_distinct_conflict_free_groups: 3
+  maximum_group_weight: "0.40"
+  maximum_holdings_per_group: 4
+  grouping_basis: ASSET_AND_SUB_ASSET_GROUP
+  missing_conflicting_or_unmappable_category_evidence: REJECTED
+  issuer_concentration: NOT_ENFORCED_EVIDENCE_UNAVAILABLE
+candidate_generation:
+  candidates_per_run_currency: 1
+  selection_objective: HIGHEST_RANKED_FEASIBLE_EIGHT_INSTRUMENT_SET
+  preserve_reviewed_instrument_eligibility_and_rank_order: true
+  feasible_set_objective: MINIMIZE_ORDERED_RANK_VECTOR
+  exact_tie_break: LEXICOGRAPHICALLY_ORDERED_ISIN_TUPLE
+  randomized_search: PROHIBITED
+  opaque_exhaustive_output: PROHIBITED
+  implementation_status: NOT_IMPLEMENTED
+historical_nav:
+  minimum_history_span_calendar_days: 365
+  minimum_aligned_return_intervals: 252
+  maximum_observation_staleness_calendar_days: 30
+  quality: ADMITTED_AND_VALIDATED
+  common_aligned_return_window_all_instruments: REQUIRED
+  interpolation: PROHIBITED
+  nearest_date_substitution: PROHIBITED
+  proxy_instrument: PROHIBITED
+  failure_status: UNAVAILABLE
+portfolio_risk:
+  method:
+    - ALIGNED_CONSTITUENT_NAV_SERIES
+    - CONSTITUENT_RETURNS
+    - WEIGHTED_PORTFOLIO_RETURN_SERIES
+    - PORTFOLIO_VOLATILITY
+    - MAXIMUM_DRAWDOWN
+    - SUPPORTED_RISK_ADJUSTED_METRICS
+  weighted_sum_of_individual_volatilities: PROHIBITED
+reference_rates:
+  EUR:
+    benchmark: "€STR"
+    administrator: European Central Bank
+    official_source_url: https://www.ecb.europa.eu/stats/financial_markets_and_interest_rates/euro_short-term_rate/html/index.en.html
+  USD:
+    benchmark: SOFR
+    administrator: Federal Reserve Bank of New York
+    official_source_url: https://www.newyorkfed.org/markets/reference-rates/sofr
+  HUF:
+    benchmark: HUFONIA
+    administrator: Magyar Nemzeti Bank
+    official_source_url: https://statisztika.mnb.hu/statistical-topics/monetary-policy-statistics
+reference_rate_methodology:
+  preserved_fields:
+    - administrator
+    - series_identity
+    - observation_date
+    - publication_date
+    - source_url
+    - value
+    - units
+    - quality
+  official_day_count_and_compounding_conventions: REQUIRED
+  deterministic_alignment_to_portfolio_return_dates: REQUIRED
+  fill_unknown_observations_with_zero: PROHIBITED
+  substitute_policy_or_base_rates: PROHIBITED
+  sharpe_reference_return: ALIGNED_CURRENCY_BENCHMARK
+  sortino_minimum_acceptable_return: GOVERNED_ALIGNED_CURRENCY_BENCHMARK
+  sharpe_runtime: UNAVAILABLE_PENDING_VALIDATED_INGESTION
+  sortino_runtime: UNAVAILABLE_PENDING_VALIDATED_INGESTION
+runtime_dependencies:
+  schema: MISSING
+  current_nav: MISSING
+  official_reference_rates: MISSING
+  portfolio_construction: NOT_IMPLEMENTED
+  portfolio_persistence: NOT_IMPLEMENTED
+  portfolio_metrics: NOT_IMPLEMENTED

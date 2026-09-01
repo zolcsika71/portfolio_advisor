@@ -1,8 +1,14 @@
-# Milestone 11 — Governed capital-conservation shortlist
+# Historical Milestone 11 infrastructure — capital-conservation instrument screening
+
+Forward correction: this commit remains valid history, but the implementation below ranks
+singleton instruments. It is deprecated intermediate instrument screening, not the
+roadmap-complete Milestone 11 portfolio constructor. The reviewed construction policy is defined
+by Milestone 11A; real construction is blocked pending schema, current NAV, and official
+reference-rate ingestion.
 
 ## Contract
 
-Milestone 11 adds a deterministic, read-only constructor for the
+The historical Milestone 11 implementation added a deterministic, read-only adapter for the
 `capital_conservation` objective and its `CAPITAL_DEFENSIVE` strategy. The
 constructor ranks the complete eligible ISIN universe from one governed
 schema-v3 shortlist snapshot. It is an instrument shortlist, not a portfolio,
@@ -51,15 +57,16 @@ Allocation, cash deployment, and FX conversion are explicitly
 
 ## Capability boundary
 
-Capital conservation now has reviewed eligibility, ranking, and construction.
-Finalist comparison and outcome-success criteria remain `NOT_IMPLEMENTED`.
+Capital conservation has reviewed eligibility, instrument screening/ranking, and a separate
+Milestone 11A construction policy. Constructed-portfolio runtime, finalist comparison, and
+outcome-success criteria remain `NOT_IMPLEMENTED`.
 The dividend objective remains supported but has
 `NO_VALIDATED_ACTIVE_POLICY`; there is no fallback to the capital policy.
 
 Deferred work includes portfolio weights, cash constraints and deployment,
 FX or hedging decisions, portfolio optimization, finalist comparison,
 recommendations, outcome success criteria, API/UI integration, and all dividend
-behavior. Production cutover remains `NOT_AUTHORIZED`.
+behavior. Production cutover remains `NOT_AUTHORIZED`. No historical commit is rewritten.
 
 ## Audit command
 

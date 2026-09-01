@@ -211,16 +211,19 @@ def test_success_is_governed_deterministic_ranked_and_read_only(tmp_path: Path) 
     assert first.provenance.snapshot_date == date(2026, 2, 1)
     assert first.provenance.objective == "capital_conservation"
     assert first.provenance.strategy == "CAPITAL_DEFENSIVE"
-    assert first.provenance.construction_capability == "AVAILABLE_REVIEWED"
+    assert first.provenance.construction_capability == (
+        "INTERMEDIATE_INSTRUMENT_SCREENING_NOT_PORTFOLIO_CONSTRUCTION"
+    )
     assert first.provenance.policy_id == "CAPITAL_PRESERVATION_RANKING_POLICY"
     assert first.provenance.policy_version == "1.0.1"
     assert first.provenance.policy_fingerprint == POLICY_FINGERPRINT
     assert dict(first.provenance.capability_states) == {
-        "construction": "AVAILABLE_REVIEWED",
+        "constructed_portfolio_runtime": "NOT_IMPLEMENTED",
+        "construction_policy": "AVAILABLE_REVIEWED",
         "eligibility": "AVAILABLE_REVIEWED",
-        "finalist_comparison": "AVAILABLE_REVIEWED",
+        "finalist_comparison": "NOT_IMPLEMENTED",
+        "instrument_screening_ranking": "AVAILABLE_REVIEWED",
         "outcome_success_criteria": "NOT_IMPLEMENTED",
-        "ranking": "AVAILABLE_REVIEWED",
     }
     assert [item.isin for item in first.constructed] == ["US0378331005", "US5949181045"]
     assert [item.rank for item in first.constructed] == [1, 2]

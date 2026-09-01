@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
@@ -59,7 +60,13 @@ def build_capital_conservation_reference_workflow(
     as_of: date | None = None,
     registry: PolicyRegistry | None = None,
 ) -> CapitalConservationReferenceWorkflow:
-    """Build the deterministic read-only finalist comparison and stop before choice."""
+    """Build the deprecated exploratory model-versus-instrument comparison."""
+    warnings.warn(
+        "build_capital_conservation_reference_workflow is an exploratory "
+        "model-versus-instrument comparison, not roadmap-complete finalist comparison",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     governed_registry = registry or build_default_policy_registry(repository_root)
     try:
         parsed = objective if isinstance(objective, PortfolioObjective) else PortfolioObjective.parse(objective)
@@ -68,10 +75,11 @@ def build_capital_conservation_reference_workflow(
         raise CapitalConservationWorkflowError(f"objective or policy resolution failed: {error}") from error
     if parsed is not PortfolioObjective.CAPITAL_CONSERVATION:
         raise CapitalConservationWorkflowError("only capital_conservation workflow is governed")
-    if policy.capabilities.construction is not PolicyCapabilityStatus.AVAILABLE_REVIEWED:
-        raise CapitalConservationWorkflowError("capital construction capability is unavailable")
-    if policy.capabilities.finalist_comparison is not PolicyCapabilityStatus.AVAILABLE_REVIEWED:
-        raise CapitalConservationWorkflowError("capital finalist-comparison capability is unavailable")
+    if (
+        policy.capabilities.instrument_screening_ranking
+        is not PolicyCapabilityStatus.AVAILABLE_REVIEWED
+    ):
+        raise CapitalConservationWorkflowError("capital instrument screening capability is unavailable")
     expected_registry = build_default_policy_registry(repository_root)
     if governed_registry.registry_fingerprint() != expected_registry.registry_fingerprint():
         raise CapitalConservationWorkflowError("stale or mismatched objective-policy registry")

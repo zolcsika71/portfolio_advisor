@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings as warning_module
 from collections.abc import Mapping
 from datetime import date
 from hashlib import sha256
@@ -54,7 +55,13 @@ def construct_capital_conservation_shortlist(
     limit: int | None = None,
     registry: PolicyRegistry | None = None,
 ) -> CapitalConservationShortlist:
-    """Return a deterministic read-only ranked instrument universe."""
+    """Return the deprecated intermediate read-only instrument screening."""
+    warning_module.warn(
+        "construct_capital_conservation_shortlist is intermediate instrument screening, "
+        "not roadmap-complete portfolio construction",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if limit is not None and (isinstance(limit, bool) or not isinstance(limit, int) or limit < 1):
         raise ShortlistConstructionError("limit must be a positive integer")
     governed_registry = registry or build_default_policy_registry(repository_root)
@@ -100,7 +107,7 @@ def construct_capital_conservation_shortlist(
     provenance = ConstructionProvenance(
         objective=parsed_objective.value,
         strategy=CAPITAL_DEFENSIVE,
-        construction_capability=policy.capabilities.construction.value,
+        construction_capability="INTERMEDIATE_INSTRUMENT_SCREENING_NOT_PORTFOLIO_CONSTRUCTION",
         policy_id=policy.policy_id,
         policy_version=policy.version,
         policy_fingerprint=policy.fingerprint,
@@ -127,8 +134,11 @@ def construct_capital_conservation_shortlist(
 def _validate_policy(policy: InvestmentPolicy, repository_root: Path) -> None:
     if policy.policy_id != CAPITAL_POLICY_ID or policy.version != CAPITAL_POLICY_VERSION:
         raise ShortlistConstructionError("capital policy identity or version mismatch")
-    if policy.capabilities.construction is not PolicyCapabilityStatus.AVAILABLE_REVIEWED:
-        raise ShortlistConstructionError("capital policy construction capability is unavailable")
+    if (
+        policy.capabilities.instrument_screening_ranking
+        is not PolicyCapabilityStatus.AVAILABLE_REVIEWED
+    ):
+        raise ShortlistConstructionError("capital instrument screening capability is unavailable")
     artifact = repository_root / policy.artifact_reference
     try:
         fingerprint = sha256(artifact.read_bytes()).hexdigest()

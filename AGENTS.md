@@ -10,6 +10,10 @@ ranking are typed Python functions controlled by reviewed configuration.
 by default. `--import` retains the workbook-import workflow. The active policy
 is `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1.
 
+Milestone 11A adds the reviewed `CAPITAL_DEFENSIVE_CONSTRUCTION_POLICY` v1.0.0
+contract. Constructed-portfolio runtime and roadmap-complete finalist comparison
+remain `NOT_IMPLEMENTED`; production cutover remains `NOT_AUTHORIZED`.
+
 ## Core components
 
 - `DB_creation/`: reads the visible `modell portfóliók` workbook sheet,

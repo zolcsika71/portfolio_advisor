@@ -175,6 +175,7 @@ cython_debug/
 !/data/knowledge/validated_rules/
 /data/knowledge/validated_rules/*
 !/data/knowledge/validated_rules/capital_preservation_ranking.yaml
+!/data/knowledge/validated_rules/capital_defensive_construction.yaml
 /database/tbsz_portfolio.sqlite
 /database/
 identifier.sqlite

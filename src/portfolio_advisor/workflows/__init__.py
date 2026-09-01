@@ -1,4 +1,4 @@
-"""Public governed end-to-end workflow API."""
+"""Deprecated exploratory model-versus-instrument workflow API."""
 
 from .capital_conservation import (
     CapitalConservationWorkflowError,

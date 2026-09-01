@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import warnings
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import PurePosixPath
@@ -70,19 +71,52 @@ class PolicyCapabilities:
     """Reviewed capability states for a specific policy identity and version."""
 
     eligibility: PolicyCapabilityStatus
-    ranking: PolicyCapabilityStatus
-    construction: PolicyCapabilityStatus
+    instrument_screening_ranking: PolicyCapabilityStatus
+    construction_policy: PolicyCapabilityStatus
+    constructed_portfolio_runtime: PolicyCapabilityStatus
     finalist_comparison: PolicyCapabilityStatus
     outcome_success_criteria: PolicyCapabilityStatus
+
+    @property
+    def ranking(self) -> PolicyCapabilityStatus:
+        """Deprecated compatibility alias for instrument screening/ranking."""
+        warnings.warn(
+            "PolicyCapabilities.ranking is deprecated; use instrument_screening_ranking",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.instrument_screening_ranking
+
+    @property
+    def construction(self) -> PolicyCapabilityStatus:
+        """Deprecated compatibility alias for actual constructed-portfolio runtime."""
+        warnings.warn(
+            "PolicyCapabilities.construction is deprecated; use "
+            "construction_policy or constructed_portfolio_runtime",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.constructed_portfolio_runtime
 
     def to_dict(self) -> dict[str, str]:
         """Return a stable, explicitly keyed representation."""
         return {
-            "construction": self.construction.value,
+            "constructed_portfolio_runtime": self.constructed_portfolio_runtime.value,
+            "construction_policy": self.construction_policy.value,
             "eligibility": self.eligibility.value,
             "finalist_comparison": self.finalist_comparison.value,
+            "instrument_screening_ranking": self.instrument_screening_ranking.value,
             "outcome_success_criteria": self.outcome_success_criteria.value,
-            "ranking": self.ranking.value,
+        }
+
+    def historical_v1_dict(self) -> dict[str, str]:
+        """Reproduce the pre-11A registry capability serialization exactly."""
+        return {
+            "construction": self.construction_policy.value,
+            "eligibility": self.eligibility.value,
+            "finalist_comparison": self.construction_policy.value,
+            "outcome_success_criteria": self.outcome_success_criteria.value,
+            "ranking": self.instrument_screening_ranking.value,
         }
 
 
@@ -158,3 +192,9 @@ class InvestmentPolicy:
             "schema_version": self.schema_version,
             "version": self.version,
         }
+
+    def historical_v1_dict(self) -> dict[str, object]:
+        """Reproduce the registry-schema-v1 policy payload for historical audits."""
+        value = self.to_dict()
+        value["capabilities"] = self.capabilities.historical_v1_dict()
+        return value

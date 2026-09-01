@@ -113,7 +113,7 @@ class ConstructionProvenance:
 
 @dataclass(frozen=True, slots=True)
 class CapitalConservationShortlist:
-    """Deterministic ranked universe; it is not a portfolio or recommendation."""
+    """Deprecated ranked-instrument result; never a constructed portfolio."""
 
     provenance: ConstructionProvenance
     candidates: tuple[RankedInstrument, ...]

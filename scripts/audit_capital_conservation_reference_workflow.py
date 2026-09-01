@@ -1,4 +1,4 @@
-"""Deterministic read-only audit of the capital-conservation reference workflow."""
+"""Audit deprecated exploratory model-versus-instrument comparison infrastructure."""
 
 from __future__ import annotations
 
@@ -49,7 +49,9 @@ def main() -> int:
             "outcome_success_criteria": "NOT_IMPLEMENTED",
             "persistence": "NOT_PERFORMED",
             "production_cutover": "NOT_AUTHORIZED",
+            "roadmap_finalist_comparison": "NOT_IMPLEMENTED",
         },
+        "classification": "EXPLORATORY_MODEL_VERSUS_INSTRUMENT_COMPARISON",
         "shortlist_stage_validation": {**shortlist_validation, "status": "PASS"},
         "summary": {
             "common_as_of_date": result.common_as_of_date.isoformat(),

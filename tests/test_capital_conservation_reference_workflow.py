@@ -195,11 +195,11 @@ def test_explicit_as_of_uses_latest_common_date_without_future_leakage(tmp_path:
         _workflow(target, fingerprints, as_of=date(2025, 12, 31))
 
 
-def test_policy_registry_exposes_reviewed_comparison_without_later_capabilities() -> None:
+def test_policy_registry_does_not_advertise_exploratory_comparison_as_finalist_runtime() -> None:
     policy = build_default_policy_registry(ROOT).resolve_active_policy(
         PortfolioObjective.CAPITAL_CONSERVATION
     )
-    assert policy.capabilities.finalist_comparison is PolicyCapabilityStatus.AVAILABLE_REVIEWED
+    assert policy.capabilities.finalist_comparison is PolicyCapabilityStatus.NOT_IMPLEMENTED
     assert policy.capabilities.outcome_success_criteria is PolicyCapabilityStatus.NOT_IMPLEMENTED
     assert policy.fingerprint == POLICY_FINGERPRINT
 
@@ -356,12 +356,12 @@ def test_dividend_unknown_and_capability_or_policy_tampering_fail_closed(tmp_pat
                 capital,
                 capabilities=replace(
                     capital.capabilities,
-                    finalist_comparison=PolicyCapabilityStatus.NOT_IMPLEMENTED,
+                    instrument_screening_ranking=PolicyCapabilityStatus.NOT_IMPLEMENTED,
                 ),
             ),
         )
     )
-    with pytest.raises(CapitalConservationWorkflowError, match="comparison capability"):
+    with pytest.raises(CapitalConservationWorkflowError, match="instrument screening capability"):
         _workflow(target, fingerprints, registry=unavailable)
     stale = PolicyRegistry(policies=(replace(capital, mandate="Stale reviewed metadata"),))
     with pytest.raises(CapitalConservationWorkflowError, match="stale or mismatched"):

@@ -1,4 +1,4 @@
-"""Deterministic read-only audit of governed capital-conservation construction."""
+"""Audit deprecated intermediate capital-conservation instrument screening."""
 
 from __future__ import annotations
 
@@ -62,16 +62,18 @@ def main() -> int:
             "allocation": "NOT_PERFORMED",
             "cash_deployment": "NOT_PERFORMED",
             "database_access": "READ_ONLY",
-            "finalist_comparison": "AVAILABLE_REVIEWED",
+            "constructed_portfolio_runtime": "NOT_IMPLEMENTED",
+            "finalist_comparison": "NOT_IMPLEMENTED",
             "fx_conversion": "NOT_PERFORMED",
             "outcome_success_criteria": "NOT_IMPLEMENTED",
             "production_cutover": "NOT_AUTHORIZED",
         },
+        "classification": "INTERMEDIATE_INSTRUMENT_SCREENING_NOT_PORTFOLIO_CONSTRUCTION",
         "construction": result.to_dict(),
         "stage_validation": {**stage_validation, "status": "PASS"},
         "summary": {
             "candidate_count": len(result.candidates),
-            "constructed_count": len(result.constructed),
+            "screened_output_count": len(result.constructed),
             "eligible_count": sum(item.eligible for item in result.candidates),
             "latest_complete_snapshot": result.provenance.snapshot_date.isoformat(),
             "result_fingerprint": result.result_fingerprint,

@@ -1,6 +1,10 @@
-# Milestone 12 — Capital Conservation End-to-End
+# Historical Milestone 12 infrastructure — exploratory model-versus-instrument comparison
 
-Milestone 12 implements the first complete governed reference workflow:
+Forward correction: this historical workflow compares a model portfolio with one ranked
+instrument. It remains import-compatible exploratory infrastructure; it is not roadmap-complete
+portfolio-versus-portfolio finalist comparison and does not complete Milestone 12.
+
+The historical implementation provided this exploratory workflow:
 
 ```text
 best reviewed model portfolio
@@ -51,14 +55,16 @@ required dimension returns `INSUFFICIENT_COMPARABLE_EVIDENCE`.
 
 ## Capability and safety boundaries
 
-Capital eligibility, ranking, construction, and finalist comparison are `AVAILABLE_REVIEWED`.
-Outcome-success criteria remain `NOT_IMPLEMENTED`. Dividend remains
+Capital eligibility, instrument screening/ranking, and the Milestone 11A construction policy are
+`AVAILABLE_REVIEWED`. Constructed-portfolio runtime, roadmap finalist comparison, and
+outcome-success criteria are `NOT_IMPLEMENTED`. Dividend remains
 `NO_VALIDATED_ACTIVE_POLICY` with no fallback.
 
 The workflow is read-only. It performs no allocation, optimization, cash deployment, FX
 conversion, persistence, brokerage action, suitability determination, outcome tracking, or
 Graphify/LTIA operation. Schema v3 remains objective-neutral. Production cutover remains
-`NOT_AUTHORIZED`.
+`NOT_AUTHORIZED`. Real construction remains blocked pending schema, current NAV, and official
+reference-rate ingestion; historical commits remain valid forward history.
 
 Fail-closed conditions include unknown/dividend objectives, missing or ambiguous active policy,
 capability or fingerprint mismatch, stale source manifests, incompatible/corrupted SQLite,

@@ -13,6 +13,11 @@ from portfolio_advisor.ranking.config import load_ranking_rules
 from portfolio_advisor.ranking.models import RankingRules
 from portfolio_advisor.ranking.policy_contract import build_policy_contract
 
+from .construction_policy import (
+    CAPITAL_DEFENSIVE_CONSTRUCTION_POLICY_ARTIFACT,
+    CapitalDefensiveConstructionPolicy,
+    load_capital_defensive_construction_policy,
+)
 from .models import (
     InvestmentPolicy,
     ObjectiveFrameworkError,
@@ -25,7 +30,8 @@ from .models import (
     UnknownObjectiveError,
 )
 
-REGISTRY_SCHEMA_VERSION = 1
+REGISTRY_SCHEMA_VERSION = 2
+HISTORICAL_REGISTRY_SCHEMA_VERSION = 1
 CAPITAL_POLICY_ARTIFACT = "data/knowledge/validated_rules/capital_preservation_ranking.yaml"
 CAPITAL_POLICY_ID = "CAPITAL_PRESERVATION_RANKING_POLICY"
 CAPITAL_POLICY_VERSION = "1.0.1"
@@ -73,11 +79,17 @@ class PolicyRegistry:
         self,
         *,
         policies: Iterable[InvestmentPolicy] = (),
+        construction_policies: Iterable[CapitalDefensiveConstructionPolicy] = (),
     ) -> None:
         self._supported = tuple(sorted(PortfolioObjective, key=lambda objective: objective.value))
         self._policies: dict[tuple[PortfolioObjective, str, str], InvestmentPolicy] = {}
-        for policy in policies:
-            self.register(policy)
+        for ranking_policy in policies:
+            self.register(ranking_policy)
+        self._construction_policies: dict[
+            tuple[PortfolioObjective, str, str], CapitalDefensiveConstructionPolicy
+        ] = {}
+        for construction_policy in construction_policies:
+            self.register_construction_policy(construction_policy)
 
     @property
     def supported_objectives(self) -> tuple[PortfolioObjective, ...]:
@@ -111,6 +123,48 @@ class PolicyRegistry:
                 f"Conflicting registration: {policy.policy_id} v{policy.version}"
             )
         self._policies[policy.identity] = policy
+
+    @property
+    def construction_policies(self) -> tuple[CapitalDefensiveConstructionPolicy, ...]:
+        """Return reviewed construction contracts in deterministic identity order."""
+        return tuple(
+            self._construction_policies[key]
+            for key in sorted(
+                self._construction_policies,
+                key=lambda item: (item[0].value, item[1], item[2]),
+            )
+        )
+
+    def register_construction_policy(
+        self, policy: CapitalDefensiveConstructionPolicy
+    ) -> None:
+        """Register a construction policy version without replacing prior evidence."""
+        existing = self._construction_policies.get(policy.identity)
+        if existing is not None:
+            if existing == policy:
+                raise DuplicatePolicyRegistrationError(
+                    f"Construction policy already registered: {policy.policy_id} v{policy.version}"
+                )
+            raise ConflictingPolicyRegistrationError(
+                f"Conflicting construction policy: {policy.policy_id} v{policy.version}"
+            )
+        self._construction_policies[policy.identity] = policy
+
+    def exact_construction_policy(
+        self,
+        objective: PortfolioObjective | str,
+        policy_id: str,
+        version: str,
+    ) -> CapitalDefensiveConstructionPolicy:
+        """Resolve an exact construction-policy identity with no version fallback."""
+        parsed = self._require_supported(objective)
+        try:
+            return self._construction_policies[(parsed, policy_id, version)]
+        except KeyError as error:
+            raise PolicyNotFoundError(
+                f"Construction policy is not registered for {parsed.value}: "
+                f"{policy_id} v{version}"
+            ) from error
 
     def exact_policy(
         self,
@@ -156,9 +210,9 @@ class PolicyRegistry:
             return PolicyAvailability.NO_VALIDATED_ACTIVE_POLICY
         return PolicyAvailability.VALIDATED_ACTIVE_POLICY
 
-    def registry_fingerprint(self) -> str:
+    def registry_fingerprint(self, *, schema_version: int = REGISTRY_SCHEMA_VERSION) -> str:
         """Fingerprint canonical, path-neutral policy registry content."""
-        return canonical_fingerprint(self._registry_payload())
+        return canonical_fingerprint(self._registry_payload(schema_version))
 
     def to_audit_dict(self) -> dict[str, object]:
         """Return deterministic public audit data with explicit unavailable states."""
@@ -169,16 +223,26 @@ class PolicyRegistry:
                 active_policy = self.resolve_active_policy(objective)
                 policy: dict[str, object] | None = active_policy.to_dict()
                 capabilities = active_policy.capabilities.to_dict()
+                construction_policy = next(
+                    (
+                        item.registry_dict()
+                        for item in self.construction_policies
+                        if item.identity[0] is objective
+                    ),
+                    None,
+                )
             else:
                 policy = None
+                construction_policy = None
                 capabilities = {
                     name: PolicyCapabilityStatus.NO_VALIDATED_ACTIVE_POLICY.value
                     for name in (
-                        "construction",
+                        "constructed_portfolio_runtime",
+                        "construction_policy",
                         "eligibility",
                         "finalist_comparison",
+                        "instrument_screening_ranking",
                         "outcome_success_criteria",
-                        "ranking",
                     )
                 }
             inventory.append(
@@ -186,6 +250,7 @@ class PolicyRegistry:
                     "active_policy": policy,
                     "availability": availability.value,
                     "capabilities": capabilities,
+                    "construction_policy": construction_policy,
                     "objective": objective.value,
                 }
             )
@@ -198,11 +263,29 @@ class PolicyRegistry:
             "objectives": inventory,
             "production_cutover": "NOT_AUTHORIZED",
             "registry_fingerprint": self.registry_fingerprint(),
+            "historical_registry_fingerprints": {
+                str(HISTORICAL_REGISTRY_SCHEMA_VERSION): self.registry_fingerprint(
+                    schema_version=HISTORICAL_REGISTRY_SCHEMA_VERSION
+                )
+            },
             "supported_objectives": [objective.value for objective in self.supported_objectives],
         }
 
-    def _registry_payload(self) -> dict[str, object]:
+    def _registry_payload(self, schema_version: int) -> dict[str, object]:
+        if schema_version == HISTORICAL_REGISTRY_SCHEMA_VERSION:
+            return {
+                "policies": [policy.historical_v1_dict() for policy in self.policies],
+                "registry_schema_version": HISTORICAL_REGISTRY_SCHEMA_VERSION,
+                "supported_objectives": [
+                    objective.value for objective in self.supported_objectives
+                ],
+            }
+        if schema_version != REGISTRY_SCHEMA_VERSION:
+            raise ValueError(f"unsupported registry schema version: {schema_version}")
         return {
+            "construction_policies": [
+                policy.registry_dict() for policy in self.construction_policies
+            ],
             "policies": [policy.to_dict() for policy in self.policies],
             "registry_schema_version": REGISTRY_SCHEMA_VERSION,
             "supported_objectives": [objective.value for objective in self.supported_objectives],
@@ -221,6 +304,7 @@ def build_default_policy_registry(repository_root: Path | None = None) -> Policy
     rules_path = root / CAPITAL_POLICY_ARTIFACT
     methodology_path = root / CAPITAL_METHODOLOGY_ARTIFACT
     strict_path = root / CAPITAL_STRICT_PIPELINE_ARTIFACT
+    construction_path = root / CAPITAL_DEFENSIVE_CONSTRUCTION_POLICY_ARTIFACT
     rules = load_ranking_rules(rules_path)
     contract = build_policy_contract(
         rules_path=rules_path,
@@ -240,13 +324,15 @@ def build_default_policy_registry(repository_root: Path | None = None) -> Policy
         fingerprint=sha256(rules_path.read_bytes()).hexdigest(),
         capabilities=PolicyCapabilities(
             eligibility=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
-            ranking=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
-            construction=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
-            finalist_comparison=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
+            instrument_screening_ranking=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
+            construction_policy=PolicyCapabilityStatus.AVAILABLE_REVIEWED,
+            constructed_portfolio_runtime=PolicyCapabilityStatus.NOT_IMPLEMENTED,
+            finalist_comparison=PolicyCapabilityStatus.NOT_IMPLEMENTED,
             outcome_success_criteria=PolicyCapabilityStatus.NOT_IMPLEMENTED,
         ),
     )
-    return PolicyRegistry(policies=(capital,))
+    construction = load_capital_defensive_construction_policy(construction_path)
+    return PolicyRegistry(policies=(capital,), construction_policies=(construction,))
 
 
 def render_registry_audit(registry: PolicyRegistry) -> str:
