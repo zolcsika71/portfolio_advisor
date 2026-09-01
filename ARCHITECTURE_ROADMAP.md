@@ -25,6 +25,72 @@ The project must remain:
 * source-backed;
 * fail-closed when evidence is incomplete.
 
+## 1.1 Roadmap governance
+
+This roadmap is a living architectural plan. Its implementation sequence may evolve when verified
+implementation results or source evidence reveal a safer or more effective order. A sequencing
+change must not remove an architectural, financial-governance, provenance or fail-closed
+requirement merely because that requirement is difficult to satisfy.
+
+Every material roadmap change must record:
+
+```text
+reason
+prerequisite
+replacement or revised sequence
+current verified status
+```
+
+Completed history is forward-only: do not rewrite a completed checkpoint or historical commit to
+make later terminology or sequencing appear contemporaneous.
+
+Roadmap milestone states mean:
+
+| State | Meaning |
+| --- | --- |
+| `COMPLETED` | The bounded checkpoint's implemented contract and verification gates are complete. |
+| `IN_PROGRESS` | Authorized implementation has started but its complete checkpoint gate has not passed. |
+| `PLANNED` | The checkpoint is defined but implementation has not started. |
+| `BLOCKED_BY_DATA` | Code or policy progress cannot produce the governed result until required evidence is admitted. |
+| `BLOCKED_BY_POLICY` | Required reviewed policy or methodology approval is absent. |
+| `SUPERSEDED` | A later recorded sequence replaces this planned checkpoint; retained history is not deleted. |
+| `NOT_AUTHORIZED` | The action, especially production cutover, has no authorization to proceed. |
+
+`GO` and `NO-GO` are checkpoint decisions, not milestone states.
+
+A passing validator establishes only the contract that validator actually checks. It does not
+implicitly prove upstream source authority, unimplemented calculations, portfolio comparability,
+roadmap completion or production readiness.
+
+## 1.2 Verified implementation status
+
+This status is grounded in repository history, versioned contracts and the installed schema-v3
+validators as of commit `37d9e0c2a9f57de1837a8d7a43aab54f9ef38772`.
+
+| Checkpoint | State | Verified boundary |
+| --- | --- | --- |
+| Milestones 4–10 | `COMPLETED` | Data audit, schema-v3/LTIA foundation, model migration, NAV integration, shortlist import and objective registry checkpoints are retained with their validators. |
+| Milestone 11A — construction-policy approval | `COMPLETED` | Commit `ea3406c2df38a3b7a274c7507cb174950149b7d3`; reviewed policy only. |
+| Milestone 11B — constructed-portfolio domain and schema | `COMPLETED` | Commit `0aa7cf12a7ef5bead07b0753b2229909fb8e2373`; allocation, schema, lineage and persistence foundation. |
+| Milestone 11C Phase A — reference-rate schema foundation | `COMPLETED` | Commit `37d9e0c2a9f57de1837a8d7a43aab54f9ef38772`; empty evidence schema and immutable contracts. |
+| Overall roadmap-compliant Milestone 11 | `BLOCKED_BY_DATA` | Current admitted NAV and official reference-rate evidence cannot produce a governed real candidate or portfolio metrics. |
+| Roadmap-compliant Milestone 12 | `BLOCKED_BY_DATA` | No real persisted `SHORTLIST_FINALIST` exists for portfolio-to-portfolio comparison. |
+| Milestone 13 | `PLANNED` / `NO-GO` | Dividend evidence work remains deferred. |
+| Production cutover | `NOT_AUTHORIZED` | No checkpoint authorizes production cutover. |
+
+## 1.3 Historical exploratory Milestone 11–12 infrastructure
+
+Commits `b07bf94` and `73efe92` contain useful deterministic intermediate infrastructure. The first
+ranks a singleton shortlist instrument through the reviewed instrument-screening policy; the
+second compares that instrument with a model portfolio. The singleton's synthetic 100% adapter is
+not a portfolio allocation and neither commit creates or selects a persisted
+`SHORTLIST_CONSTRUCTED` portfolio.
+
+These workflows are classified as intermediate instrument screening and exploratory
+model-versus-instrument comparison. They are not roadmap-compliant completion of Milestone 11 or
+Milestone 12. Preserve their commits, import compatibility and audit value; do not revert, remove,
+repurpose or rewrite them.
+
 ---
 
 # 2. Domain terminology
@@ -357,7 +423,8 @@ Legacy names must not be renamed until migration compatibility is proven.
 
 # 8. `portfolio_advisor.sqlite`
 
-This becomes the objective-neutral analytical database.
+This is the objective-neutral analytical database. The list below describes the architectural
+destination; the verified implementation state is recorded separately in Section 1.2.
 
 It should contain:
 
@@ -384,6 +451,46 @@ It should contain:
 * prospective outcomes;
 * diagnostics;
 * stress-test results.
+
+## 8.1 Installed reference-rate evidence foundation
+
+Schema v3 currently contains the additive feature:
+
+```text
+MILESTONE_11C_REFERENCE_RATE_EVIDENCE
+```
+
+with:
+
+```text
+feature revision:             1
+feature fingerprint:          aace6e9cf4b33fbf9cad503a987b945ebb44e1db5673381fd47cbd57716d921b
+schema-contract fingerprint:  1d9cb07e1bee4bed81ebe6a58a293ea544249498f736899069452ae167b59d61
+```
+
+The installed tables are:
+
+```text
+reference_rate_definition
+reference_rate_source
+reference_rate_import_manifest
+reference_rate_observation
+```
+
+The evidence contract requires exact reference-rate values through validated `Decimal`
+representation; immutable hashes of retained raw source bytes; exact request and retrieval
+metadata; and deterministic source-dataset fingerprints. Definition and source evidence preserves
+benchmark identity, administrator, currency, units, official day-count convention and compounding
+convention. Observation date and publication date remain separate.
+
+Provider corrections are append-only revisions. A later observation identifies the superseded
+revision rather than overwriting it, and admission must apply a governed as-of cutoff. Definitions,
+sources, manifests and observations remain linked by genuine foreign keys so evidence cannot cross
+benchmark or source identity.
+
+All four installed production reference-rate tables currently contain zero rows. This feature
+proves only the storage and contract foundation; reference-rate runtime admission, alignment,
+Sharpe and Sortino remain unavailable.
 
 ---
 
@@ -1209,22 +1316,52 @@ Never hide provenance differences.
 
 Normalize historical NAV around the canonical instrument master.
 
+The existing schema-v3 `instrument_nav_observation` table is a simplified analytical destination
+for the retained Milestone 8 integration. It is not, by itself, a complete raw-source provenance
+model for future refreshes or additional providers.
+
 ```text
 instrument_nav_observation
 
+instrument_nav_observation_id PK
 instrument_id FK
 observation_date
-nav
+nav_value REAL
 currency_code
-source
+value_type
+source_provider
+source_identifier
+provenance_reference
 quality_status
+source_fingerprint
+imported_at
 
-PRIMARY KEY(
+UNIQUE(
     instrument_id,
     observation_date,
-    source
+    source_provider,
+    value_type,
+    source_identifier
 )
 ```
+
+Future policy-compliant NAV ingestion must additionally preserve:
+
+* exact ISIN and exact share-class identity;
+* a versioned source definition, including provider identity and explicit usage/licence metadata;
+* an immutable raw-artifact manifest with content hash;
+* exact request URL, request parameters and retrieval timestamp;
+* an exact `Decimal` NAV value and source currency;
+* provider-native observation identity and provider revision identity;
+* an observation-to-import-manifest foreign key;
+* append-only revision and supersession lineage;
+* a deterministic source-dataset fingerprint;
+* explicit duplicate and conflicting-observation detection.
+
+Never destructively overwrite an admitted observation. Never fabricate a NAV through
+interpolation, a proxy instrument, reconstructed performance percentages, nearest-date
+replacement or another share class. Missing or conflicting exact-share-class evidence remains
+`UNAVAILABLE`, `UNRESOLVED` or `REJECTED`.
 
 ---
 
@@ -1241,18 +1378,17 @@ because correlations matter.
 Proper constructed-portfolio calculations require:
 
 ```text
-ISIN historical NAV/price series
+constituent NAV observations
         ↓
-aligned return series
+governed common-date alignment
         ↓
-portfolio return series
+constituent return series
         ↓
-covariance
+weighted portfolio return series
         ↓
-volatility
+covariance-aware volatility
 maximum drawdown
-Sharpe
-Sortino
+supported risk-adjusted metrics
 ```
 
 If required data is unavailable:
@@ -1262,6 +1398,29 @@ UNAVAILABLE
 ```
 
 must be returned.
+
+## 35.1 Official reference rates and temporal controls
+
+Sharpe or Sortino ranking requires admitted official evidence for the portfolio currency:
+
+```text
+EUR → ECB €STR
+USD → Federal Reserve Bank of New York SOFR
+HUF → Magyar Nemzeti Bank HUFONIA
+```
+
+The calculation must preserve publication-time and decision as-of controls, official day-count
+and applicability conventions, and explicit official correction/revision handling. Portfolio
+return dates and benchmark dates must be aligned by a reviewed deterministic methodology.
+
+Do not use generic forward-fill, silent holiday/calendar assumptions, zero for an unknown rate,
+a central-bank policy rate, or an unofficial substitute. If a required observation, publication
+state, applicability rule, revision state or methodology remains unresolved, the affected metric
+is `UNAVAILABLE`.
+
+The 20% cash sleeve does not imply a benchmark return or any other cash return. Cash-return
+treatment is a separate governed policy decision and must not be inferred from the Sharpe/Sortino
+reference series.
 
 ---
 
@@ -1827,6 +1986,50 @@ Generic construction infrastructure is shared.
 
 Objective-specific policies provide the rules.
 
+## 58.1 Approved initial `CAPITAL_DEFENSIVE` contract
+
+`CAPITAL_DEFENSIVE_CONSTRUCTION_POLICY` v1.0.0 governs the initial Capital Conservation
+constructor. One run receives an immutable exact `Decimal` investable-cash amount and one currency
+from `EUR`, `USD` or `HUF`. The private amount is validated in memory; the central analytical
+database persists only the normalized candidate and must not persist or reversibly fingerprint the
+user's amount.
+
+The approved initial allocation and evidence constraints are exactly:
+
+```text
+one currency per construction run
+no FX conversion in the approved initial policy
+future FX remains prohibited without separately validated FX evidence and policy
+
+cash reserve:              20% of total portfolio value
+securities:                exactly 8
+weight per security:       10% of total portfolio value
+total security weight:     80%
+
+minimum conflict-free asset/sub-asset groups:  3
+maximum total-portfolio weight in one group:   40%
+
+minimum admitted NAV history:                  365 calendar days
+minimum common aligned return intervals:       252
+maximum NAV staleness at construction:          30 calendar days
+```
+
+Only same-currency instruments with exact shortlist lineage, valid canonical ISIN, conflict-free
+category evidence and admitted validated NAV may be selected. One deterministic candidate is
+allowed per currency/run: select the highest-ranked feasible eight-instrument set, minimize its
+ordered rank vector, and use the lexicographically ordered ISIN tuple only for an exact feasible-set
+tie.
+
+Issuer concentration remains `NOT_ENFORCED_EVIDENCE_UNAVAILABLE`; issuer identity must not be
+manufactured.
+
+Ranking-policy feature weights are not portfolio-allocation weights. Incomplete construction,
+category, NAV, currency, benchmark or methodology evidence fails closed. Official currency-specific
+reference-rate evidence is required before Sharpe or Sortino can participate in portfolio ranking.
+
+The machinery is implemented, but the current production runtime is
+`IMPLEMENTED_BLOCKED_BY_DATA`. Production contains zero constructed portfolio candidates.
+
 ---
 
 # 59. Construction principles
@@ -1840,6 +2043,9 @@ For Capital Conservation start with:
 ```text
 CAPITAL_DEFENSIVE
 ```
+
+The approved initial behavior is the fixed contract in Section 58.1. Additional strategies require
+separate reviewed policy versions and must not silently change that contract.
 
 Then optionally:
 
@@ -1870,16 +2076,29 @@ The constructor receives:
 ```text
 eligible ISIN universe
 +
-available cash by currency
+per-run cash request by currency
 +
 objective policy
 +
 construction constraints
 ```
 
+For the approved initial contract, that request contains exactly one positive supported-currency
+amount. Zero, negative, multiple-currency, unsupported-currency and binary floating-point amounts
+are rejected.
+
 Do not assume 100% investment.
 
-Capital Conservation may deliberately retain cash.
+The approved initial Capital Conservation strategy retains exactly 20% as a cash reserve and
+allocates exactly 80% to eight 10% security holdings. Its persisted normalized representation uses:
+
+```text
+portfolio_cash.weight = 0.20
+portfolio_cash.amount = NULL
+```
+
+Transaction units, order quantities and brokerage rounding remain outside construction-policy
+scope.
 
 Dividend strategy may retain cash for:
 
@@ -1903,6 +2122,10 @@ USD instrument
 ```
 
 without validated FX data.
+
+The initial `CAPITAL_DEFENSIVE` policy is stricter: one run uses one currency and selects only
+instruments denominated in that same currency. No fallback currency or implicit conversion is
+permitted.
 
 Future table:
 
@@ -1943,11 +2166,14 @@ with:
 portfolio_type = SHORTLIST_CONSTRUCTED
 ```
 
+Milestone 11B implements this normalized domain and persistence foundation, but the production
+tables contain no such portfolios while the governed data prerequisites remain unsatisfied.
+
 ---
 
 # 63. Construction lineage
 
-Create:
+The installed Milestone 11B feature provides:
 
 ```text
 constructed_portfolio_metadata
@@ -1955,16 +2181,32 @@ constructed_portfolio_metadata
 portfolio_snapshot_id PK/FK
 shortlist_snapshot_id FK
 
-investment_objective_id
+objective_code
 construction_policy_id
+construction_policy_version
+construction_policy_fingerprint
 
 construction_strategy
-eligible_universe_hash
-
+cash_currency
+portfolio_identity_fingerprint
+eligible_universe_fingerprint
+selected_universe_fingerprint
+candidate_fingerprint
+deterministic_provenance_json
 created_at
+
+constructed_portfolio_holding_lineage
+    portfolio_holding_id PK/FK
+    shortlist_entry_id FK
+    selected_instrument_rank
+    allocation_basis
+    allocation_weight_decimal
+    constraint_evidence_fingerprint
 ```
 
-Every constructed candidate must be reproducible.
+Every constructed candidate must be reproducible through the exact shortlist membership and its
+existing source-occurrence lineage. No source occurrence is duplicated merely to support a
+constructed holding.
 
 ---
 
@@ -2042,6 +2284,10 @@ This becomes:
 SHORTLIST_FINALIST
 ```
 
+It is valid only when the selected candidate is a real persisted
+`SHORTLIST_CONSTRUCTED` portfolio snapshot. A singleton ranked instrument cannot satisfy this
+role.
+
 ---
 
 # 67. Two-finalist architecture
@@ -2068,11 +2314,16 @@ FINAL COMPARISON
 
 This must remain explicit and auditable.
 
+Roadmap-compliant final comparison cannot begin until both branches produce portfolio finalists.
+
 ---
 
 # 68. Final comparison
 
 Both finalists compete under the same selected investment objective.
+
+Both finalists must represent portfolios, not a portfolio on one side and an instrument on the
+other.
 
 Neither receives preferential treatment because of its source.
 
@@ -2093,6 +2344,10 @@ CALCULATED volatility
 is acceptable only if methodology, horizon and definition are compatible.
 
 Metric provenance must remain visible.
+
+Horizons, observation cutoffs, metric definitions, calculation methodologies and provenance must
+be semantically compatible. When comparability is not proven, the workflow must abstain rather
+than recommend.
 
 ---
 
@@ -2920,43 +3175,79 @@ Database remains objective-neutral.
 
 ---
 
-## Milestone 11 — Capital Conservation Shortlist Constructor
+## Milestone 11 — Capital Conservation constructed-portfolio pipeline
 
-Implement first deterministic strategy:
-
-```text
-CAPITAL_DEFENSIVE
-```
-
-Use:
+The original goal remains a real, governed `CAPITAL_DEFENSIVE` shortlist portfolio and finalist.
+Implementation is divided into traceable checkpoints:
 
 ```text
-eligible ISIN universe
-+
-cash constraints
-+
-capital-conservation policy
+reason:        implementation and source-readiness evidence exposed separate policy, schema,
+               benchmark-ingestion, NAV-provenance and portfolio-metric gates
+prerequisite:  retain completed 11A, 11B and 11C Phase A contracts and forward history
+replacement:   replace the former single broad Milestone 11 step with checkpoints 11A, 11B
+               and 11C Phases A–F below
+current status: overall Milestone 11 is BLOCKED_BY_DATA
 ```
 
-Persist output as a normal portfolio snapshot.
+| Checkpoint | State | Scope |
+| --- | --- | --- |
+| Milestone 11A — construction-policy approval | `COMPLETED` | Reviewed immutable construction contract; commit `ea3406c2df38a3b7a274c7507cb174950149b7d3`. |
+| Milestone 11B — construction domain and schema | `COMPLETED` | Deterministic allocation engine, normalized domain, lineage and idempotent persistence foundation; commit `0aa7cf12a7ef5bead07b0753b2229909fb8e2373`. |
+| Milestone 11C Phase A — reference-rate schema foundation | `COMPLETED` | Empty official-rate evidence schema, contracts, copy-on-write migration and read-only validator; commit `37d9e0c2a9f57de1837a8d7a43aab54f9ef38772`. |
+| Milestone 11C Phase B — ECB €STR adapter | `PLANNED` — next | Admit official EUR benchmark evidence under the Phase A contract. |
+| Milestone 11C Phase C — NY Fed SOFR adapter | `PLANNED` | Admit official USD benchmark evidence. |
+| Milestone 11C Phase D — MNB HUFONIA adapter | `PLANNED` | Admit official HUF benchmark evidence. |
+| Milestone 11C Phase E — NAV provenance upgrade and EUR/HUF refresh | `PLANNED` | Add complete raw-source/manifests/revision provenance and refresh the smallest feasible exact-share-class universes. |
+| Milestone 11C Phase F — aligned portfolio analytics and real finalist | `PLANNED` | Governed aligned returns, covariance-aware portfolio metrics, runtime construction, real-candidate persistence, ranking and `SHORTLIST_FINALIST` selection. |
+
+HUFONIA runtime admission remains conditional on resolving and encoding its official publication,
+revision, holiday-applicability and missing-value semantics. A schema row or downloaded series is
+not sufficient by itself.
+
+USD shortlist construction remains blocked until at least eight exact-share-class histories in one
+USD construction universe have the required admitted history, staleness and common aligned
+coverage.
+
+Overall roadmap-compliant Milestone 11 remains `BLOCKED_BY_DATA`. The earlier singleton-ranking
+workflow is useful intermediate screening, not completion of this milestone.
 
 ---
 
-## Milestone 12 — Capital Conservation End-to-End
+## Milestone 12 — Capital Conservation portfolio-to-portfolio end-to-end
 
-Complete:
+Roadmap-compliant Milestone 12 may begin only after Milestone 11 produces and persists a real:
 
 ```text
-best model portfolio
-vs
-best shortlist portfolio
+portfolio_type = SHORTLIST_CONSTRUCTED
+```
+
+portfolio snapshot selected as:
+
+```text
+SHORTLIST_FINALIST
+```
+
+The final workflow is:
+
+```text
+MODEL_FINALIST
+        vs
+SHORTLIST_FINALIST
         ↓
 recommendations
         ↓
 user choice
 ```
 
-This becomes the first complete reference workflow.
+Both finalists must be portfolios evaluated through semantically compatible metrics, horizons,
+methodologies, as-of dates and provenance. If compatibility is unresolved, the system abstains; it
+does not manufacture a recommendation.
+
+Store the system recommendation separately from explicit user choice. A user may select a
+non-top-ranked option, defer or decline. The historical commit `73efe92` remains exploratory
+model-versus-instrument infrastructure and does not complete this milestone.
+
+Milestone 12 remains `BLOCKED_BY_DATA` / `NO-GO` until the Milestone 11 prerequisite is satisfied.
 
 ---
 
@@ -3153,35 +3444,41 @@ Do not combine terminology migration with unrelated ranking or construction chan
 The next engineering milestone is:
 
 ```text
-MILESTONE 4
-CURRENT DATA AUDIT & ISIN FOUNDATION
+MILESTONE 11C PHASE B
+ECB €STR ADAPTER
 ```
 
-Immediate deliverables:
+This checkpoint is authorized to begin only as a bounded official-EUR reference-rate ingestion
+path. Its scope is:
 
 ```text
-A. full database inventory
+A. official ECB endpoint only
 
-B. historical XLS / shortlist schema audit
+B. exact €STR benchmark and series identity
 
-C. canonical ISIN instrument registry specification
+C. immutable raw-response retention with SHA-256
 
-D. instrument alias specification
+D. exact request URL, parameters and retrieval timestamp
 
-E. LTIA ISIN reconciliation report
+E. deterministic parser and exact Decimal values
 
-F. LTIA duplicate/equivalent-source report
+F. reference-rate definition, source, import-manifest and observation persistence
 
-G. canonical current-investments projection design
+G. separate observation-date and publication-date provenance
 
-H. schema-v3 ERD
+H. official revision, supersession and governed as-of controls
 
-I. schema-v3 migration specification
+I. deterministic contract and dataset fingerprints
 
-J. legacy-vs-relational equivalence test plan
+J. copy-on-write database candidate
+
+K. complete source, schema, integrity, foreign-key and logical-preservation validation
+   before atomic installation
 ```
 
-Do not begin complex shortlist portfolio construction before these foundations are complete.
+This checkpoint must not change NAV evidence, calculate portfolio metrics, activate Sharpe or
+Sortino, construct a production portfolio, or authorize production cutover. ECB implementation is
+not part of this roadmap-documentation checkpoint.
 
 ---
 
