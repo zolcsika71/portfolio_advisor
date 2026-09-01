@@ -28,6 +28,10 @@ from portfolio_advisor.database.schema.v3 import (
 def _pre_11b_v3(path: Path) -> None:
     with connect(path) as connection:
         initialize_schema(connection)
+        connection.execute("DROP TABLE reference_rate_observation")
+        connection.execute("DROP TABLE reference_rate_import_manifest")
+        connection.execute("DROP TABLE reference_rate_source")
+        connection.execute("DROP TABLE reference_rate_definition")
         connection.execute("DROP TABLE constructed_portfolio_holding_lineage")
         connection.execute("DROP TABLE constructed_portfolio_metadata")
         connection.execute("DROP TABLE schema_feature_contract")

@@ -7,15 +7,27 @@ from .constructed_portfolio import (
     ConstructedPortfolioMigrationResult,
     build_constructed_portfolio_schema_candidate,
 )
+from .reference_rate import (
+    REFERENCE_RATE_MIGRATION_REVISION,
+    ReferenceRateMigrationError,
+    ReferenceRateMigrationResult,
+    build_reference_rate_schema_candidate,
+    validate_reference_rate_schema_foundation,
+)
 from .v2_to_v3 import CutoverNotAuthorized, MigrationPlan, dry_run_v2_to_v3
 
 __all__ = [
     "MIGRATION_REVISION",
+    "REFERENCE_RATE_MIGRATION_REVISION",
     "ConstructedPortfolioMigrationError",
     "ConstructedPortfolioMigrationResult",
     "CutoverNotAuthorized",
     "MigrationPlan",
+    "ReferenceRateMigrationError",
+    "ReferenceRateMigrationResult",
     "build_constructed_portfolio_schema_candidate",
+    "build_reference_rate_schema_candidate",
     "create_verified_backup",
     "dry_run_v2_to_v3",
+    "validate_reference_rate_schema_foundation",
 ]

@@ -28,6 +28,22 @@ CONSTRUCTED_PORTFOLIO_FEATURE_FINGERPRINT = canonical_fingerprint(
         ),
     }
 )
+REFERENCE_RATE_FEATURE_ID = "MILESTONE_11C_REFERENCE_RATE_EVIDENCE"
+REFERENCE_RATE_FEATURE_REVISION = 1
+REFERENCE_RATE_CONTRACT_SCHEMA_VERSION = 1
+REFERENCE_RATE_FEATURE_FINGERPRINT = canonical_fingerprint(
+    {
+        "contract_schema_version": REFERENCE_RATE_CONTRACT_SCHEMA_VERSION,
+        "feature_id": REFERENCE_RATE_FEATURE_ID,
+        "revision": REFERENCE_RATE_FEATURE_REVISION,
+        "tables": (
+            "reference_rate_definition",
+            "reference_rate_import_manifest",
+            "reference_rate_observation",
+            "reference_rate_source",
+        ),
+    }
+)
 _ISIN = re.compile(r"^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
 _APPROVED_DERIVATION_STATUSES = frozenset({
     "APPROVED_DIRECT_OCCURRENCE",
@@ -113,6 +129,7 @@ def initialize_schema(connection: sqlite3.Connection) -> None:
             connection.execute(statement)
         connection.execute("INSERT INTO schema_version (singleton, version) VALUES (1, ?)", (SCHEMA_VERSION,))
         _insert_constructed_portfolio_feature_marker(connection)
+        _insert_reference_rate_feature_marker(connection)
         connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     validate_schema(connection)
 
@@ -168,6 +185,28 @@ def upgrade_schema_v3_constructed_portfolio_extension(
     validate_schema(connection)
 
 
+def upgrade_schema_v3_reference_rate_extension(connection: sqlite3.Connection) -> None:
+    """Install the additive reference-rate evidence schema without ingesting data."""
+    if detect_schema_version(connection) != SCHEMA_VERSION:
+        raise SchemaVersionError("reference-rate extension requires recognized schema v3")
+    names = {
+        str(row[0])
+        for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    if "schema_feature_contract" not in names:
+        raise SchemaVersionError("reference-rate extension requires schema feature contracts")
+    present = _REFERENCE_RATE_TABLES & names
+    if present and present != _REFERENCE_RATE_TABLES:
+        raise SchemaVersionError("reference-rate schema feature is partially installed")
+    with transaction(connection):
+        if not present:
+            for statement in _REFERENCE_RATE_SCHEMA_SQL.split(";"):
+                if statement.strip():
+                    connection.execute(statement)
+        _insert_reference_rate_feature_marker(connection)
+    validate_schema(connection)
+
+
 def validate_schema(connection: sqlite3.Connection) -> None:
     """Fail closed on a missing table, integrity error, or FK violation."""
     enable_foreign_keys(connection)
@@ -192,6 +231,7 @@ def validate_schema(connection: sqlite3.Connection) -> None:
         (CONSTRUCTED_PORTFOLIO_FEATURE_REVISION, CONSTRUCTED_PORTFOLIO_FEATURE_FINGERPRINT)
     ]:
         raise SchemaVersionError("constructed-portfolio schema feature marker is missing or stale")
+    _validate_reference_rate_feature_if_present(connection, names)
     integrity = tuple(str(row[0]) for row in connection.execute("PRAGMA integrity_check"))
     if integrity != ("ok",):
         raise SchemaVersionError("integrity_check did not return ok")
@@ -361,6 +401,44 @@ def _insert_constructed_portfolio_feature_marker(
     )
 
 
+def _insert_reference_rate_feature_marker(connection: sqlite3.Connection) -> None:
+    existing = connection.execute(
+        """SELECT revision, contract_fingerprint
+           FROM schema_feature_contract WHERE feature_id=?""",
+        (REFERENCE_RATE_FEATURE_ID,),
+    ).fetchall()
+    expected = (REFERENCE_RATE_FEATURE_REVISION, REFERENCE_RATE_FEATURE_FINGERPRINT)
+    if existing:
+        if len(existing) != 1 or tuple(existing[0]) != expected:
+            raise SchemaVersionError("conflicting reference-rate schema feature marker")
+        return
+    connection.execute(
+        """INSERT INTO schema_feature_contract(feature_id, revision, contract_fingerprint)
+           VALUES (?, ?, ?)""",
+        (REFERENCE_RATE_FEATURE_ID, *expected),
+    )
+
+
+def _validate_reference_rate_feature_if_present(
+    connection: sqlite3.Connection,
+    names: set[str],
+) -> None:
+    marker = connection.execute(
+        """SELECT revision, contract_fingerprint
+           FROM schema_feature_contract WHERE feature_id=?""",
+        (REFERENCE_RATE_FEATURE_ID,),
+    ).fetchall()
+    present = _REFERENCE_RATE_TABLES & names
+    if not present and not marker:
+        return
+    if present != _REFERENCE_RATE_TABLES:
+        raise SchemaVersionError("reference-rate schema feature is partially installed")
+    if [tuple(row) for row in marker] != [
+        (REFERENCE_RATE_FEATURE_REVISION, REFERENCE_RATE_FEATURE_FINGERPRINT)
+    ]:
+        raise SchemaVersionError("reference-rate schema feature marker is missing or stale")
+
+
 _REQUIRED_TABLES = frozenset({
     "schema_version", "source_file", "source_sheet", "instrument", "instrument_alias",
     "portfolio", "portfolio_snapshot", "portfolio_holding_source_occurrence",
@@ -369,6 +447,13 @@ _REQUIRED_TABLES = frozenset({
     "shortlist_entry", "shortlist_entry_source_occurrence", "shortlist_entry_lineage", "migration_build_manifest", "instrument_nav_observation",
     "schema_feature_contract", "constructed_portfolio_metadata",
     "constructed_portfolio_holding_lineage",
+})
+
+_REFERENCE_RATE_TABLES = frozenset({
+    "reference_rate_definition",
+    "reference_rate_import_manifest",
+    "reference_rate_observation",
+    "reference_rate_source",
 })
 
 _SOURCE_OCCURRENCE_IMMUTABILITY_STATEMENTS = (
@@ -695,4 +780,129 @@ ON constructed_portfolio_holding_lineage(shortlist_entry_id);
 """
 
 
-_SCHEMA_SQL = _BASE_SCHEMA_SQL + _CONSTRUCTED_PORTFOLIO_SCHEMA_SQL
+_REFERENCE_RATE_SCHEMA_SQL = """
+CREATE TABLE reference_rate_definition (
+    reference_rate_definition_id INTEGER PRIMARY KEY,
+    contract_schema_version INTEGER NOT NULL
+        CHECK(contract_schema_version = 1),
+    benchmark_id TEXT NOT NULL CHECK(length(trim(benchmark_id)) > 0),
+    benchmark_name TEXT NOT NULL CHECK(length(trim(benchmark_name)) > 0),
+    currency_code TEXT NOT NULL CHECK(currency_code IN ('EUR', 'USD', 'HUF')),
+    administrator TEXT NOT NULL CHECK(length(trim(administrator)) > 0),
+    series_identifier TEXT NOT NULL CHECK(length(trim(series_identifier)) > 0),
+    rate_units TEXT NOT NULL CHECK(rate_units = 'PERCENT_PER_ANNUM'),
+    day_count_convention TEXT NOT NULL CHECK(length(trim(day_count_convention)) > 0),
+    compounding_convention TEXT NOT NULL CHECK(length(trim(compounding_convention)) > 0),
+    definition_version TEXT NOT NULL CHECK(length(trim(definition_version)) > 0),
+    definition_fingerprint TEXT NOT NULL UNIQUE
+        CHECK(length(definition_fingerprint) = 64
+              AND definition_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    UNIQUE(benchmark_id, definition_version)
+);
+
+CREATE TABLE reference_rate_source (
+    reference_rate_source_id INTEGER PRIMARY KEY,
+    reference_rate_definition_id INTEGER NOT NULL
+        REFERENCES reference_rate_definition(reference_rate_definition_id) ON DELETE RESTRICT,
+    source_code TEXT NOT NULL CHECK(length(trim(source_code)) > 0),
+    source_organization TEXT NOT NULL CHECK(length(trim(source_organization)) > 0),
+    official_page_url TEXT NOT NULL CHECK(length(trim(official_page_url)) > 0),
+    machine_readable_url TEXT NOT NULL CHECK(length(trim(machine_readable_url)) > 0),
+    response_format TEXT NOT NULL CHECK(length(trim(response_format)) > 0),
+    source_role TEXT NOT NULL CHECK(source_role IN ('OFFICIAL_ADMINISTRATOR', 'OFFICIAL_PLATFORM')),
+    authentication_requirement TEXT NOT NULL
+        CHECK(authentication_requirement IN ('NONE', 'REQUIRED')),
+    automated_use_status TEXT NOT NULL
+        CHECK(automated_use_status IN ('NOT_REVIEWED', 'PERMITTED', 'PROHIBITED')),
+    licensing_reference TEXT NOT NULL CHECK(length(trim(licensing_reference)) > 0),
+    raw_retention_status TEXT NOT NULL
+        CHECK(raw_retention_status IN ('NOT_REVIEWED', 'PERMITTED', 'PROHIBITED')),
+    source_contract_fingerprint TEXT NOT NULL UNIQUE
+        CHECK(length(source_contract_fingerprint) = 64
+              AND source_contract_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    UNIQUE(reference_rate_source_id, reference_rate_definition_id),
+    UNIQUE(reference_rate_definition_id, source_code)
+);
+
+CREATE TABLE reference_rate_import_manifest (
+    reference_rate_import_manifest_id INTEGER PRIMARY KEY,
+    reference_rate_source_id INTEGER NOT NULL,
+    reference_rate_definition_id INTEGER NOT NULL,
+    retrieval_timestamp TEXT NOT NULL CHECK(length(trim(retrieval_timestamp)) > 0),
+    request_url TEXT NOT NULL CHECK(length(trim(request_url)) > 0),
+    request_parameters_json TEXT NOT NULL CHECK(length(trim(request_parameters_json)) > 0),
+    response_content_type TEXT NOT NULL CHECK(length(trim(response_content_type)) > 0),
+    http_status INTEGER NOT NULL CHECK(http_status = 200),
+    raw_artifact_reference TEXT NOT NULL CHECK(length(trim(raw_artifact_reference)) > 0),
+    raw_artifact_sha256 TEXT NOT NULL
+        CHECK(length(raw_artifact_sha256) = 64
+              AND raw_artifact_sha256 NOT GLOB '*[^0-9a-f]*'),
+    provider_dataset_version TEXT NOT NULL CHECK(length(trim(provider_dataset_version)) > 0),
+    import_status TEXT NOT NULL
+        CHECK(import_status IN ('VALIDATED_ADMITTED', 'VALIDATED_REJECTED')),
+    dataset_fingerprint TEXT NOT NULL
+        CHECK(length(dataset_fingerprint) = 64
+              AND dataset_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    FOREIGN KEY(reference_rate_source_id, reference_rate_definition_id)
+        REFERENCES reference_rate_source(
+            reference_rate_source_id, reference_rate_definition_id
+        ) ON DELETE RESTRICT,
+    UNIQUE(reference_rate_import_manifest_id, reference_rate_source_id,
+           reference_rate_definition_id),
+    UNIQUE(reference_rate_source_id, raw_artifact_sha256, provider_dataset_version)
+);
+
+CREATE TABLE reference_rate_observation (
+    reference_rate_observation_id INTEGER PRIMARY KEY,
+    reference_rate_definition_id INTEGER NOT NULL,
+    reference_rate_source_id INTEGER NOT NULL,
+    reference_rate_import_manifest_id INTEGER NOT NULL,
+    observation_date TEXT NOT NULL
+        CHECK(length(observation_date) = 10),
+    publication_date TEXT NOT NULL
+        CHECK(length(publication_date) = 10 AND publication_date >= observation_date),
+    rate_decimal TEXT NOT NULL
+        CHECK(typeof(rate_decimal) = 'text'
+              AND length(trim(rate_decimal)) > 0
+              AND rate_decimal = trim(rate_decimal)),
+    provider_revision_id TEXT NOT NULL CHECK(length(trim(provider_revision_id)) > 0),
+    revision_sequence INTEGER NOT NULL CHECK(revision_sequence > 0),
+    supersedes_observation_id INTEGER NULL
+        REFERENCES reference_rate_observation(reference_rate_observation_id) ON DELETE RESTRICT,
+    is_current INTEGER NOT NULL CHECK(is_current IN (0, 1)),
+    quality_status TEXT NOT NULL CHECK(quality_status = 'ADMITTED_VALIDATED'),
+    observation_fingerprint TEXT NOT NULL UNIQUE
+        CHECK(length(observation_fingerprint) = 64
+              AND observation_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    FOREIGN KEY(reference_rate_import_manifest_id, reference_rate_source_id,
+                reference_rate_definition_id)
+        REFERENCES reference_rate_import_manifest(
+            reference_rate_import_manifest_id, reference_rate_source_id,
+            reference_rate_definition_id
+        ) ON DELETE RESTRICT,
+    FOREIGN KEY(supersedes_observation_id, reference_rate_definition_id,
+                observation_date)
+        REFERENCES reference_rate_observation(
+            reference_rate_observation_id, reference_rate_definition_id,
+            observation_date
+        ) ON DELETE RESTRICT,
+    CHECK((revision_sequence = 1 AND supersedes_observation_id IS NULL)
+          OR (revision_sequence > 1 AND supersedes_observation_id IS NOT NULL)),
+    UNIQUE(reference_rate_observation_id, reference_rate_definition_id,
+           observation_date),
+    UNIQUE(reference_rate_definition_id, observation_date, revision_sequence),
+    UNIQUE(reference_rate_source_id, observation_date, provider_revision_id)
+);
+CREATE UNIQUE INDEX reference_rate_observation_current
+ON reference_rate_observation(reference_rate_definition_id, observation_date)
+WHERE is_current = 1;
+CREATE INDEX reference_rate_observation_date
+ON reference_rate_observation(reference_rate_definition_id, observation_date);
+"""
+
+
+_SCHEMA_SQL = (
+    _BASE_SCHEMA_SQL
+    + _CONSTRUCTED_PORTFOLIO_SCHEMA_SQL
+    + _REFERENCE_RATE_SCHEMA_SQL
+)
