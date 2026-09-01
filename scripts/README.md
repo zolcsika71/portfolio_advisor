@@ -30,6 +30,22 @@ The watcher is event-driven rather than a polling loop. It never fetches a
 provider or admits an outcome; see `ops/launchd/README.md` for installation
 and operational constraints.
 
+## Official reference-rate evidence
+
+| Script | Purpose |
+|---|---|
+| `acquire_ecb_estr.py` | The sole network-capable path: perform one bounded request to the reviewed official ECB €STR endpoint and retain validated content-addressed bytes plus a receipt. |
+| `build_ecb_estr_candidate.py` | Copy the empty Phase A installed database to an explicit disposable target, import retained €STR evidence offline, and reconcile all pre-existing logical data. |
+| `import_ecb_estr_reference_rate.py` | Deterministically import an explicit retained raw/receipt pair into an explicit database target; an identical repeat is a byte-preserving no-op. |
+| `validate_ecb_estr_reference_rate.py` | Validate the admitted Phase B evidence, raw provenance, fingerprints, row contracts, integrity, foreign keys, and zero constructed-portfolio rows read-only. |
+| `validate_reference_rate_schema.py` | Historical Phase A empty-schema validator; use it against an empty Phase A target, not the populated Phase B installed database. |
+
+Automated tests, offline import, candidate construction, and validation never
+contact a provider. Malformed, empty, wrong-series, duplicate, non-versioned
+conflicting, or provenance-inconsistent evidence fails closed and is never
+silently overwritten. The adapter admits only EUR €STR; it does not align
+returns or activate portfolio metrics.
+
 ## Historical evidence and source audits
 
 | Script group | Purpose |

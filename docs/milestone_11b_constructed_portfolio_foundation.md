@@ -75,8 +75,10 @@ candidate fingerprints, SQLite integrity, and foreign keys.
 
 The retained target has 384 reviewed eligible screened instruments but only 16 with admitted NAV.
 The latest admitted observations end on 2026-06-30, which is stale for the 2026-08-26 construction
-date. Official €STR/SOFR/HUFONIA observations and methodology metadata have not been ingested, and
-portfolio risk metrics are unavailable. The read-only attempt therefore returns:
+date. Milestone 11C Phase B subsequently admits official EUR €STR observations, but does not
+change the runtime readiness flags: benchmark alignment and portfolio metrics remain
+unimplemented, while SOFR and HUFONIA remain absent. The read-only attempt therefore still
+returns:
 
 ```text
 IMPLEMENTED_BLOCKED_BY_DATA
@@ -88,8 +90,9 @@ UNAVAILABLE_PORTFOLIO_RISK_METRICS
 ```
 
 It creates zero constructed portfolios, snapshots, holdings, cash rows, metadata rows, or lineage
-rows. No policy, NAV, reference-rate, source, LTIA, Graphify, prospective, or workbook evidence is
-changed.
+rows. The Milestone 11B checkpoint changed no policy, NAV, reference-rate, source, LTIA, Graphify,
+prospective, or workbook evidence. Phase B later changed only the derived reference-rate evidence
+tables and still leaves all production constructed-portfolio counts at zero.
 
 ## Validation and remaining boundary
 
@@ -99,7 +102,7 @@ tampered rows, verifies 80/20 and lineage, and emits deterministic privacy-safe 
 Milestone 11 instrument-screening and Milestone 12 model-versus-instrument APIs remain deprecated
 and import-compatible; neither is advertised as roadmap-complete construction or comparison.
 
-Milestone 11C still requires current admitted constituent NAV, official reference-rate ingestion
-with methodology metadata, aligned portfolio return series, portfolio volatility, maximum drawdown,
-supported risk-adjusted metrics, and shortlist-portfolio ranking. Roadmap Milestones 11 and 12,
-Milestone 13, and production cutover remain NO-GO.
+Milestone 11C still requires current admitted constituent NAV, SOFR and HUFONIA ingestion,
+governed benchmark alignment, aligned portfolio return series, portfolio volatility, maximum
+drawdown, supported risk-adjusted metrics, and shortlist-portfolio ranking. Roadmap Milestones 11
+and 12, Milestone 13, and production cutover remain NO-GO.

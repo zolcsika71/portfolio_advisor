@@ -1,7 +1,7 @@
 """Immutable, exact reference-rate evidence contracts.
 
-These types validate evidence supplied by a future provider adapter. They do
-not fetch, parse, persist, align, compound, or calculate financial values.
+These types validate evidence supplied by reviewed provider adapters. They do
+not align, compound, or calculate financial values.
 """
 
 from __future__ import annotations
@@ -257,7 +257,7 @@ class ReferenceRateObservation:
         if not isinstance(self.rate, Decimal) or not self.rate.is_finite():
             raise ReferenceRateContractError("rate must be a finite exact Decimal")
         _text(self.provider_revision_id, "provider_revision_id")
-        if isinstance(self.revision_sequence, bool) or self.revision_sequence < 1:
+        if type(self.revision_sequence) is not int or self.revision_sequence < 1:
             raise ReferenceRateContractError("revision_sequence must be a positive integer")
         if self.revision_sequence == 1 and self.supersedes_observation_fingerprint is not None:
             raise ReferenceRateContractError("initial observation cannot supersede another revision")
@@ -275,10 +275,12 @@ class ReferenceRateObservation:
 
     @property
     def rate_decimal(self) -> str:
-        normalized = self.rate.normalize()
-        if normalized == 0:
+        rendered = format(self.rate, "f")
+        if "." in rendered:
+            rendered = rendered.rstrip("0").rstrip(".")
+        if rendered in {"-0", ""}:
             return "0"
-        return format(normalized, "f")
+        return rendered
 
     def canonical_payload(self) -> dict[str, object]:
         return {
@@ -295,9 +297,15 @@ class ReferenceRateObservation:
             "supersedes_observation_fingerprint": self.supersedes_observation_fingerprint,
         }
 
+    def fingerprint_payload(self) -> dict[str, object]:
+        """Return immutable evidence identity, excluding the derived current projection."""
+        payload = self.canonical_payload()
+        del payload["is_current"]
+        return payload
+
     @property
     def fingerprint(self) -> str:
-        return canonical_fingerprint(self.canonical_payload())
+        return canonical_fingerprint(self.fingerprint_payload())
 
 
 def validate_policy_binding(

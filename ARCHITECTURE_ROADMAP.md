@@ -65,7 +65,7 @@ roadmap completion or production readiness.
 ## 1.2 Verified implementation status
 
 This status is grounded in repository history, versioned contracts and the installed schema-v3
-validators as of commit `37d9e0c2a9f57de1837a8d7a43aab54f9ef38772`.
+validators through the Milestone 11C Phase B release.
 
 | Checkpoint | State | Verified boundary |
 | --- | --- | --- |
@@ -73,7 +73,8 @@ validators as of commit `37d9e0c2a9f57de1837a8d7a43aab54f9ef38772`.
 | Milestone 11A — construction-policy approval | `COMPLETED` | Commit `ea3406c2df38a3b7a274c7507cb174950149b7d3`; reviewed policy only. |
 | Milestone 11B — constructed-portfolio domain and schema | `COMPLETED` | Commit `0aa7cf12a7ef5bead07b0753b2229909fb8e2373`; allocation, schema, lineage and persistence foundation. |
 | Milestone 11C Phase A — reference-rate schema foundation | `COMPLETED` | Commit `37d9e0c2a9f57de1837a8d7a43aab54f9ef38772`; empty evidence schema and immutable contracts. |
-| Overall roadmap-compliant Milestone 11 | `BLOCKED_BY_DATA` | Current admitted NAV and official reference-rate evidence cannot produce a governed real candidate or portfolio metrics. |
+| Milestone 11C Phase B — ECB €STR evidence | `COMPLETED` | Exact official EUR history, immutable raw provenance, offline import and read-only validation; no metric activation. |
+| Overall roadmap-compliant Milestone 11 | `BLOCKED_BY_DATA` | EUR €STR evidence is admitted, but current NAV, remaining currency benchmarks, alignment and portfolio analytics cannot produce a governed real candidate. |
 | Roadmap-compliant Milestone 12 | `BLOCKED_BY_DATA` | No real persisted `SHORTLIST_FINALIST` exists for portfolio-to-portfolio comparison. |
 | Milestone 13 | `PLANNED` / `NO-GO` | Dividend evidence work remains deferred. |
 | Production cutover | `NOT_AUTHORIZED` | No checkpoint authorizes production cutover. |
@@ -488,9 +489,36 @@ revision rather than overwriting it, and admission must apply a governed as-of c
 sources, manifests and observations remain linked by genuine foreign keys so evidence cannot cross
 benchmark or source identity.
 
-All four installed production reference-rate tables currently contain zero rows. This feature
-proves only the storage and contract foundation; reference-rate runtime admission, alignment,
-Sharpe and Sortino remain unavailable.
+Milestone 11C Phase B admits the official ECB series below:
+
+```text
+dataflow:             ECB:EST(1.0)
+data structure:       ECB:ECB_EST1(1.0)
+series key:           B.EU000A2X2A25.WT
+full series identity: EST.B.EU000A2X2A25.WT
+benchmark ISIN:       EU000A2X2A25
+frequency:            business-daily
+unit:                 percent per annum, multiplier 0, three decimals
+official day count:   ACT/360
+daily accrual:        simple overnight; the daily series is not a compounded index
+```
+
+The reviewed machine endpoint is
+`https://data-api.ecb.europa.eu/service/data/ECB,EST,1.0/B.EU000A2X2A25.WT`
+with `detail=full`, `format=csvdata` and `includeHistory=true`. The retained HTTP 200 CSV is
+618,988 bytes with SHA-256
+`e9c8c20cde58d7805fec11851f180fdd44e5354b61562a294b6a49492b7474d8`.
+It contains 1,771 admitted dates/provider versions from `2019-10-01` through `2026-08-31`.
+`TIME_PERIOD` remains the observation date; timezone-qualified `VALID_FROM` supplies provider
+revision identity and publication availability, while `VALID_TO` supplies explicit supersession.
+
+Installed production row counts are one definition, one source, one import manifest and 1,771
+observations. Dataset fingerprint
+`99a1a2ff837688bb78fd0b81cbef1ef64f27f1cab36cc2acdb0ded5026cc534e` binds the parsed
+history. The raw bytes and request/retrieval receipt remain immutable local evidence. Exact repeat
+import is a no-op; malformed, missing, wrong-series, duplicate or conflicting evidence fails
+closed. Reference-rate runtime admission, benchmark alignment, cash-return treatment, Sharpe and
+Sortino remain unavailable.
 
 ---
 
@@ -1422,6 +1450,9 @@ The 20% cash sleeve does not imply a benchmark return or any other cash return. 
 treatment is a separate governed policy decision and must not be inferred from the Sharpe/Sortino
 reference series.
 
+Official EUR €STR evidence is now admitted through Phase B, but admission does not prove the
+future alignment or portfolio calculation contracts. SOFR and HUFONIA remain absent.
+
 ---
 
 # 36. Current LTIA investments
@@ -2028,7 +2059,9 @@ category, NAV, currency, benchmark or methodology evidence fails closed. Officia
 reference-rate evidence is required before Sharpe or Sortino can participate in portfolio ranking.
 
 The machinery is implemented, but the current production runtime is
-`IMPLEMENTED_BLOCKED_BY_DATA`. Production contains zero constructed portfolio candidates.
+`IMPLEMENTED_BLOCKED_BY_DATA`. EUR €STR evidence is admitted, but governed alignment and
+portfolio metrics are not implemented, SOFR/HUFONIA are absent, and retained NAV is insufficient
+and stale. Production contains zero constructed portfolio candidates.
 
 ---
 
@@ -3183,7 +3216,7 @@ Implementation is divided into traceable checkpoints:
 ```text
 reason:        implementation and source-readiness evidence exposed separate policy, schema,
                benchmark-ingestion, NAV-provenance and portfolio-metric gates
-prerequisite:  retain completed 11A, 11B and 11C Phase A contracts and forward history
+prerequisite:  retain completed 11A, 11B and prior 11C contracts and forward history
 replacement:   replace the former single broad Milestone 11 step with checkpoints 11A, 11B
                and 11C Phases A–F below
 current status: overall Milestone 11 is BLOCKED_BY_DATA
@@ -3194,8 +3227,8 @@ current status: overall Milestone 11 is BLOCKED_BY_DATA
 | Milestone 11A — construction-policy approval | `COMPLETED` | Reviewed immutable construction contract; commit `ea3406c2df38a3b7a274c7507cb174950149b7d3`. |
 | Milestone 11B — construction domain and schema | `COMPLETED` | Deterministic allocation engine, normalized domain, lineage and idempotent persistence foundation; commit `0aa7cf12a7ef5bead07b0753b2229909fb8e2373`. |
 | Milestone 11C Phase A — reference-rate schema foundation | `COMPLETED` | Empty official-rate evidence schema, contracts, copy-on-write migration and read-only validator; commit `37d9e0c2a9f57de1837a8d7a43aab54f9ef38772`. |
-| Milestone 11C Phase B — ECB €STR adapter | `PLANNED` — next | Admit official EUR benchmark evidence under the Phase A contract. |
-| Milestone 11C Phase C — NY Fed SOFR adapter | `PLANNED` | Admit official USD benchmark evidence. |
+| Milestone 11C Phase B — ECB €STR adapter | `COMPLETED` | Official EUR history, immutable raw/receipt provenance, exact offline import, idempotency and read-only validation. |
+| Milestone 11C Phase C — NY Fed SOFR adapter | `PLANNED` — next | Admit official USD benchmark evidence. |
 | Milestone 11C Phase D — MNB HUFONIA adapter | `PLANNED` | Admit official HUF benchmark evidence. |
 | Milestone 11C Phase E — NAV provenance upgrade and EUR/HUF refresh | `PLANNED` | Add complete raw-source/manifests/revision provenance and refresh the smallest feasible exact-share-class universes. |
 | Milestone 11C Phase F — aligned portfolio analytics and real finalist | `PLANNED` | Governed aligned returns, covariance-aware portfolio metrics, runtime construction, real-candidate persistence, ranking and `SHORTLIST_FINALIST` selection. |
@@ -3444,17 +3477,17 @@ Do not combine terminology migration with unrelated ranking or construction chan
 The next engineering milestone is:
 
 ```text
-MILESTONE 11C PHASE B
-ECB €STR ADAPTER
+MILESTONE 11C PHASE C
+NEW YORK FED SOFR ADAPTER
 ```
 
-This checkpoint is authorized to begin only as a bounded official-EUR reference-rate ingestion
-path. Its scope is:
+Phase B is completed forward history. Phase C may begin only as a bounded official-USD
+reference-rate ingestion path. Its scope is:
 
 ```text
-A. official ECB endpoint only
+A. official Federal Reserve Bank of New York endpoint only
 
-B. exact €STR benchmark and series identity
+B. exact SOFR benchmark and series identity
 
 C. immutable raw-response retention with SHA-256
 
@@ -3477,8 +3510,8 @@ K. complete source, schema, integrity, foreign-key and logical-preservation vali
 ```
 
 This checkpoint must not change NAV evidence, calculate portfolio metrics, activate Sharpe or
-Sortino, construct a production portfolio, or authorize production cutover. ECB implementation is
-not part of this roadmap-documentation checkpoint.
+Sortino, construct a production portfolio, or authorize production cutover. It must preserve the
+completed ECB evidence unchanged and apply the same candidate-first, fail-closed release boundary.
 
 ---
 

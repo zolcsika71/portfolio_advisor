@@ -1,12 +1,12 @@
-# Milestone 11C — Reference-rate schema and contract foundation
+# Milestone 11C Phase A — Reference-rate schema and contract foundation
 
-This bounded foundation defines how official €STR, SOFR, and HUFONIA evidence can later be
-represented. It performs no network acquisition, ingestion, benchmark alignment, compounding,
-portfolio calculation, production database migration, or runtime enablement.
+This bounded Phase A foundation defined how official €STR, SOFR, and HUFONIA evidence could later
+be represented. At completion it performed no network acquisition, ingestion, benchmark alignment,
+compounding, portfolio calculation, or runtime enablement.
 
-Production remains `IMPLEMENTED_BLOCKED_BY_DATA` and `NOT_AUTHORIZED`. The installed derived
-database may receive only the validated additive feature at the authorized Phase A release
-checkpoint; retained source databases and financial observations remain unchanged.
+Phase B subsequently admitted one official ECB €STR history artifact without changing this schema
+contract. See [Milestone 11C Phase B](milestone_11c_phase_b_ecb_estr_ingestion.md). Production
+remains `IMPLEMENTED_BLOCKED_BY_DATA` and `NOT_AUTHORIZED`.
 
 ## Immutable domain contracts
 
@@ -28,7 +28,7 @@ the benchmark name, administrator, currency, and official page to match the revi
 
 ## Additive schema feature
 
-Future from-scratch schema-v3 databases include feature marker
+Phase A from-scratch schema-v3 databases include feature marker
 `MILESTONE_11C_REFERENCE_RATE_EVIDENCE` revision 1 and four empty tables:
 
 - `reference_rate_definition` preserves governed benchmark identity and methodology;
@@ -63,14 +63,14 @@ Installation remains an operator-controlled checkpoint: preserve the installed d
 the repository, atomically replace it only with the validated candidate, and restore the backup if
 any post-installation gate fails. No application code performs migration or cutover implicitly.
 
-`scripts/validate_reference_rate_schema.py` is the read-only installed-state gate. Its canonical
+`scripts/validate_reference_rate_schema.py` was the read-only empty-foundation gate. Its canonical
 JSON verifies the exact from-scratch schema contract, feature marker, integrity, foreign keys, and
-zero rows in all four production reference-rate tables. Repeated runs are byte-identical.
+zero rows in all four production reference-rate tables. Repeated runs are byte-identical. It
+intentionally rejects the populated Phase B target; Phase B has a separate read-only validator.
 
 ## Remaining gates
 
-Before any observation can be admitted, later work must establish and review the exact official
-endpoint, response parser, licence and raw-retention permission, revision behavior, publication
-calendar, missing-value semantics, and official day-count/compounding metadata for each currency.
-After ingestion, separate work is still required for benchmark-to-portfolio-date alignment, Sharpe,
-Sortino, portfolio metrics, ranking, and production cutover.
+Phase B established those source and parser facts for ECB €STR and admitted EUR evidence. SOFR and
+HUFONIA still require their own reviewed adapters. Separate work is still required for
+benchmark-to-portfolio-date alignment, Sharpe, Sortino, portfolio metrics, ranking, and production
+cutover.

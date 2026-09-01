@@ -10,11 +10,11 @@ ranking are typed Python functions controlled by reviewed configuration.
 by default. `--import` retains the workbook-import workflow. The active policy
 is `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1.
 
-Milestone 11B adds the constructed-portfolio domain, deterministic allocation
-engine, additive schema feature, lineage, and transactional persistence. The
-production runtime is `IMPLEMENTED_BLOCKED_BY_DATA`; roadmap-complete portfolio
-metrics/ranking and finalist comparison remain unavailable. Production cutover
-remains `NOT_AUTHORIZED`.
+Milestone 11C Phase B admits one immutable official ECB €STR history artifact
+through the Phase A reference-rate schema. Only EUR benchmark evidence is
+admitted; SOFR, HUFONIA, benchmark alignment, portfolio metrics/ranking, and
+finalist comparison remain unavailable. The construction runtime is
+`IMPLEMENTED_BLOCKED_BY_DATA` and production cutover is `NOT_AUTHORIZED`.
 
 ## Core components
 
@@ -30,6 +30,9 @@ remains `NOT_AUTHORIZED`.
 - `construction/`: deprecated instrument-screening compatibility plus the
   Milestone 11B normalized 80/20 candidate engine, evidence checks, lineage,
   persistence, and read-only foundation audit.
+- `reference_rates/`: immutable benchmark/source/manifest/observation contracts,
+  the explicit official ECB €STR acquisition boundary, deterministic offline
+  import, and read-only evidence validation. Tests never contact a provider.
 - `history/`: provenance-aware constituent history, lifecycle/reconciliation
   evidence, strict resolvability, local source stores, and reconstruction
   governance.
@@ -71,6 +74,10 @@ Their code, tests, deterministic schemas, and validated policy are versioned.
 Do not add credentials, tokens, cookies, private account data, or
 machine-specific paths.
 
+ECB acquisition is always an explicit operator action. Raw response bytes and
+their receipt are immutable local evidence; repeat import and validation are
+offline. No scheduler or ordinary advisor workflow may invoke acquisition.
+
 ## Operational commands
 
 Run from the repository root:
@@ -83,6 +90,9 @@ poetry run python scripts/check_due_prospective_outcomes.py
 poetry run python scripts/audit_prospective_portfolio_validation.py
 poetry run python scripts/process_watched_xls_import.py --dry-run
 poetry run python scripts/initialize_tbsz_portfolio_from_pdfs.py
+poetry run python scripts/acquire_ecb_estr.py
+poetry run python scripts/import_ecb_estr_reference_rate.py --help
+poetry run python scripts/validate_ecb_estr_reference_rate.py --help
 ```
 
 The due-monitor LaunchAgent, when explicitly installed, invokes only the

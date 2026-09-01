@@ -4,8 +4,9 @@ Forward correction: this commit remains valid history, but the implementation be
 singleton instruments. It is deprecated intermediate instrument screening, not the
 roadmap-complete Milestone 11 portfolio constructor. The reviewed construction policy is defined
 by Milestone 11A. Milestone 11B supplies the additive schema, allocation engine, lineage,
-and persistence foundation; production construction remains blocked by incomplete/stale NAV,
-missing official reference-rate evidence, and unavailable portfolio metrics.
+and persistence foundation. Milestone 11C Phase B admits official EUR €STR evidence, but
+production construction remains blocked by incomplete/stale NAV, absent USD/HUF benchmark
+evidence, unimplemented alignment, and unavailable portfolio metrics.
 
 ## Contract
 

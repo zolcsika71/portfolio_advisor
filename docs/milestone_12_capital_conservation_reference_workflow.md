@@ -64,8 +64,9 @@ comparison and outcome-success criteria are `NOT_IMPLEMENTED`. Dividend remains
 The workflow is read-only. It performs no allocation, optimization, cash deployment, FX
 conversion, persistence, brokerage action, suitability determination, outcome tracking, or
 Graphify/LTIA operation. Schema v3 remains objective-neutral. Production cutover remains
-`NOT_AUTHORIZED`. Production construction remains blocked pending current admitted NAV, official
-reference-rate ingestion, and portfolio metrics; historical commits remain valid forward history.
+`NOT_AUTHORIZED`. Phase B admits official EUR €STR evidence, but production construction remains
+blocked pending current admitted NAV, SOFR/HUFONIA where applicable, governed reference-rate
+alignment, and portfolio metrics; historical commits remain valid forward history.
 
 Fail-closed conditions include unknown/dividend objectives, missing or ambiguous active policy,
 capability or fingerprint mismatch, stale source manifests, incompatible/corrupted SQLite,

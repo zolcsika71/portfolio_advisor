@@ -1,4 +1,4 @@
-"""Governed reference-rate evidence contracts; no acquisition or ingestion."""
+"""Governed reference-rate contracts and official ECB €STR evidence adapter."""
 
 from .contracts import (
     REFERENCE_RATE_CONTRACT_SCHEMA_VERSION,
@@ -9,13 +9,48 @@ from .contracts import (
     ReferenceRateSource,
     validate_policy_binding,
 )
+from .ecb_estr import (
+    ECB_ESTR_ADAPTER_SCHEMA_VERSION,
+    ECB_ESTR_BENCHMARK_ID,
+    ECB_ESTR_DATAFLOW,
+    ECB_ESTR_ISIN,
+    ECB_ESTR_MACHINE_URL,
+    ECB_ESTR_SERIES_IDENTIFIER,
+    ECB_ESTR_SERIES_KEY,
+    EcbEstrAcquisitionReceipt,
+    EcbEstrError,
+    EcbEstrImportResult,
+    ParsedEcbEstrDataset,
+    import_ecb_estr_evidence,
+    load_ecb_estr_receipt,
+    parse_ecb_estr_csv,
+    validate_ecb_estr_database,
+)
+from .ecb_estr_acquisition import EcbEstrAcquisitionResult, acquire_ecb_estr
 
 __all__ = [
+    "ECB_ESTR_ADAPTER_SCHEMA_VERSION",
+    "ECB_ESTR_BENCHMARK_ID",
+    "ECB_ESTR_DATAFLOW",
+    "ECB_ESTR_ISIN",
+    "ECB_ESTR_MACHINE_URL",
+    "ECB_ESTR_SERIES_IDENTIFIER",
+    "ECB_ESTR_SERIES_KEY",
     "REFERENCE_RATE_CONTRACT_SCHEMA_VERSION",
+    "EcbEstrAcquisitionReceipt",
+    "EcbEstrAcquisitionResult",
+    "EcbEstrError",
+    "EcbEstrImportResult",
+    "ParsedEcbEstrDataset",
     "ReferenceRateContractError",
     "ReferenceRateDefinition",
     "ReferenceRateImportManifest",
     "ReferenceRateObservation",
     "ReferenceRateSource",
+    "acquire_ecb_estr",
+    "import_ecb_estr_evidence",
+    "load_ecb_estr_receipt",
+    "parse_ecb_estr_csv",
+    "validate_ecb_estr_database",
     "validate_policy_binding",
 ]

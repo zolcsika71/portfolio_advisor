@@ -20,6 +20,7 @@ count diagnostics without printing retained financial values.
 
 | Database | Authoritative schema owner | Schema SQL file | Version model |
 | --- | --- | --- | --- |
+| `portfolio_advisor.sqlite` | `portfolio_advisor.database.schema.v3`, additive Milestone 11B/11C migrations, and their validators | No | `PRAGMA user_version = 3` plus deterministic `schema_feature_contract` markers |
 | `tbsz_portfolio.sqlite` | `portfolio_advisor.tbsz.repository` | No | `PRAGMA user_version`; current version 2 |
 | `model_portfolio.sqlite` | `DB_creation.database_create` and `history.mnb_otc` | No | Source-column contract; incompatible workbook schemas fail closed |
 | `official_historical_nav.sqlite` | `history.official_nav_store` | No | Embedded single-table evidence-store contract |
@@ -38,6 +39,14 @@ schema-only command when required:
 ```bash
 poetry run python scripts/migrate_tbsz_portfolio.py
 ```
+
+The Phase B ECB importer does not change schema. It requires the installed
+`MILESTONE_11C_REFERENCE_RATE_EVIDENCE` feature, builds a disposable database
+with SQLite backup semantics, validates all pre-existing logical values,
+schema fingerprints, integrity and foreign keys, and installs only after a
+verified external backup exists. `validate_ecb_estr_reference_rate.py` is the
+read-only populated-evidence gate. Phase A's empty-schema validator remains a
+historical foundation check and intentionally rejects populated tables.
 
 The other stores have no current detected schema drift. If any of their
 schemas changes, add an explicit component migration contract in its existing

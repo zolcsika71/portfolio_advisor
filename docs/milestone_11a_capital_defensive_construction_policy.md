@@ -83,7 +83,9 @@ portfolio-versus-portfolio comparison. Their historical commits remain valid for
 This document records the 11A boundary at approval time. Milestone 11B subsequently implements
 the schema, deterministic allocation engine, lineage, and persistence foundation without changing
 this artifact or its fingerprint. Production remains blocked by incomplete and stale admitted NAV,
-missing official reference-rate evidence, and unavailable portfolio metrics. Milestone 11A itself
+missing SOFR/HUFONIA and governed benchmark alignment, and unavailable portfolio metrics.
+Milestone 11C Phase B admits official EUR €STR evidence without changing the construction policy
+or activating Sharpe/Sortino. Milestone 11A itself
 performed no allocation, candidate generation, schema migration, NAV/reference-rate ingestion,
 persistence, or portfolio metric calculation.
 Production remains `NOT_AUTHORIZED`.

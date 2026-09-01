@@ -64,6 +64,19 @@ particular, portfolio NAV reconstruction from constituent history remains
 frozen until portfolio-specific allocation, timing, currency, distribution,
 and duplicate-row semantics are proven.
 
+## Official reference-rate boundary
+
+Milestone 11C Phase B admits exact official ECB €STR observations and immutable
+request/raw provenance for EUR. Admission establishes evidence identity only;
+it does not establish a benchmark-to-portfolio-date alignment methodology or
+authorize risk-adjusted portfolio metrics.
+
+Reference-rate values remain exact `Decimal` evidence. Do not forward-fill an
+unknown date, substitute zero or a policy rate, infer holiday applicability,
+use binary floating point, or imply a benchmark return for the cash sleeve.
+Sharpe and Sortino remain `UNAVAILABLE` until reviewed alignment,
+annualization, as-of, revision, and portfolio-return contracts are implemented.
+
 ## Graphify boundary
 
 Graphify may preserve source-backed methodology, constraints, and warnings.
