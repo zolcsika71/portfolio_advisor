@@ -77,9 +77,15 @@ def test_from_scratch_schema_has_complete_reference_rate_contract(tmp_path: Path
         }
         assert {
             "observation_date",
-            "publication_date",
+            "provider_publication_date",
             "rate_decimal",
             "provider_revision_id",
+            "provider_revision_status",
+            "provider_revision_contract_id",
+            "provider_revision_contract_revision_indicator_value",
+            "provider_revision_contract_fingerprint",
+            "availability_basis",
+            "availability_boundary_utc",
             "revision_sequence",
             "supersedes_observation_id",
             "is_current",
@@ -112,7 +118,7 @@ def test_absent_feature_remains_backward_compatible_but_partial_feature_fails(
             "CREATE TABLE reference_rate_definition(reference_rate_definition_id INTEGER PRIMARY KEY)"
         )
         connection.commit()
-        with pytest.raises(SchemaVersionError, match="partially installed"):
+        with pytest.raises(SchemaVersionError, match="partial"):
             validate_schema(connection)
 
 
@@ -122,14 +128,14 @@ def test_reference_rate_foreign_keys_and_current_revision_uniqueness(tmp_path: P
         initialize_schema(connection)
         connection.execute(
             """INSERT INTO reference_rate_definition VALUES
-               (1, 1, 'ESTR', '€STR', 'EUR', 'European Central Bank',
+               (1, 2, 'ESTR', '€STR', 'EUR', 'European Central Bank',
                 'EST.B.EU000A2X2A25.WT', 'PERCENT_PER_ANNUM', 'ACT_360',
                 'OFFICIAL_OVERNIGHT_DAILY_COMPOUNDING', '1.0.0', ?)""",
             ("a" * 64,),
         )
         connection.execute(
             """INSERT INTO reference_rate_definition VALUES
-               (2, 1, 'ESTR', '€STR', 'EUR', 'European Central Bank',
+               (2, 2, 'ESTR', '€STR', 'EUR', 'European Central Bank',
                 'EST.B.EU000A2X2A25.WT', 'PERCENT_PER_ANNUM', 'ACT_360',
                 'OFFICIAL_OVERNIGHT_DAILY_COMPOUNDING', '2.0.0', ?)""",
             ("9" * 64,),
@@ -143,24 +149,76 @@ def test_reference_rate_foreign_keys_and_current_revision_uniqueness(tmp_path: P
             ("b" * 64,),
         )
         connection.execute(
-            """INSERT INTO reference_rate_import_manifest VALUES
-               (1, 1, 1, '2026-09-01T12:00:00Z', 'https://data-api.ecb.europa.eu/estr',
-                '{}', 'text/csv', 200, 'data/raw/reference_rates/estr.csv', ?,
-                '2026-09-01', 'VALIDATED_ADMITTED', ?)""",
-            ("c" * 64, "d" * 64),
+            """INSERT INTO reference_rate_import_manifest (
+                   reference_rate_import_manifest_id, provenance_contract_version,
+                   reference_rate_source_id, reference_rate_definition_id,
+                   retrieval_timestamp, request_url, request_parameters_json,
+                   response_content_type, http_status, raw_artifact_reference,
+                   raw_artifact_sha256, provider_dataset_version,
+                   provider_dataset_version_source_field,
+                   internal_evidence_identity_scheme, internal_evidence_identity,
+                   import_status, dataset_fingerprint, manifest_fingerprint
+               ) VALUES (1, 2, 1, 1, '2026-09-01T12:00:00+00:00',
+                         'https://data-api.ecb.europa.eu/estr', '{}', 'text/csv', 200,
+                         'data/raw/reference_rates/estr.csv', ?, NULL, NULL,
+                         'SYSTEM_CANONICAL_ARTIFACT_V1', ?,
+                         'VALIDATED_ADMITTED', ?, ?)""",
+            ("c" * 64, "d" * 64, "e" * 64, "f" * 64),
         )
         connection.execute(
-            """INSERT INTO reference_rate_observation VALUES
-               (1, 1, 1, 1, '2026-08-31', '2026-09-01', '2.188', 'STANDARD',
-                1, NULL, 1, 'ADMITTED_VALIDATED', ?)""",
-            ("e" * 64,),
+            """INSERT INTO reference_rate_observation (
+                   reference_rate_observation_id, provenance_contract_version,
+                   reference_rate_definition_id, reference_rate_source_id,
+                   reference_rate_import_manifest_id, observation_date,
+                   provider_publication_date, rate_decimal, provider_revision_id,
+                   provider_revision_id_source_field, provider_revision_indicator,
+                   provider_revision_indicator_source_field, provider_revision_status,
+                   provider_revision_contract_id, provider_revision_contract_version,
+                   provider_revision_contract_revision_indicator_value,
+                   provider_revision_contract_authoritative_reference,
+                   provider_revision_contract_fingerprint,
+                   provider_publication_value, provider_publication_value_kind,
+                   provider_publication_source_field, availability_basis,
+                   availability_boundary_utc, availability_derivation_rule_id,
+                   availability_derivation_rule_version, availability_policy_reference,
+                   availability_calendar_id, availability_calendar_version,
+                   availability_calendar_fingerprint, revision_sequence,
+                   supersedes_observation_id, is_current, quality_status,
+                   observation_fingerprint
+               ) VALUES (1, 2, 1, 1, 1, '2026-08-31', NULL, '2.188', NULL,
+                         NULL, NULL, NULL, 'PROVIDER_REVISION_FIELD_NOT_SUPPLIED',
+                         NULL, NULL, NULL, NULL, NULL,
+                         NULL, NULL, NULL, 'RETRIEVAL_BOUND',
+                         '2026-09-01T12:00:00.000000Z', NULL, NULL, NULL, NULL,
+                         NULL, NULL, 1, NULL, 1, 'ADMITTED_VALIDATED', ?)""",
+            ("1" * 64,),
         )
         with pytest.raises(sqlite3.IntegrityError):
             connection.execute(
-                """INSERT INTO reference_rate_observation VALUES
-                   (2, 1, 1, 1, '2026-08-31', '2026-09-01', '2.189', 'REVISED',
-                    2, 1, 1, 'ADMITTED_VALIDATED', ?)""",
-                ("f" * 64,),
+                """INSERT INTO reference_rate_observation
+                   SELECT 2, provenance_contract_version, reference_rate_definition_id,
+                          reference_rate_source_id, reference_rate_import_manifest_id,
+                          observation_date, provider_publication_date, '2.189',
+                          provider_revision_id, provider_revision_id_source_field,
+                          provider_revision_indicator,
+                          provider_revision_indicator_source_field,
+                          provider_revision_status,
+                          provider_revision_contract_id,
+                          provider_revision_contract_version,
+                          provider_revision_contract_revision_indicator_value,
+                          provider_revision_contract_authoritative_reference,
+                          provider_revision_contract_fingerprint,
+                          provider_publication_value,
+                          provider_publication_value_kind,
+                          provider_publication_source_field, availability_basis,
+                          availability_boundary_utc, availability_derivation_rule_id,
+                          availability_derivation_rule_version,
+                          availability_policy_reference, availability_calendar_id,
+                          availability_calendar_version,
+                          availability_calendar_fingerprint, 2, 1, 1,
+                          quality_status, ?
+                   FROM reference_rate_observation WHERE reference_rate_observation_id=1""",
+                ("2" * 64,),
             )
         with pytest.raises(sqlite3.IntegrityError):
             connection.execute(
@@ -187,7 +245,7 @@ def test_disposable_migration_preserves_all_preexisting_content(tmp_path: Path) 
         assert migrated.execute("PRAGMA foreign_key_check").fetchall() == []
 
 
-def test_read_only_foundation_audit_is_deterministic_and_requires_empty_rows(
+def test_read_only_foundation_audit_is_deterministic_and_allows_populated_rows(
     tmp_path: Path,
 ) -> None:
     target = tmp_path / "foundation.sqlite"
@@ -204,14 +262,15 @@ def test_read_only_foundation_audit_is_deterministic_and_requires_empty_rows(
     with connect(target) as connection:
         connection.execute(
             """INSERT INTO reference_rate_definition VALUES
-               (1, 1, 'ESTR', '€STR', 'EUR', 'European Central Bank',
+               (1, 2, 'ESTR', '€STR', 'EUR', 'European Central Bank',
                 'EST.B.EU000A2X2A25.WT', 'PERCENT_PER_ANNUM', 'ACT_360',
                 'OFFICIAL_OVERNIGHT_DAILY_COMPOUNDING', '1.0.0', ?)""",
             ("a" * 64,),
         )
         connection.commit()
-    with pytest.raises(ReferenceRateMigrationError, match="zero evidence rows"):
-        validate_reference_rate_schema_foundation(target)
+    populated = validate_reference_rate_schema_foundation(target)
+    assert populated["status"] == "PASS"
+    assert populated["evidence_status"] == "PRESENT"
 
 
 def test_candidate_builder_rejects_installed_or_existing_target(tmp_path: Path) -> None:

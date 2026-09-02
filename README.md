@@ -21,7 +21,8 @@ source-backed methodology, constraints, and explainability.
 - Actual TBSZ evidence is separate from the model portfolio, remains local,
   and never submits brokerage orders.
 - One official ECB €STR history artifact is admitted as exact EUR
-  reference-rate evidence. It does not activate benchmark alignment,
+  reference-rate evidence under provider-neutral provenance contract v2. SOFR
+  remains unadmitted and HUFONIA remains pending. Phase C0 does not activate benchmark alignment,
   Sharpe/Sortino, portfolio construction, trading, or production cutover.
 
 ## Model-portfolio workflow
@@ -110,7 +111,7 @@ the operational commands.
 | `database/model_portfolio.sqlite` | Local snapshot source; never mutated by ranking/backtesting. |
 | `src/portfolio_advisor/ranking/` | Approved policy loading, fail-closed eligibility, normalization, scoring, and stable ranking. |
 | `src/portfolio_advisor/construction/` | Reviewed normalized 80/20 construction domain and persistence foundation; production remains data-blocked. |
-| `src/portfolio_advisor/reference_rates/` | Official ECB €STR acquisition boundary, exact offline parsing/import, immutable provenance, and read-only validation. |
+| `src/portfolio_advisor/reference_rates/` | Provider-neutral v2 provenance, conservative availability boundaries, the official ECB €STR adapter, exact offline migration/import, and read-only validation. |
 | `src/portfolio_advisor/history/` | Provenance-aware source resolution, lifecycle evidence, local official constituent history, and reconstruction freeze. |
 | `src/portfolio_advisor/backtesting/` | Strict forward-window eligibility and canonical metric handling. |
 | `src/portfolio_advisor/features/` | Point-in-time features and explicit official-forward-label availability records. |
@@ -123,7 +124,7 @@ local under `database/` and `data/`; they are deliberately ignored because
 they may be large, provider-controlled, or machine-specific. The code and
 tests that reproduce their deterministic handling are versioned.
 
-See [methodology](docs/methodology.md), [ECB €STR Phase B evidence](docs/milestone_11c_phase_b_ecb_estr_ingestion.md), [historical source rules](docs/historical_nav_sources.md), [backtesting and prospective validation](docs/backtesting.md), [launchd operations](ops/launchd/README.md), and the [script catalog](scripts/README.md).
+See [methodology](docs/methodology.md), [provider-neutral Phase C0 provenance](docs/milestone_11c_phase_c0_reference_rate_provenance_contract.md), [ECB €STR Phase B evidence](docs/milestone_11c_phase_b_ecb_estr_ingestion.md), [historical source rules](docs/historical_nav_sources.md), [backtesting and prospective validation](docs/backtesting.md), [launchd operations](ops/launchd/README.md), and the [script catalog](scripts/README.md).
 
 ## Official ECB €STR evidence operations
 
@@ -142,11 +143,18 @@ files offline and require explicit paths:
 poetry run python scripts/build_ecb_estr_candidate.py --help
 poetry run python scripts/import_ecb_estr_reference_rate.py --help
 poetry run python scripts/validate_ecb_estr_reference_rate.py --help
+poetry run python scripts/migrate_reference_rate_provenance_contract.py --help
+poetry run python scripts/validate_reference_rate_schema.py --help
+poetry run python scripts/validate_reference_rate_provenance.py --help
 ```
 
-Only EUR €STR is admitted. USD SOFR, HUF HUFONIA, benchmark-to-portfolio-date
-alignment, cash-return treatment, Sharpe/Sortino, and real shortlist
-construction remain fail-closed.
+Only EUR €STR is admitted. Phase C0 revised provenance representation without
+acquiring a provider or admitting a benchmark. USD SOFR must be retried as a
+separate Phase C checkpoint; HUF HUFONIA, NAV remediation,
+benchmark-to-portfolio-date alignment, cash-return treatment, Sharpe/Sortino,
+and real shortlist construction remain fail-closed. Milestone 11 remains
+NO-GO; Milestones 12 and 13 remain NO-GO; production cutover remains
+`NOT_AUTHORIZED`.
 
 ## Prospective validation operations
 

@@ -40,13 +40,27 @@ schema-only command when required:
 poetry run python scripts/migrate_tbsz_portfolio.py
 ```
 
-The Phase B ECB importer does not change schema. It requires the installed
-`MILESTONE_11C_REFERENCE_RATE_EVIDENCE` feature, builds a disposable database
-with SQLite backup semantics, validates all pre-existing logical values,
-schema fingerprints, integrity and foreign keys, and installs only after a
-verified external backup exists. `validate_ecb_estr_reference_rate.py` is the
-read-only populated-evidence gate. Phase A's empty-schema validator remains a
-historical foundation check and intentionally rejects populated tables.
+The Phase B ECB importer does not change schema. Phase C0 is the explicit
+copy-on-write exception: it reconstructs the four reference-rate tables from
+exact revision 1 to provider-neutral revision 2 in a disposable candidate,
+using the verified retained ECB artifact to recover raw `OBS_STATUS`. The
+migrator preserves all non-reference logical data and the exact ECB business
+projection, updates the feature marker last, and is byte-identical on v2
+replay. Exact `ABSENT`, `V1`, and `V2` states are recognized; partial, mixed,
+constraint-damaged, index-damaged, or future states fail closed.
+
+```bash
+poetry run python scripts/migrate_reference_rate_provenance_contract.py --help
+poetry run python scripts/validate_reference_rate_schema.py --help
+poetry run python scripts/validate_ecb_estr_reference_rate.py --help
+poetry run python scripts/validate_reference_rate_provenance.py --help
+```
+
+The schema validator now checks the exact current v2 structure whether empty
+or populated. The ECB validator checks the retained official bundle, and the
+complete provenance validator checks every bundle read-only. Installation
+still requires a verified external backup, a fully gated candidate, atomic
+replacement, and immediate rollback on any post-installation failure.
 
 The other stores have no current detected schema drift. If any of their
 schemas changes, add an explicit component migration contract in its existing

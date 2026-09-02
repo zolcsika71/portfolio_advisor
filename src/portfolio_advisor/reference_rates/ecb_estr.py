@@ -23,6 +23,7 @@ from portfolio_advisor.database.schema.v3 import (
     REFERENCE_RATE_FEATURE_FINGERPRINT,
     REFERENCE_RATE_FEATURE_ID,
     REFERENCE_RATE_FEATURE_REVISION,
+    SchemaVersionError,
     connect,
     initialize_schema,
     transaction,
@@ -40,6 +41,9 @@ from .contracts import (
     ReferenceRateObservation,
     ReferenceRateSource,
     canonical_request_parameters,
+    canonical_utc_timestamp,
+    internal_evidence_identity,
+    validate_observation_availability,
     validate_policy_binding,
 )
 
@@ -555,7 +559,7 @@ def import_ecb_estr_evidence(
     observations = _observation_contracts(dataset, source, manifest)
     try:
         with connect(target) as connection:
-            validate_schema(connection)
+            _validate_current_reference_rate_schema(connection)
             _validated_reference_rate_schema_contract(connection)
             existing = _reference_counts(connection)
             if any(existing.values()):
@@ -593,9 +597,9 @@ def import_ecb_estr_evidence(
                     manifest=manifest,
                     observations=observations,
                 )
-                validate_schema(connection)
+                _validate_current_reference_rate_schema(connection)
                 _call_hook(failure_hook, "before_commit")
-    except (sqlite3.Error, ReferenceRateContractError) as error:
+    except (sqlite3.Error, ReferenceRateContractError, SchemaVersionError) as error:
         raise EcbEstrError("ECB €STR persistence failed closed") from error
     inserted_rows = 3 + len(observations)
     return _import_result(
@@ -640,7 +644,7 @@ def validate_ecb_estr_database(
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys=ON")
         connection.execute("PRAGMA query_only=ON")
-        validate_schema(connection)
+        _validate_current_reference_rate_schema(connection)
         schema_contract = _validated_reference_rate_schema_contract(connection)
         _require_existing_bundle(
             connection,
@@ -735,7 +739,18 @@ def _manifest(
     source: ReferenceRateSource,
     dataset: ParsedEcbEstrDataset,
 ) -> ReferenceRateImportManifest:
+    identity = internal_evidence_identity(
+        source_contract_fingerprint=source.fingerprint,
+        retrieval_timestamp=receipt.retrieval_timestamp,
+        request_url=receipt.request_url,
+        request_parameters=receipt.request_parameters,
+        response_content_type=receipt.response_content_type,
+        http_status=receipt.http_status,
+        raw_artifact_reference=receipt.raw_artifact_reference,
+        raw_artifact_sha256=receipt.raw_artifact_sha256,
+    )
     return ReferenceRateImportManifest(
+        provenance_contract_version=REFERENCE_RATE_CONTRACT_SCHEMA_VERSION,
         source_contract_fingerprint=source.fingerprint,
         retrieval_timestamp=receipt.retrieval_timestamp,
         request_url=receipt.request_url,
@@ -745,6 +760,9 @@ def _manifest(
         raw_artifact_reference=receipt.raw_artifact_reference,
         raw_artifact_sha256=receipt.raw_artifact_sha256,
         provider_dataset_version=receipt.last_modified,
+        provider_dataset_version_source_field="HTTP_LAST_MODIFIED",
+        internal_evidence_identity_scheme="SYSTEM_CANONICAL_ARTIFACT_V1",
+        internal_evidence_identity=identity,
         import_status="VALIDATED_ADMITTED",
         dataset_fingerprint=dataset.fingerprint,
     )
@@ -763,18 +781,44 @@ def _observation_contracts(
         sequence = sequence_by_date[version.observation_date]
         predecessor = predecessor_by_date.get(version.observation_date)
         observation = ReferenceRateObservation(
+            provenance_contract_version=REFERENCE_RATE_CONTRACT_SCHEMA_VERSION,
             benchmark_id=ECB_ESTR_BENCHMARK_ID,
             source_contract_fingerprint=source.fingerprint,
             import_manifest_fingerprint=manifest.fingerprint,
             observation_date=version.observation_date,
-            publication_date=version.publication_date,
+            provider_publication_date=version.publication_date,
             rate=version.rate,
             provider_revision_id=version.valid_from,
+            provider_revision_id_source_field="VALID_FROM",
+            provider_revision_indicator=version.observation_status,
+            provider_revision_indicator_source_field="OBS_STATUS",
+            provider_revision_status=(
+                "PROVIDER_EXPLICIT_REVISION"
+                if version.observation_status == "R"
+                else "PROVIDER_EXPLICIT_NO_REVISION"
+            ),
+            provider_revision_contract_id=None,
+            provider_revision_contract_version=None,
+            provider_revision_contract_revision_indicator_value=None,
+            provider_revision_contract_authoritative_reference=None,
+            provider_revision_contract_fingerprint=None,
+            provider_publication_value=version.valid_from,
+            provider_publication_value_kind="TIMESTAMP",
+            provider_publication_source_field="VALID_FROM",
+            availability_basis="PROVIDER_REPORTED",
+            availability_boundary_utc=canonical_utc_timestamp(version.valid_from),
+            availability_derivation_rule_id=None,
+            availability_derivation_rule_version=None,
+            availability_policy_reference=None,
+            availability_calendar_id=None,
+            availability_calendar_version=None,
+            availability_calendar_fingerprint=None,
             revision_sequence=sequence,
             supersedes_observation_fingerprint=predecessor,
             is_current=version.valid_to is None,
             quality_status="ADMITTED_VALIDATED",
         )
+        validate_observation_availability(observation, manifest)
         predecessor_by_date[version.observation_date] = observation.fingerprint
         result.append(observation)
     return tuple(result)
@@ -842,12 +886,16 @@ def _insert_manifest(
 ) -> int:
     cursor = connection.execute(
         """INSERT INTO reference_rate_import_manifest (
-               reference_rate_source_id, reference_rate_definition_id, retrieval_timestamp,
+               provenance_contract_version, reference_rate_source_id,
+               reference_rate_definition_id, retrieval_timestamp,
                request_url, request_parameters_json, response_content_type, http_status,
                raw_artifact_reference, raw_artifact_sha256, provider_dataset_version,
-               import_status, dataset_fingerprint
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               provider_dataset_version_source_field,
+               internal_evidence_identity_scheme, internal_evidence_identity,
+               import_status, dataset_fingerprint, manifest_fingerprint
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
+            item.provenance_contract_version,
             source_id,
             definition_id,
             item.retrieval_timestamp,
@@ -858,8 +906,12 @@ def _insert_manifest(
             item.raw_artifact_reference,
             item.raw_artifact_sha256,
             item.provider_dataset_version,
+            item.provider_dataset_version_source_field,
+            item.internal_evidence_identity_scheme,
+            item.internal_evidence_identity,
             item.import_status,
             item.dataset_fingerprint,
+            item.fingerprint,
         ),
     )
     assert cursor.lastrowid is not None
@@ -884,20 +936,60 @@ def _insert_observations(
         )
         cursor = connection.execute(
             """INSERT INTO reference_rate_observation (
-                   reference_rate_definition_id, reference_rate_source_id,
-                   reference_rate_import_manifest_id, observation_date, publication_date,
-                   rate_decimal, provider_revision_id, revision_sequence,
+                   provenance_contract_version, reference_rate_definition_id,
+                   reference_rate_source_id, reference_rate_import_manifest_id,
+                   observation_date, provider_publication_date, rate_decimal,
+                   provider_revision_id, provider_revision_id_source_field,
+                   provider_revision_indicator, provider_revision_indicator_source_field,
+                   provider_revision_status, provider_revision_contract_id,
+                   provider_revision_contract_version,
+                   provider_revision_contract_revision_indicator_value,
+                   provider_revision_contract_authoritative_reference,
+                   provider_revision_contract_fingerprint, provider_publication_value,
+                   provider_publication_value_kind, provider_publication_source_field,
+                   availability_basis, availability_boundary_utc,
+                   availability_derivation_rule_id,
+                   availability_derivation_rule_version,
+                   availability_policy_reference, availability_calendar_id,
+                   availability_calendar_version, availability_calendar_fingerprint,
+                   revision_sequence,
                    supersedes_observation_id, is_current, quality_status,
                    observation_fingerprint
-               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
+                item.provenance_contract_version,
                 definition_id,
                 source_id,
                 manifest_id,
                 item.observation_date.isoformat(),
-                item.publication_date.isoformat(),
+                (
+                    item.provider_publication_date.isoformat()
+                    if item.provider_publication_date is not None
+                    else None
+                ),
                 item.rate_decimal,
                 item.provider_revision_id,
+                item.provider_revision_id_source_field,
+                item.provider_revision_indicator,
+                item.provider_revision_indicator_source_field,
+                item.provider_revision_status,
+                item.provider_revision_contract_id,
+                item.provider_revision_contract_version,
+                item.provider_revision_contract_revision_indicator_value,
+                item.provider_revision_contract_authoritative_reference,
+                item.provider_revision_contract_fingerprint,
+                item.provider_publication_value,
+                item.provider_publication_value_kind,
+                item.provider_publication_source_field,
+                item.availability_basis,
+                item.availability_boundary_utc,
+                item.availability_derivation_rule_id,
+                item.availability_derivation_rule_version,
+                item.availability_policy_reference,
+                item.availability_calendar_id,
+                item.availability_calendar_version,
+                item.availability_calendar_fingerprint,
                 item.revision_sequence,
                 predecessor_id,
                 int(item.is_current),
@@ -983,6 +1075,9 @@ def _require_existing_bundle(
     manifest_row = manifest_rows[0]
     parameters = _strict_json_string_mapping(str(manifest_row["request_parameters_json"]))
     actual_manifest = ReferenceRateImportManifest(
+        provenance_contract_version=_stored_integer(
+            manifest_row["provenance_contract_version"], "provenance_contract_version"
+        ),
         source_contract_fingerprint=actual_source.fingerprint,
         retrieval_timestamp=str(manifest_row["retrieval_timestamp"]),
         request_url=str(manifest_row["request_url"]),
@@ -991,7 +1086,20 @@ def _require_existing_bundle(
         http_status=_stored_integer(manifest_row["http_status"], "http_status"),
         raw_artifact_reference=str(manifest_row["raw_artifact_reference"]),
         raw_artifact_sha256=str(manifest_row["raw_artifact_sha256"]),
-        provider_dataset_version=str(manifest_row["provider_dataset_version"]),
+        provider_dataset_version=(
+            str(manifest_row["provider_dataset_version"])
+            if manifest_row["provider_dataset_version"] is not None
+            else None
+        ),
+        provider_dataset_version_source_field=(
+            str(manifest_row["provider_dataset_version_source_field"])
+            if manifest_row["provider_dataset_version_source_field"] is not None
+            else None
+        ),
+        internal_evidence_identity_scheme=str(
+            manifest_row["internal_evidence_identity_scheme"]
+        ),
+        internal_evidence_identity=str(manifest_row["internal_evidence_identity"]),
         import_status=str(manifest_row["import_status"]),
         dataset_fingerprint=str(manifest_row["dataset_fingerprint"]),
     )
@@ -1001,6 +1109,7 @@ def _require_existing_bundle(
         or int(manifest_row["reference_rate_definition_id"])
         != int(definition_row["reference_rate_definition_id"])
         or actual_manifest != manifest
+        or str(manifest_row["manifest_fingerprint"]) != actual_manifest.fingerprint
     ):
         raise EcbEstrError("stored ECB import manifest conflicts with retained provenance")
     fingerprint_by_id: dict[int, str] = {}
@@ -1011,18 +1120,120 @@ def _require_existing_bundle(
             fingerprint_by_id[int(predecessor_id)] if predecessor_id is not None else None
         )
         actual = ReferenceRateObservation(
+            provenance_contract_version=_stored_integer(
+                row["provenance_contract_version"], "provenance_contract_version"
+            ),
             benchmark_id=actual_definition.benchmark_id,
             source_contract_fingerprint=actual_source.fingerprint,
             import_manifest_fingerprint=actual_manifest.fingerprint,
             observation_date=_strict_date(str(row["observation_date"]), "observation_date"),
-            publication_date=_strict_date(str(row["publication_date"]), "publication_date"),
+            provider_publication_date=(
+                _strict_date(
+                    str(row["provider_publication_date"]), "provider_publication_date"
+                )
+                if row["provider_publication_date"] is not None
+                else None
+            ),
             rate=_strict_decimal(str(row["rate_decimal"])),
-            provider_revision_id=str(row["provider_revision_id"]),
+            provider_revision_id=(
+                str(row["provider_revision_id"])
+                if row["provider_revision_id"] is not None
+                else None
+            ),
+            provider_revision_id_source_field=(
+                str(row["provider_revision_id_source_field"])
+                if row["provider_revision_id_source_field"] is not None
+                else None
+            ),
+            provider_revision_indicator=(
+                str(row["provider_revision_indicator"])
+                if row["provider_revision_indicator"] is not None
+                else None
+            ),
+            provider_revision_indicator_source_field=(
+                str(row["provider_revision_indicator_source_field"])
+                if row["provider_revision_indicator_source_field"] is not None
+                else None
+            ),
+            provider_revision_status=str(row["provider_revision_status"]),
+            provider_revision_contract_id=(
+                str(row["provider_revision_contract_id"])
+                if row["provider_revision_contract_id"] is not None
+                else None
+            ),
+            provider_revision_contract_version=(
+                str(row["provider_revision_contract_version"])
+                if row["provider_revision_contract_version"] is not None
+                else None
+            ),
+            provider_revision_contract_revision_indicator_value=(
+                str(row["provider_revision_contract_revision_indicator_value"])
+                if row["provider_revision_contract_revision_indicator_value"] is not None
+                else None
+            ),
+            provider_revision_contract_authoritative_reference=(
+                str(row["provider_revision_contract_authoritative_reference"])
+                if row["provider_revision_contract_authoritative_reference"] is not None
+                else None
+            ),
+            provider_revision_contract_fingerprint=(
+                str(row["provider_revision_contract_fingerprint"])
+                if row["provider_revision_contract_fingerprint"] is not None
+                else None
+            ),
+            provider_publication_value=(
+                str(row["provider_publication_value"])
+                if row["provider_publication_value"] is not None
+                else None
+            ),
+            provider_publication_value_kind=(
+                str(row["provider_publication_value_kind"])
+                if row["provider_publication_value_kind"] is not None
+                else None
+            ),
+            provider_publication_source_field=(
+                str(row["provider_publication_source_field"])
+                if row["provider_publication_source_field"] is not None
+                else None
+            ),
+            availability_basis=str(row["availability_basis"]),
+            availability_boundary_utc=str(row["availability_boundary_utc"]),
+            availability_derivation_rule_id=(
+                str(row["availability_derivation_rule_id"])
+                if row["availability_derivation_rule_id"] is not None
+                else None
+            ),
+            availability_derivation_rule_version=(
+                str(row["availability_derivation_rule_version"])
+                if row["availability_derivation_rule_version"] is not None
+                else None
+            ),
+            availability_policy_reference=(
+                str(row["availability_policy_reference"])
+                if row["availability_policy_reference"] is not None
+                else None
+            ),
+            availability_calendar_id=(
+                str(row["availability_calendar_id"])
+                if row["availability_calendar_id"] is not None
+                else None
+            ),
+            availability_calendar_version=(
+                str(row["availability_calendar_version"])
+                if row["availability_calendar_version"] is not None
+                else None
+            ),
+            availability_calendar_fingerprint=(
+                str(row["availability_calendar_fingerprint"])
+                if row["availability_calendar_fingerprint"] is not None
+                else None
+            ),
             revision_sequence=_stored_integer(row["revision_sequence"], "revision_sequence"),
             supersedes_observation_fingerprint=predecessor,
             is_current=_stored_boolean(row["is_current"], "is_current"),
             quality_status=str(row["quality_status"]),
         )
+        validate_observation_availability(actual, actual_manifest)
         if str(row["observation_fingerprint"]) != actual.fingerprint:
             raise EcbEstrError("stored ECB observation fingerprint is invalid")
         fingerprint_by_id[int(row["reference_rate_observation_id"])] = actual.fingerprint
@@ -1102,6 +1313,15 @@ def _validated_reference_rate_schema_contract(
     if actual != expected:
         raise EcbEstrError("reference-rate schema differs from the reviewed Phase A contract")
     return actual
+
+
+def _validate_current_reference_rate_schema(connection: sqlite3.Connection) -> None:
+    try:
+        validate_schema(connection)
+    except SchemaVersionError as error:
+        raise EcbEstrError(
+            "reference-rate schema differs from the reviewed Phase A contract and Phase C0 revision"
+        ) from error
 
 
 def _constructed_counts(connection: sqlite3.Connection) -> dict[str, int]:

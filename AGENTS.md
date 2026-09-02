@@ -10,11 +10,13 @@ ranking are typed Python functions controlled by reviewed configuration.
 by default. `--import` retains the workbook-import workflow. The active policy
 is `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1.
 
-Milestone 11C Phase B admits one immutable official ECB €STR history artifact
-through the Phase A reference-rate schema. Only EUR benchmark evidence is
-admitted; SOFR, HUFONIA, benchmark alignment, portfolio metrics/ranking, and
-finalist comparison remain unavailable. The construction runtime is
-`IMPLEMENTED_BLOCKED_BY_DATA` and production cutover is `NOT_AUTHORIZED`.
+Milestone 11C Phase C0 installs provider-neutral reference-rate provenance
+contract v2 and preserves the one immutable official ECB €STR history artifact.
+Only EUR €STR evidence is admitted; SOFR was not imported and must be retried as
+a separate Phase C checkpoint. HUFONIA, benchmark alignment, NAV remediation,
+portfolio metrics/ranking, and finalist comparison remain unavailable. The
+construction runtime is `IMPLEMENTED_BLOCKED_BY_DATA` and production cutover is
+`NOT_AUTHORIZED`.
 
 ## Core components
 
@@ -30,9 +32,11 @@ finalist comparison remain unavailable. The construction runtime is
 - `construction/`: deprecated instrument-screening compatibility plus the
   Milestone 11B normalized 80/20 candidate engine, evidence checks, lineage,
   persistence, and read-only foundation audit.
-- `reference_rates/`: immutable benchmark/source/manifest/observation contracts,
-  the explicit official ECB €STR acquisition boundary, deterministic offline
-  import, and read-only evidence validation. Tests never contact a provider.
+- `reference_rates/`: provider-neutral v2 benchmark/source/manifest/observation
+  contracts, explicit provider versus internal identity, conservative
+  availability boundaries, the official ECB €STR adapter, deterministic
+  offline migration/import, and read-only evidence validation. Tests never
+  contact a provider.
 - `history/`: provenance-aware constituent history, lifecycle/reconciliation
   evidence, strict resolvability, local source stores, and reconstruction
   governance.
@@ -93,6 +97,9 @@ poetry run python scripts/initialize_tbsz_portfolio_from_pdfs.py
 poetry run python scripts/acquire_ecb_estr.py
 poetry run python scripts/import_ecb_estr_reference_rate.py --help
 poetry run python scripts/validate_ecb_estr_reference_rate.py --help
+poetry run python scripts/migrate_reference_rate_provenance_contract.py --help
+poetry run python scripts/validate_reference_rate_schema.py --help
+poetry run python scripts/validate_reference_rate_provenance.py --help
 ```
 
 The due-monitor LaunchAgent, when explicitly installed, invokes only the

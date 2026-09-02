@@ -65,7 +65,7 @@ roadmap completion or production readiness.
 ## 1.2 Verified implementation status
 
 This status is grounded in repository history, versioned contracts and the installed schema-v3
-validators through the Milestone 11C Phase B release.
+validators through the Milestone 11C Phase C0 provenance-contract release.
 
 | Checkpoint | State | Verified boundary |
 | --- | --- | --- |
@@ -74,6 +74,7 @@ validators through the Milestone 11C Phase B release.
 | Milestone 11B — constructed-portfolio domain and schema | `COMPLETED` | Commit `0aa7cf12a7ef5bead07b0753b2229909fb8e2373`; allocation, schema, lineage and persistence foundation. |
 | Milestone 11C Phase A — reference-rate schema foundation | `COMPLETED` | Commit `37d9e0c2a9f57de1837a8d7a43aab54f9ef38772`; empty evidence schema and immutable contracts. |
 | Milestone 11C Phase B — ECB €STR evidence | `COMPLETED` | Exact official EUR history, immutable raw provenance, offline import and read-only validation; no metric activation. |
+| Milestone 11C Phase C0 — provider-neutral provenance | `COMPLETED` | Reference-rate feature/contract revision 2, explicit provider-versus-internal identity, conservative availability evidence, exact v1/v2 detection, and lossless ECB migration; no new benchmark admitted. |
 | Overall roadmap-compliant Milestone 11 | `BLOCKED_BY_DATA` | EUR €STR evidence is admitted, but current NAV, remaining currency benchmarks, alignment and portfolio analytics cannot produce a governed real candidate. |
 | Roadmap-compliant Milestone 12 | `BLOCKED_BY_DATA` | No real persisted `SHORTLIST_FINALIST` exists for portfolio-to-portfolio comparison. |
 | Milestone 13 | `PLANNED` / `NO-GO` | Dividend evidence work remains deferred. |
@@ -464,9 +465,9 @@ MILESTONE_11C_REFERENCE_RATE_EVIDENCE
 with:
 
 ```text
-feature revision:             1
-feature fingerprint:          aace6e9cf4b33fbf9cad503a987b945ebb44e1db5673381fd47cbd57716d921b
-schema-contract fingerprint:  1d9cb07e1bee4bed81ebe6a58a293ea544249498f736899069452ae167b59d61
+feature revision:             2
+feature fingerprint:          3add5fa914e71807fff2add5b369a3ef80f50c2d22844743cfb74b00680cfe71
+schema-contract fingerprint:  4862a51f6724b22e7e7aab0c1e914449750077dbd0fa54ca66e2aa478e579404
 ```
 
 The installed tables are:
@@ -478,16 +479,30 @@ reference_rate_import_manifest
 reference_rate_observation
 ```
 
-The evidence contract requires exact reference-rate values through validated `Decimal`
-representation; immutable hashes of retained raw source bytes; exact request and retrieval
-metadata; and deterministic source-dataset fingerprints. Definition and source evidence preserves
-benchmark identity, administrator, currency, units, official day-count convention and compounding
-convention. Observation date and publication date remain separate.
+The provider-neutral v2 contract requires exact `Decimal` values, immutable raw-artifact SHA-256,
+retrieval time, source binding, canonical manifest fingerprint, and a separately labelled
+system-generated evidence identity. Provider dataset versions and observation revision IDs are
+nullable only when the provider does not supply them, and any supplied value is paired with its
+exact source field. Raw revision indicators preserve the distinction between absent, empty,
+explicitly revised, and explicitly not revised. Internal snapshot change and conflicting evidence
+are separate from provider revision state.
 
-Provider corrections are append-only revisions. A later observation identifies the superseded
-revision rather than overwriting it, and admission must apply a governed as-of cutoff. Definitions,
-sources, manifests and observations remain linked by genuine foreign keys so evidence cannot cross
-benchmark or source identity.
+Every admitted observation has one conservative UTC availability boundary:
+`PROVIDER_REPORTED` requires an actual provider timestamp and source field;
+`OFFICIAL_SCHEDULE_DERIVED` requires a versioned rule, authoritative policy reference, approved
+reproducible calendar, and exact benchmark/source binding; `RETRIEVAL_BOUND` makes the observation
+unavailable before exact capture. Every boundary is on or after its value date and no later than
+retrieval.
+Historical queries filter by availability before selecting the latest authorized revision and do
+not use present-day `is_current` alone. Provider publication metadata is never inferred from a
+value date, retrieval time, hash, UUID, request ID, or internal sequence.
+
+Provider-authorized corrections are append-only. A later observation identifies the superseded
+revision rather than overwriting it. Changed values fail closed unless explicit provider revision
+evidence and a separately validated provider-revision transition contract authorize the append.
+That contract binds the benchmark, source, raw indicator field, and exact raw indicator value.
+Definitions, sources, manifests and observations remain linked by genuine foreign keys so evidence
+cannot cross benchmark or source identity.
 
 Milestone 11C Phase B admits the official ECB series below:
 
@@ -509,8 +524,10 @@ with `detail=full`, `format=csvdata` and `includeHistory=true`. The retained HTT
 618,988 bytes with SHA-256
 `e9c8c20cde58d7805fec11851f180fdd44e5354b61562a294b6a49492b7474d8`.
 It contains 1,771 admitted dates/provider versions from `2019-10-01` through `2026-08-31`.
-`TIME_PERIOD` remains the observation date; timezone-qualified `VALID_FROM` supplies provider
-revision identity and publication availability, while `VALID_TO` supplies explicit supersession.
+`TIME_PERIOD` remains the observation date; timezone-qualified `VALID_FROM` supplies exact provider
+revision and publication evidence and the `PROVIDER_REPORTED` availability boundary, while
+`VALID_TO` supplies explicit supersession. Exact `OBS_STATUS` is retained as the raw revision
+indicator.
 
 Installed production row counts are one definition, one source, one import manifest and 1,771
 observations. Dataset fingerprint
@@ -519,6 +536,12 @@ history. The raw bytes and request/retrieval receipt remain immutable local evid
 import is a no-op; malformed, missing, wrong-series, duplicate or conflicting evidence fails
 closed. Reference-rate runtime admission, benchmark alignment, cash-return treatment, Sharpe and
 Sortino remain unavailable.
+
+Phase C0 migration identity is
+`MILESTONE_11C_PHASE_C0_REFERENCE_RATE_PROVENANCE_V2`. The ECB dataset fingerprint, raw/receipt
+hashes, dates, exact rates and row counts remain unchanged. Definition and manifest fingerprints
+intentionally change under v2; the source fingerprint remains unchanged. SOFR is not admitted by
+this checkpoint.
 
 ---
 
@@ -1437,12 +1460,13 @@ USD → Federal Reserve Bank of New York SOFR
 HUF → Magyar Nemzeti Bank HUFONIA
 ```
 
-The calculation must preserve publication-time and decision as-of controls, official day-count
-and applicability conventions, and explicit official correction/revision handling. Portfolio
-return dates and benchmark dates must be aligned by a reviewed deterministic methodology.
+The calculation must preserve conservative availability boundaries and decision as-of controls,
+actual provider publication metadata when supplied, official day-count and applicability
+conventions, and explicit official correction/revision handling. Portfolio return dates and
+benchmark dates must be aligned by a reviewed deterministic methodology.
 
 Do not use generic forward-fill, silent holiday/calendar assumptions, zero for an unknown rate,
-a central-bank policy rate, or an unofficial substitute. If a required observation, publication
+a central-bank policy rate, or an unofficial substitute. If a required observation, availability
 state, applicability rule, revision state or methodology remains unresolved, the affected metric
 is `UNAVAILABLE`.
 
@@ -1450,8 +1474,9 @@ The 20% cash sleeve does not imply a benchmark return or any other cash return. 
 treatment is a separate governed policy decision and must not be inferred from the Sharpe/Sortino
 reference series.
 
-Official EUR €STR evidence is now admitted through Phase B, but admission does not prove the
-future alignment or portfolio calculation contracts. SOFR and HUFONIA remain absent.
+Official EUR €STR evidence is admitted through Phase B and preserved under Phase C0 provenance v2,
+but admission does not prove future alignment or portfolio calculation contracts. SOFR remains
+unadmitted pending a separate Phase C retry; HUFONIA remains absent.
 
 ---
 
@@ -3228,7 +3253,8 @@ current status: overall Milestone 11 is BLOCKED_BY_DATA
 | Milestone 11B — construction domain and schema | `COMPLETED` | Deterministic allocation engine, normalized domain, lineage and idempotent persistence foundation; commit `0aa7cf12a7ef5bead07b0753b2229909fb8e2373`. |
 | Milestone 11C Phase A — reference-rate schema foundation | `COMPLETED` | Empty official-rate evidence schema, contracts, copy-on-write migration and read-only validator; commit `37d9e0c2a9f57de1837a8d7a43aab54f9ef38772`. |
 | Milestone 11C Phase B — ECB €STR adapter | `COMPLETED` | Official EUR history, immutable raw/receipt provenance, exact offline import, idempotency and read-only validation. |
-| Milestone 11C Phase C — NY Fed SOFR adapter | `PLANNED` — next | Admit official USD benchmark evidence. |
+| Milestone 11C Phase C0 — provider-neutral provenance remediation | `COMPLETED` | Contract/feature revision 2, optional provider IDs, system snapshot identity, explicit availability evidence, exact migration and ECB preservation; no SOFR import. |
+| Milestone 11C Phase C — NY Fed SOFR adapter retry | `PLANNED` — next | Retry official USD benchmark acquisition and admission under provenance v2. |
 | Milestone 11C Phase D — MNB HUFONIA adapter | `PLANNED` | Admit official HUF benchmark evidence. |
 | Milestone 11C Phase E — NAV provenance upgrade and EUR/HUF refresh | `PLANNED` | Add complete raw-source/manifests/revision provenance and refresh the smallest feasible exact-share-class universes. |
 | Milestone 11C Phase F — aligned portfolio analytics and real finalist | `PLANNED` | Governed aligned returns, covariance-aware portfolio metrics, runtime construction, real-candidate persistence, ranking and `SHORTLIST_FINALIST` selection. |
@@ -3481,8 +3507,9 @@ MILESTONE 11C PHASE C
 NEW YORK FED SOFR ADAPTER
 ```
 
-Phase B is completed forward history. Phase C may begin only as a bounded official-USD
-reference-rate ingestion path. Its scope is:
+Phase B and the Phase C0 provider-neutral contract remediation are completed forward history.
+Phase C may be retried only as a bounded official-USD reference-rate ingestion path under v2. Its
+scope is:
 
 ```text
 A. official Federal Reserve Bank of New York endpoint only
@@ -3497,9 +3524,11 @@ E. deterministic parser and exact Decimal values
 
 F. reference-rate definition, source, import-manifest and observation persistence
 
-G. separate observation-date and publication-date provenance
+G. separate value-date, actual provider publication metadata, and conservative availability
+   evidence without synthesized provider fields
 
-H. official revision, supersession and governed as-of controls
+H. exact raw revision-indicator presence/value, official revision evidence, supersession and
+   governed as-of controls
 
 I. deterministic contract and dataset fingerprints
 
@@ -3512,6 +3541,7 @@ K. complete source, schema, integrity, foreign-key and logical-preservation vali
 This checkpoint must not change NAV evidence, calculate portfolio metrics, activate Sharpe or
 Sortino, construct a production portfolio, or authorize production cutover. It must preserve the
 completed ECB evidence unchanged and apply the same candidate-first, fail-closed release boundary.
+HUFONIA, NAV remediation, portfolio metrics and real construction remain later checkpoints.
 
 ---
 

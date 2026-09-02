@@ -67,9 +67,30 @@ and duplicate-row semantics are proven.
 ## Official reference-rate boundary
 
 Milestone 11C Phase B admits exact official ECB €STR observations and immutable
-request/raw provenance for EUR. Admission establishes evidence identity only;
-it does not establish a benchmark-to-portfolio-date alignment methodology or
-authorize risk-adjusted portfolio metrics.
+request/raw provenance for EUR. Phase C0 advances that evidence to the
+provider-neutral provenance v2 contract without admitting another benchmark.
+Provider-issued revision/dataset identities remain distinct from the required
+system snapshot identity.
+
+Every admitted observation has a conservative UTC availability boundary.
+`PROVIDER_REPORTED` requires actual provider timestamp evidence;
+`OFFICIAL_SCHEDULE_DERIVED` requires a reviewed versioned rule, authoritative
+policy reference, approved reproducible calendar, and benchmark/source binding;
+`RETRIEVAL_BOUND` makes the value unavailable before exact capture. Every
+boundary is on or after the value date and no later than retrieval. Historical
+selection filters by availability before selecting a revision, rejects
+cross-date source stitching, and never uses present-day `is_current` alone.
+Provider publication metadata is retained separately and is not inferred from
+value dates or retrieval evidence.
+
+An appended changed value also requires a versioned provider-revision contract
+whose fingerprint binds the benchmark, source, raw indicator field, exact raw
+indicator value, and authoritative policy reference. A status label alone is
+not authorization.
+
+Admission establishes evidence identity only; it does not establish a
+benchmark-to-portfolio-date alignment methodology or authorize risk-adjusted
+portfolio metrics.
 
 Reference-rate values remain exact `Decimal` evidence. Do not forward-fill an
 unknown date, substitute zero or a policy rate, infer holiday applicability,

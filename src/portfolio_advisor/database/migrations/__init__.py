@@ -19,12 +19,20 @@ from .reference_rate import (
     build_reference_rate_schema_candidate,
     validate_reference_rate_schema_foundation,
 )
+from .reference_rate_provenance import (
+    REFERENCE_RATE_PROVENANCE_MIGRATION_REVISION,
+    ReferenceRateProvenanceMigrationError,
+    ReferenceRateProvenanceMigrationResult,
+    build_reference_rate_provenance_candidate,
+    migrate_reference_rate_provenance_v2,
+)
 from .v2_to_v3 import CutoverNotAuthorized, MigrationPlan, dry_run_v2_to_v3
 
 __all__ = [
     "ECB_ESTR_EVIDENCE_MIGRATION_REVISION",
     "MIGRATION_REVISION",
     "REFERENCE_RATE_MIGRATION_REVISION",
+    "REFERENCE_RATE_PROVENANCE_MIGRATION_REVISION",
     "ConstructedPortfolioMigrationError",
     "ConstructedPortfolioMigrationResult",
     "CutoverNotAuthorized",
@@ -32,10 +40,14 @@ __all__ = [
     "MigrationPlan",
     "ReferenceRateMigrationError",
     "ReferenceRateMigrationResult",
+    "ReferenceRateProvenanceMigrationError",
+    "ReferenceRateProvenanceMigrationResult",
     "build_constructed_portfolio_schema_candidate",
     "build_ecb_estr_evidence_candidate",
+    "build_reference_rate_provenance_candidate",
     "build_reference_rate_schema_candidate",
     "create_verified_backup",
     "dry_run_v2_to_v3",
+    "migrate_reference_rate_provenance_v2",
     "validate_reference_rate_schema_foundation",
 ]

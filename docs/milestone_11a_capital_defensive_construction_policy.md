@@ -60,8 +60,10 @@ individual volatilities is explicitly prohibited.
 | USD | SOFR | Federal Reserve Bank of New York | <https://www.newyorkfed.org/markets/reference-rates/sofr> |
 | HUF | HUFONIA | Magyar Nemzeti Bank | <https://statisztika.mnb.hu/statistical-topics/monetary-policy-statistics> |
 
-Future evidence must preserve administrator, series identity, observation and publication
-dates, source URL, value, units, and quality. It must respect official day-count and compounding
+Future evidence must preserve administrator, series identity, observation dates, exact
+provider publication metadata when supplied, a conservative auditable availability boundary,
+source URL, value, units, and quality. Provider revision IDs, dataset versions, and publication
+values must never be synthesized when absent. Evidence must respect official day-count and compounding
 conventions and align reference returns to portfolio-return dates deterministically. Unknown
 observations cannot be zero-filled, and policy or base rates cannot substitute for the approved
 benchmark. Sharpe uses the aligned currency benchmark as its reference return. Sortino uses the
@@ -85,7 +87,10 @@ the schema, deterministic allocation engine, lineage, and persistence foundation
 this artifact or its fingerprint. Production remains blocked by incomplete and stale admitted NAV,
 missing SOFR/HUFONIA and governed benchmark alignment, and unavailable portfolio metrics.
 Milestone 11C Phase B admits official EUR €STR evidence without changing the construction policy
-or activating Sharpe/Sortino. Milestone 11A itself
+or activating Sharpe/Sortino. Phase C0 later replaces the provider-specific revision-1
+provenance assumptions with the provider-neutral v2 availability contract while preserving the
+policy artifact and its fingerprint. SOFR remains unadmitted and HUFONIA remains pending.
+Milestone 11A itself
 performed no allocation, candidate generation, schema migration, NAV/reference-rate ingestion,
 persistence, or portfolio metric calculation.
 Production remains `NOT_AUTHORIZED`.

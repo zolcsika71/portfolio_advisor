@@ -5,6 +5,11 @@ into the Phase A reference-rate evidence contract. Acquisition, offline import,
 and validation are separate. Only the acquisition command may use the network;
 tests, repeat imports, candidate construction, and validation are offline.
 
+This document preserves the Phase B completion record. Phase C0 subsequently
+migrated the installed evidence to provider-neutral provenance contract v2
+without changing the ECB dataset, raw bytes, receipt, dates, or rates. See
+[Milestone 11C Phase C0](milestone_11c_phase_c0_reference_rate_provenance_contract.md).
+
 This checkpoint admits EUR benchmark evidence only. It does not implement
 portfolio-date alignment, compounding calculations, cash-sleeve return policy,
 Sharpe, Sortino, portfolio construction, SOFR, HUFONIA, NAV repair, trading, or
@@ -58,6 +63,10 @@ is the distinct publication-availability date. `VALID_TO` identifies a
 superseded provider version. Missing or malformed values are rejected; dates
 are never inferred, filled, interpolated, or replaced.
 
+Under Phase C0, exact `VALID_FROM` is also retained as provider publication
+evidence and normalized to the `PROVIDER_REPORTED` UTC availability boundary;
+exact `OBS_STATUS` is retained separately as the raw revision indicator.
+
 The daily €STR series is not itself a compounded index. Its official accrual
 factor is simple ACT/360 for the calendar days to which that business-day rate
 applies. Any later multiplication of daily factors is a separate governed
@@ -108,7 +117,7 @@ reference_rate_import_manifest:  1
 reference_rate_observation:      1,771
 ```
 
-The installed Phase A schema feature remains unchanged:
+At Phase B completion, the installed Phase A schema feature remained unchanged:
 
 ```text
 feature ID:                    MILESTONE_11C_REFERENCE_RATE_EVIDENCE
@@ -119,6 +128,14 @@ Phase B migration revision:    MILESTONE_11C_PHASE_B_ECB_ESTR_V1
 pre-Phase-B database SHA-256:  1a597b5cf799294e0341df786ff6219e24caca4128172c45b341c243ff6b3be9
 Phase-B database SHA-256:      19e6efdadfd44235408cb046d6af38b593cf88a76dfc7ef1f815aef8769ae5d2
 ```
+
+Phase C0 intentionally advances feature/contract revision 1 to revision 2.
+The current feature fingerprint is
+`3add5fa914e71807fff2add5b369a3ef80f50c2d22844743cfb74b00680cfe71`
+and the current schema-contract fingerprint is
+`4862a51f6724b22e7e7aab0c1e914449750077dbd0fa54ca66e2aa478e579404`.
+The dataset fingerprint above remains unchanged; the current definition and
+manifest fingerprints are documented in the Phase C0 record.
 
 Candidate construction uses SQLite backup semantics, preserves the exact
 pre-reference-rate logical fingerprint, validates the schema contract,
@@ -157,17 +174,21 @@ poetry run python scripts/validate_ecb_estr_reference_rate.py \
   --target database/portfolio_advisor.sqlite \
   --raw-artifact data/raw/reference_rates/ecb/estr/estr-e9c8c20cde58d7805fec11851f180fdd44e5354b61562a294b6a49492b7474d8.csv \
   --receipt data/raw/reference_rates/ecb/estr/estr-e9c8c20cde58d7805fec11851f180fdd44e5354b61562a294b6a49492b7474d8.receipt.json
+
+poetry run python scripts/validate_reference_rate_provenance.py \
+  --target database/portfolio_advisor.sqlite
 ```
 
-The historical Phase A validator intentionally requires all four tables to be
-empty. Preserve it for empty-foundation validation; use the Phase B validator
-for the populated installed database.
+The Phase C0 schema validator accepts the exact current v2 structure whether
+empty or populated. The ECB validator verifies the retained official bundle;
+the complete provenance validator verifies every stored reference-rate bundle.
 
 ## Remaining boundary
 
 Reference-rate runtime admission remains `NO-GO`. EUR evidence exists, but its
 governed alignment and portfolio calculation methodology are not implemented.
-SOFR and HUFONIA remain absent, retained NAV remains insufficient/stale, and
+SOFR remains unadmitted pending a separate Phase C retry. HUFONIA remains
+pending, retained NAV remains insufficient/stale, and
 production contains zero `SHORTLIST_CONSTRUCTED` candidates. Overall Milestone
 11 is `IMPLEMENTED_BLOCKED_BY_DATA`; Milestones 12 and 13 are `NO-GO`, and
 production cutover is `NOT_AUTHORIZED`.

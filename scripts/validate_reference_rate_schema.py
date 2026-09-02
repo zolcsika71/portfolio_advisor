@@ -1,4 +1,4 @@
-"""Read-only deterministic audit of the empty Phase A reference-rate schema."""
+"""Read-only deterministic audit of the current reference-rate schema foundation."""
 
 from __future__ import annotations
 

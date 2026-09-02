@@ -15,11 +15,15 @@ from portfolio_advisor.database.schema.v3 import (
     connect,
     detect_schema_version,
     initialize_schema,
+    reference_rate_schema_objects,
     upgrade_schema_v3_reference_rate_extension,
     validate_schema,
 )
 
-REFERENCE_RATE_MIGRATION_REVISION = "MILESTONE_11C_REFERENCE_RATE_SCHEMA_V1"
+LEGACY_REFERENCE_RATE_MIGRATION_REVISION = "MILESTONE_11C_REFERENCE_RATE_SCHEMA_V1"
+REFERENCE_RATE_MIGRATION_REVISION = (
+    "MILESTONE_11C_PHASE_C0_REFERENCE_RATE_PROVENANCE_V2"
+)
 _REFERENCE_TABLES = frozenset(
     {
         "reference_rate_definition",
@@ -28,10 +32,6 @@ _REFERENCE_TABLES = frozenset(
         "reference_rate_source",
     }
 )
-_REFERENCE_OBJECTS = _REFERENCE_TABLES | {
-    "reference_rate_observation_current",
-    "reference_rate_observation_date",
-}
 
 
 class ReferenceRateMigrationError(RuntimeError):
@@ -194,21 +194,10 @@ def pre_reference_rate_logical_fingerprint(
 
 def reference_rate_schema_contract(connection: sqlite3.Connection) -> dict[str, object]:
     """Return a path-independent reference-rate feature schema contract."""
-    objects = []
-    placeholders = ", ".join("?" for _ in _REFERENCE_OBJECTS)
-    for row in connection.execute(
-        f"""SELECT type, name, tbl_name, sql FROM sqlite_master
-             WHERE name IN ({placeholders}) ORDER BY type, name""",
-        tuple(sorted(_REFERENCE_OBJECTS)),
-    ):
-        objects.append(
-            {
-                "name": str(row[1]),
-                "sql": " ".join(str(row[3]).split()),
-                "table": str(row[2]),
-                "type": str(row[0]),
-            }
-        )
+    objects = [
+        {"type": row[0], "name": row[1], "table": row[2], "sql": row[3]}
+        for row in reference_rate_schema_objects(connection)
+    ]
     marker = connection.execute(
         """SELECT feature_id, revision, contract_fingerprint
            FROM schema_feature_contract WHERE feature_id=?""",
@@ -218,12 +207,13 @@ def reference_rate_schema_contract(connection: sqlite3.Connection) -> dict[str, 
 
 
 def validate_reference_rate_schema_foundation(target: Path) -> dict[str, object]:
-    """Validate the empty installed Phase A feature without modifying the target."""
+    """Validate the current reference-rate structure read-only, populated or empty."""
     target = target.resolve()
     if not target.is_file() or target.is_symlink():
         raise ReferenceRateMigrationError(
             "reference-rate schema target must be a regular SQLite file"
         )
+    before = _sha256(target)
     with sqlite3.connect(f"file:{target}?mode=ro", uri=True) as connection:
         connection.execute("PRAGMA foreign_keys=ON")
         connection.execute("PRAGMA query_only=ON")
@@ -247,10 +237,6 @@ def validate_reference_rate_schema_foundation(target: Path) -> dict[str, object]
             )
             for table in sorted(_REFERENCE_TABLES)
         }
-        if any(row_counts.values()):
-            raise ReferenceRateMigrationError(
-                "reference-rate schema foundation must contain zero evidence rows"
-            )
 
     with sqlite3.connect(":memory:") as scratch:
         scratch.row_factory = sqlite3.Row
@@ -260,9 +246,13 @@ def validate_reference_rate_schema_foundation(target: Path) -> dict[str, object]
         raise ReferenceRateMigrationError(
             "installed reference-rate schema differs from the reviewed contract"
         )
+    after = _sha256(target)
+    if before != after:
+        raise ReferenceRateMigrationError("read-only schema validation changed database bytes")
     return {
-        "audit_schema_version": 1,
-        "evidence_status": "NOT_INGESTED",
+        "audit_schema_version": 2,
+        "database_sha256": before,
+        "evidence_status": "PRESENT" if any(row_counts.values()) else "NOT_INGESTED",
         "feature_contract_fingerprint": REFERENCE_RATE_FEATURE_FINGERPRINT,
         "feature_id": REFERENCE_RATE_FEATURE_ID,
         "feature_revision": REFERENCE_RATE_FEATURE_REVISION,

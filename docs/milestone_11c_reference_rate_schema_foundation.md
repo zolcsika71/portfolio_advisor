@@ -8,6 +8,14 @@ Phase B subsequently admitted one official ECB €STR history artifact without c
 contract. See [Milestone 11C Phase B](milestone_11c_phase_b_ecb_estr_ingestion.md). Production
 remains `IMPLEMENTED_BLOCKED_BY_DATA` and `NOT_AUTHORIZED`.
 
+> **Forward correction:** this document records the historical revision-1
+> contract. Phase C0 proved that mandatory non-empty `publication_date`,
+> `provider_revision_id`, and `provider_dataset_version` fields were too
+> provider-specific. The installed schema is now provider-neutral revision 2;
+> see [Milestone 11C Phase C0](milestone_11c_phase_c0_reference_rate_provenance_contract.md).
+> Revision-1 fingerprints below remain historical identities and are not
+> reinterpreted as revision 2.
+
 ## Immutable domain contracts
 
 `portfolio_advisor.reference_rates` provides frozen contracts for:
@@ -63,10 +71,13 @@ Installation remains an operator-controlled checkpoint: preserve the installed d
 the repository, atomically replace it only with the validated candidate, and restore the backup if
 any post-installation gate fails. No application code performs migration or cutover implicitly.
 
-`scripts/validate_reference_rate_schema.py` was the read-only empty-foundation gate. Its canonical
+At Phase A completion, `scripts/validate_reference_rate_schema.py` was the read-only
+empty-foundation gate. Its canonical
 JSON verifies the exact from-scratch schema contract, feature marker, integrity, foreign keys, and
 zero rows in all four production reference-rate tables. Repeated runs are byte-identical. It
-intentionally rejects the populated Phase B target; Phase B has a separate read-only validator.
+intentionally rejected the populated Phase B target; Phase B had a separate read-only validator.
+Phase C0 updates this command to validate the exact current v2 structure whether empty or populated,
+while `scripts/validate_reference_rate_provenance.py` validates all stored bundles and evidence.
 
 ## Remaining gates
 

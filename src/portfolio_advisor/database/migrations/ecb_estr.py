@@ -9,6 +9,7 @@ from pathlib import Path
 
 from portfolio_advisor.canonical import canonical_fingerprint
 from portfolio_advisor.database.migrations.reference_rate import (
+    ReferenceRateMigrationError,
     pre_reference_rate_logical_fingerprint,
     reference_rate_schema_contract,
     validate_reference_rate_schema_foundation,
@@ -78,6 +79,20 @@ def build_ecb_estr_evidence_candidate(
     candidate.parent.mkdir(parents=True, exist_ok=True)
     source_sha256 = _sha256(source)
     validate_reference_rate_schema_foundation(source)
+    with sqlite3.connect(f"file:{source}?mode=ro", uri=True) as count_connection:
+        count_connection.execute("PRAGMA query_only=ON")
+        if any(
+            int(count_connection.execute(f'SELECT count(*) FROM "{table}"').fetchone()[0])
+            for table in (
+                "reference_rate_definition",
+                "reference_rate_source",
+                "reference_rate_import_manifest",
+                "reference_rate_observation",
+            )
+        ):
+            raise ReferenceRateMigrationError(
+                "ECB Phase B candidate requires zero evidence rows"
+            )
     source_logical, counts = pre_reference_rate_logical_fingerprint(source)
     with sqlite3.connect(f"file:{source}?mode=ro", uri=True) as connection:
         connection.row_factory = sqlite3.Row

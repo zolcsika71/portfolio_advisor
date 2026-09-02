@@ -29,8 +29,23 @@ CONSTRUCTED_PORTFOLIO_FEATURE_FINGERPRINT = canonical_fingerprint(
     }
 )
 REFERENCE_RATE_FEATURE_ID = "MILESTONE_11C_REFERENCE_RATE_EVIDENCE"
-REFERENCE_RATE_FEATURE_REVISION = 1
-REFERENCE_RATE_CONTRACT_SCHEMA_VERSION = 1
+LEGACY_REFERENCE_RATE_FEATURE_REVISION = 1
+LEGACY_REFERENCE_RATE_CONTRACT_SCHEMA_VERSION = 1
+LEGACY_REFERENCE_RATE_FEATURE_FINGERPRINT = canonical_fingerprint(
+    {
+        "contract_schema_version": LEGACY_REFERENCE_RATE_CONTRACT_SCHEMA_VERSION,
+        "feature_id": REFERENCE_RATE_FEATURE_ID,
+        "revision": LEGACY_REFERENCE_RATE_FEATURE_REVISION,
+        "tables": (
+            "reference_rate_definition",
+            "reference_rate_import_manifest",
+            "reference_rate_observation",
+            "reference_rate_source",
+        ),
+    }
+)
+REFERENCE_RATE_FEATURE_REVISION = 2
+REFERENCE_RATE_CONTRACT_SCHEMA_VERSION = 2
 REFERENCE_RATE_FEATURE_FINGERPRINT = canonical_fingerprint(
     {
         "contract_schema_version": REFERENCE_RATE_CONTRACT_SCHEMA_VERSION,
@@ -209,6 +224,17 @@ def upgrade_schema_v3_reference_rate_extension(connection: sqlite3.Connection) -
 
 def validate_schema(connection: sqlite3.Connection) -> None:
     """Fail closed on a missing table, integrity error, or FK violation."""
+    _validate_schema(connection, allow_legacy_reference_rate=False)
+
+
+def validate_schema_for_reference_rate_migration(connection: sqlite3.Connection) -> None:
+    """Validate schema v3 while permitting only an exact legacy v1 feature."""
+    _validate_schema(connection, allow_legacy_reference_rate=True)
+
+
+def _validate_schema(
+    connection: sqlite3.Connection, *, allow_legacy_reference_rate: bool
+) -> None:
     enable_foreign_keys(connection)
     version = detect_schema_version(connection)
     if version != SCHEMA_VERSION:
@@ -231,7 +257,9 @@ def validate_schema(connection: sqlite3.Connection) -> None:
         (CONSTRUCTED_PORTFOLIO_FEATURE_REVISION, CONSTRUCTED_PORTFOLIO_FEATURE_FINGERPRINT)
     ]:
         raise SchemaVersionError("constructed-portfolio schema feature marker is missing or stale")
-    _validate_reference_rate_feature_if_present(connection, names)
+    state = detect_reference_rate_feature_state(connection)
+    if state == "V1" and not allow_legacy_reference_rate:
+        raise SchemaVersionError("reference-rate provenance contract v1 requires explicit migration")
     integrity = tuple(str(row[0]) for row in connection.execute("PRAGMA integrity_check"))
     if integrity != ("ok",):
         raise SchemaVersionError("integrity_check did not return ok")
@@ -423,20 +451,72 @@ def _validate_reference_rate_feature_if_present(
     connection: sqlite3.Connection,
     names: set[str],
 ) -> None:
-    marker = connection.execute(
-        """SELECT revision, contract_fingerprint
-           FROM schema_feature_contract WHERE feature_id=?""",
-        (REFERENCE_RATE_FEATURE_ID,),
-    ).fetchall()
-    present = _REFERENCE_RATE_TABLES & names
-    if not present and not marker:
-        return
-    if present != _REFERENCE_RATE_TABLES:
-        raise SchemaVersionError("reference-rate schema feature is partially installed")
-    if [tuple(row) for row in marker] != [
+    del names
+    state = detect_reference_rate_feature_state(connection)
+    if state == "V1":
+        raise SchemaVersionError("reference-rate provenance contract v1 requires explicit migration")
+
+
+def detect_reference_rate_feature_state(connection: sqlite3.Connection) -> str:
+    """Classify absent, exact v1, or exact v2 reference-rate feature state."""
+    marker = [
+        tuple(row)
+        for row in connection.execute(
+            """SELECT revision, contract_fingerprint
+               FROM schema_feature_contract WHERE feature_id=?""",
+            (REFERENCE_RATE_FEATURE_ID,),
+        ).fetchall()
+    ]
+    actual = _reference_rate_schema_objects(connection)
+    if not actual and not marker:
+        return "ABSENT"
+    expected_v1 = _reference_rate_schema_objects_from_sql(_REFERENCE_RATE_SCHEMA_SQL_V1)
+    expected_v2 = _reference_rate_schema_objects_from_sql(_REFERENCE_RATE_SCHEMA_SQL)
+    if actual == expected_v1 and marker == [
+        (LEGACY_REFERENCE_RATE_FEATURE_REVISION, LEGACY_REFERENCE_RATE_FEATURE_FINGERPRINT)
+    ]:
+        return "V1"
+    if actual == expected_v2 and marker == [
         (REFERENCE_RATE_FEATURE_REVISION, REFERENCE_RATE_FEATURE_FINGERPRINT)
     ]:
-        raise SchemaVersionError("reference-rate schema feature marker is missing or stale")
+        return "V2"
+    raise SchemaVersionError(
+        "reference-rate schema feature is partial, mixed, stale, or incompatible"
+    )
+
+
+def reference_rate_schema_objects(connection: sqlite3.Connection) -> tuple[tuple[str, ...], ...]:
+    """Return the exact normalized v2 feature DDL inventory for audit tooling."""
+    return _reference_rate_schema_objects(connection)
+
+
+def _reference_rate_schema_objects(
+    connection: sqlite3.Connection,
+) -> tuple[tuple[str, ...], ...]:
+    rows = connection.execute(
+        """SELECT type, name, tbl_name, sql
+           FROM sqlite_master
+           WHERE sql IS NOT NULL
+             AND (name GLOB 'reference_rate_*' OR tbl_name GLOB 'reference_rate_*')
+           ORDER BY type, name"""
+    ).fetchall()
+    return tuple(
+        (
+            str(row[0]),
+            str(row[1]),
+            str(row[2]),
+            " ".join(str(row[3]).split()),
+        )
+        for row in rows
+    )
+
+
+def _reference_rate_schema_objects_from_sql(sql: str) -> tuple[tuple[str, ...], ...]:
+    with sqlite3.connect(":memory:") as scratch:
+        for statement in sql.split(";"):
+            if statement.strip():
+                scratch.execute(statement)
+        return _reference_rate_schema_objects(scratch)
 
 
 _REQUIRED_TABLES = frozenset({
@@ -780,7 +860,7 @@ ON constructed_portfolio_holding_lineage(shortlist_entry_id);
 """
 
 
-_REFERENCE_RATE_SCHEMA_SQL = """
+_REFERENCE_RATE_SCHEMA_SQL_V1 = """
 CREATE TABLE reference_rate_definition (
     reference_rate_definition_id INTEGER PRIMARY KEY,
     contract_schema_version INTEGER NOT NULL
@@ -898,6 +978,282 @@ ON reference_rate_observation(reference_rate_definition_id, observation_date)
 WHERE is_current = 1;
 CREATE INDEX reference_rate_observation_date
 ON reference_rate_observation(reference_rate_definition_id, observation_date);
+"""
+
+
+_REFERENCE_RATE_SCHEMA_SQL = """
+CREATE TABLE reference_rate_definition (
+    reference_rate_definition_id INTEGER PRIMARY KEY,
+    contract_schema_version INTEGER NOT NULL
+        CHECK(contract_schema_version = 2),
+    benchmark_id TEXT NOT NULL CHECK(length(trim(benchmark_id)) > 0),
+    benchmark_name TEXT NOT NULL CHECK(length(trim(benchmark_name)) > 0),
+    currency_code TEXT NOT NULL CHECK(currency_code IN ('EUR', 'USD', 'HUF')),
+    administrator TEXT NOT NULL CHECK(length(trim(administrator)) > 0),
+    series_identifier TEXT NOT NULL CHECK(length(trim(series_identifier)) > 0),
+    rate_units TEXT NOT NULL CHECK(rate_units = 'PERCENT_PER_ANNUM'),
+    day_count_convention TEXT NOT NULL CHECK(length(trim(day_count_convention)) > 0),
+    compounding_convention TEXT NOT NULL CHECK(length(trim(compounding_convention)) > 0),
+    definition_version TEXT NOT NULL CHECK(length(trim(definition_version)) > 0),
+    definition_fingerprint TEXT NOT NULL UNIQUE
+        CHECK(length(definition_fingerprint) = 64
+              AND definition_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    UNIQUE(benchmark_id, definition_version)
+);
+
+CREATE TABLE reference_rate_source (
+    reference_rate_source_id INTEGER PRIMARY KEY,
+    reference_rate_definition_id INTEGER NOT NULL
+        REFERENCES reference_rate_definition(reference_rate_definition_id) ON DELETE RESTRICT,
+    source_code TEXT NOT NULL CHECK(length(trim(source_code)) > 0),
+    source_organization TEXT NOT NULL CHECK(length(trim(source_organization)) > 0),
+    official_page_url TEXT NOT NULL CHECK(length(trim(official_page_url)) > 0),
+    machine_readable_url TEXT NOT NULL CHECK(length(trim(machine_readable_url)) > 0),
+    response_format TEXT NOT NULL CHECK(length(trim(response_format)) > 0),
+    source_role TEXT NOT NULL CHECK(source_role IN ('OFFICIAL_ADMINISTRATOR', 'OFFICIAL_PLATFORM')),
+    authentication_requirement TEXT NOT NULL
+        CHECK(authentication_requirement IN ('NONE', 'REQUIRED')),
+    automated_use_status TEXT NOT NULL
+        CHECK(automated_use_status IN ('NOT_REVIEWED', 'PERMITTED', 'PROHIBITED')),
+    licensing_reference TEXT NOT NULL CHECK(length(trim(licensing_reference)) > 0),
+    raw_retention_status TEXT NOT NULL
+        CHECK(raw_retention_status IN ('NOT_REVIEWED', 'PERMITTED', 'PROHIBITED')),
+    source_contract_fingerprint TEXT NOT NULL UNIQUE
+        CHECK(length(source_contract_fingerprint) = 64
+              AND source_contract_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    UNIQUE(reference_rate_source_id, reference_rate_definition_id),
+    UNIQUE(reference_rate_definition_id, source_code)
+);
+
+CREATE TABLE reference_rate_import_manifest (
+    reference_rate_import_manifest_id INTEGER PRIMARY KEY,
+    provenance_contract_version INTEGER NOT NULL CHECK(provenance_contract_version = 2),
+    reference_rate_source_id INTEGER NOT NULL,
+    reference_rate_definition_id INTEGER NOT NULL,
+    retrieval_timestamp TEXT NOT NULL CHECK(length(trim(retrieval_timestamp)) > 0),
+    request_url TEXT NOT NULL CHECK(length(trim(request_url)) > 0),
+    request_parameters_json TEXT NOT NULL CHECK(length(trim(request_parameters_json)) > 0),
+    response_content_type TEXT NOT NULL CHECK(length(trim(response_content_type)) > 0),
+    http_status INTEGER NOT NULL CHECK(http_status = 200),
+    raw_artifact_reference TEXT NOT NULL CHECK(length(trim(raw_artifact_reference)) > 0),
+    raw_artifact_sha256 TEXT NOT NULL
+        CHECK(length(raw_artifact_sha256) = 64
+              AND raw_artifact_sha256 NOT GLOB '*[^0-9a-f]*'),
+    provider_dataset_version TEXT NULL
+        CHECK(provider_dataset_version IS NULL
+              OR (length(provider_dataset_version) > 0
+                  AND provider_dataset_version = trim(provider_dataset_version))),
+    provider_dataset_version_source_field TEXT NULL
+        CHECK(provider_dataset_version_source_field IS NULL
+              OR length(trim(provider_dataset_version_source_field)) > 0),
+    internal_evidence_identity_scheme TEXT NOT NULL
+        CHECK(internal_evidence_identity_scheme = 'SYSTEM_CANONICAL_ARTIFACT_V1'),
+    internal_evidence_identity TEXT NOT NULL
+        CHECK(length(internal_evidence_identity) = 64
+              AND internal_evidence_identity NOT GLOB '*[^0-9a-f]*'),
+    import_status TEXT NOT NULL
+        CHECK(import_status IN ('VALIDATED_ADMITTED', 'VALIDATED_REJECTED')),
+    dataset_fingerprint TEXT NOT NULL
+        CHECK(length(dataset_fingerprint) = 64
+              AND dataset_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    manifest_fingerprint TEXT NOT NULL UNIQUE
+        CHECK(length(manifest_fingerprint) = 64
+              AND manifest_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    FOREIGN KEY(reference_rate_source_id, reference_rate_definition_id)
+        REFERENCES reference_rate_source(
+            reference_rate_source_id, reference_rate_definition_id
+        ) ON DELETE RESTRICT,
+    CHECK((provider_dataset_version IS NULL
+           AND provider_dataset_version_source_field IS NULL)
+          OR (provider_dataset_version IS NOT NULL
+              AND provider_dataset_version_source_field IS NOT NULL)),
+    UNIQUE(reference_rate_import_manifest_id, reference_rate_source_id,
+           reference_rate_definition_id),
+    UNIQUE(reference_rate_source_id, internal_evidence_identity_scheme,
+           internal_evidence_identity)
+);
+
+CREATE TABLE reference_rate_observation (
+    reference_rate_observation_id INTEGER PRIMARY KEY,
+    provenance_contract_version INTEGER NOT NULL CHECK(provenance_contract_version = 2),
+    reference_rate_definition_id INTEGER NOT NULL,
+    reference_rate_source_id INTEGER NOT NULL,
+    reference_rate_import_manifest_id INTEGER NOT NULL,
+    observation_date TEXT NOT NULL CHECK(length(observation_date) = 10),
+    provider_publication_date TEXT NULL
+        CHECK(provider_publication_date IS NULL
+              OR (length(provider_publication_date) = 10
+                  AND provider_publication_date >= observation_date)),
+    rate_decimal TEXT NOT NULL
+        CHECK(typeof(rate_decimal) = 'text'
+              AND length(trim(rate_decimal)) > 0
+              AND rate_decimal = trim(rate_decimal)),
+    provider_revision_id TEXT NULL
+        CHECK(provider_revision_id IS NULL
+              OR (length(provider_revision_id) > 0
+                  AND provider_revision_id = trim(provider_revision_id))),
+    provider_revision_id_source_field TEXT NULL
+        CHECK(provider_revision_id_source_field IS NULL
+              OR length(trim(provider_revision_id_source_field)) > 0),
+    provider_revision_indicator TEXT NULL,
+    provider_revision_indicator_source_field TEXT NULL
+        CHECK(provider_revision_indicator_source_field IS NULL
+              OR length(trim(provider_revision_indicator_source_field)) > 0),
+    provider_revision_status TEXT NOT NULL CHECK(provider_revision_status IN (
+        'PROVIDER_EXPLICIT_REVISION', 'PROVIDER_EXPLICIT_NO_REVISION',
+        'PROVIDER_EMPTY_REVISION_INDICATOR', 'PROVIDER_REVISION_FIELD_NOT_SUPPLIED'
+    )),
+    provider_revision_contract_id TEXT NULL
+        CHECK(provider_revision_contract_id IS NULL
+              OR length(trim(provider_revision_contract_id)) > 0),
+    provider_revision_contract_version TEXT NULL
+        CHECK(provider_revision_contract_version IS NULL
+              OR length(trim(provider_revision_contract_version)) > 0),
+    provider_revision_contract_revision_indicator_value TEXT NULL
+        CHECK(provider_revision_contract_revision_indicator_value IS NULL
+              OR length(provider_revision_contract_revision_indicator_value) > 0),
+    provider_revision_contract_authoritative_reference TEXT NULL
+        CHECK(provider_revision_contract_authoritative_reference IS NULL
+              OR length(trim(provider_revision_contract_authoritative_reference)) > 0),
+    provider_revision_contract_fingerprint TEXT NULL
+        CHECK(provider_revision_contract_fingerprint IS NULL
+              OR (length(provider_revision_contract_fingerprint) = 64
+                  AND provider_revision_contract_fingerprint NOT GLOB '*[^0-9a-f]*')),
+    provider_publication_value TEXT NULL
+        CHECK(provider_publication_value IS NULL OR length(provider_publication_value) > 0),
+    provider_publication_value_kind TEXT NULL
+        CHECK(provider_publication_value_kind IS NULL
+              OR provider_publication_value_kind IN ('DATE', 'TIMESTAMP')),
+    provider_publication_source_field TEXT NULL
+        CHECK(provider_publication_source_field IS NULL
+              OR length(trim(provider_publication_source_field)) > 0),
+    availability_basis TEXT NOT NULL CHECK(availability_basis IN (
+        'PROVIDER_REPORTED', 'OFFICIAL_SCHEDULE_DERIVED', 'RETRIEVAL_BOUND'
+    )),
+    availability_boundary_utc TEXT NOT NULL
+        CHECK(length(availability_boundary_utc) = 27
+              AND substr(availability_boundary_utc, 11, 1) = 'T'
+              AND substr(availability_boundary_utc, 20, 1) = '.'
+              AND substr(availability_boundary_utc, 27, 1) = 'Z'
+              AND substr(availability_boundary_utc, 1, 10) >= observation_date),
+    availability_derivation_rule_id TEXT NULL,
+    availability_derivation_rule_version TEXT NULL,
+    availability_policy_reference TEXT NULL,
+    availability_calendar_id TEXT NULL,
+    availability_calendar_version TEXT NULL,
+    availability_calendar_fingerprint TEXT NULL
+        CHECK(availability_calendar_fingerprint IS NULL
+              OR (length(availability_calendar_fingerprint) = 64
+                  AND availability_calendar_fingerprint NOT GLOB '*[^0-9a-f]*')),
+    revision_sequence INTEGER NOT NULL CHECK(revision_sequence > 0),
+    supersedes_observation_id INTEGER NULL
+        REFERENCES reference_rate_observation(reference_rate_observation_id) ON DELETE RESTRICT,
+    is_current INTEGER NOT NULL CHECK(is_current IN (0, 1)),
+    quality_status TEXT NOT NULL CHECK(quality_status = 'ADMITTED_VALIDATED'),
+    observation_fingerprint TEXT NOT NULL UNIQUE
+        CHECK(length(observation_fingerprint) = 64
+              AND observation_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    FOREIGN KEY(reference_rate_import_manifest_id, reference_rate_source_id,
+                reference_rate_definition_id)
+        REFERENCES reference_rate_import_manifest(
+            reference_rate_import_manifest_id, reference_rate_source_id,
+            reference_rate_definition_id
+        ) ON DELETE RESTRICT,
+    FOREIGN KEY(supersedes_observation_id, reference_rate_definition_id,
+                reference_rate_source_id, observation_date)
+        REFERENCES reference_rate_observation(
+            reference_rate_observation_id, reference_rate_definition_id,
+            reference_rate_source_id, observation_date
+        ) ON DELETE RESTRICT,
+    CHECK((revision_sequence = 1 AND supersedes_observation_id IS NULL)
+          OR (revision_sequence > 1 AND supersedes_observation_id IS NOT NULL)),
+    CHECK((provider_revision_id IS NULL AND provider_revision_id_source_field IS NULL)
+          OR (provider_revision_id IS NOT NULL
+              AND provider_revision_id_source_field IS NOT NULL)),
+    CHECK(
+        (provider_revision_status = 'PROVIDER_REVISION_FIELD_NOT_SUPPLIED'
+         AND provider_revision_indicator IS NULL
+         AND provider_revision_indicator_source_field IS NULL)
+        OR (provider_revision_status = 'PROVIDER_EMPTY_REVISION_INDICATOR'
+            AND provider_revision_indicator = ''
+            AND provider_revision_indicator_source_field IS NOT NULL)
+        OR (provider_revision_status IN (
+                'PROVIDER_EXPLICIT_REVISION', 'PROVIDER_EXPLICIT_NO_REVISION'
+            )
+            AND provider_revision_indicator IS NOT NULL
+            AND length(provider_revision_indicator) > 0
+            AND provider_revision_indicator_source_field IS NOT NULL)
+    ),
+    CHECK(
+        (provider_publication_value IS NULL
+         AND provider_publication_value_kind IS NULL
+         AND provider_publication_source_field IS NULL
+         AND provider_publication_date IS NULL)
+        OR (provider_publication_value IS NOT NULL
+            AND provider_publication_value_kind IS NOT NULL
+            AND provider_publication_source_field IS NOT NULL)
+    ),
+    CHECK(
+        (revision_sequence = 1
+         AND provider_revision_contract_id IS NULL
+         AND provider_revision_contract_version IS NULL
+         AND provider_revision_contract_revision_indicator_value IS NULL
+         AND provider_revision_contract_authoritative_reference IS NULL
+         AND provider_revision_contract_fingerprint IS NULL)
+        OR (revision_sequence > 1
+            AND provider_revision_status = 'PROVIDER_EXPLICIT_REVISION'
+            AND provider_revision_contract_id IS NOT NULL
+            AND provider_revision_contract_version IS NOT NULL
+            AND provider_revision_contract_revision_indicator_value IS NOT NULL
+            AND provider_revision_contract_revision_indicator_value
+                = provider_revision_indicator
+            AND provider_revision_contract_authoritative_reference IS NOT NULL
+            AND provider_revision_contract_fingerprint IS NOT NULL)
+    ),
+    CHECK(
+        (availability_basis = 'PROVIDER_REPORTED'
+         AND provider_publication_value IS NOT NULL
+         AND provider_publication_value_kind = 'TIMESTAMP'
+         AND availability_derivation_rule_id IS NULL
+         AND availability_derivation_rule_version IS NULL
+         AND availability_policy_reference IS NULL
+         AND availability_calendar_id IS NULL
+         AND availability_calendar_version IS NULL
+         AND availability_calendar_fingerprint IS NULL)
+        OR (availability_basis = 'OFFICIAL_SCHEDULE_DERIVED'
+            AND (provider_publication_value IS NULL
+                 OR provider_publication_value_kind = 'DATE')
+            AND availability_derivation_rule_id IS NOT NULL
+            AND availability_derivation_rule_version IS NOT NULL
+            AND availability_policy_reference IS NOT NULL
+            AND availability_calendar_id IS NOT NULL
+            AND availability_calendar_version IS NOT NULL
+            AND availability_calendar_fingerprint IS NOT NULL)
+        OR (availability_basis = 'RETRIEVAL_BOUND'
+            AND availability_derivation_rule_id IS NULL
+            AND availability_derivation_rule_version IS NULL
+            AND availability_policy_reference IS NULL
+            AND availability_calendar_id IS NULL
+            AND availability_calendar_version IS NULL
+            AND availability_calendar_fingerprint IS NULL)
+    ),
+    UNIQUE(reference_rate_observation_id, reference_rate_definition_id,
+           reference_rate_source_id, observation_date),
+    UNIQUE(reference_rate_definition_id, observation_date, revision_sequence)
+);
+CREATE UNIQUE INDEX reference_rate_observation_current
+ON reference_rate_observation(reference_rate_definition_id, observation_date)
+WHERE is_current = 1;
+CREATE INDEX reference_rate_observation_date
+ON reference_rate_observation(reference_rate_definition_id, observation_date);
+CREATE UNIQUE INDEX reference_rate_observation_provider_revision
+ON reference_rate_observation(reference_rate_source_id, observation_date,
+                              provider_revision_id)
+WHERE provider_revision_id IS NOT NULL;
+CREATE INDEX reference_rate_observation_availability
+ON reference_rate_observation(reference_rate_definition_id,
+                              availability_boundary_utc,
+                              observation_date, revision_sequence);
 """
 
 
