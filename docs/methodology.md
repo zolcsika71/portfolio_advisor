@@ -66,11 +66,13 @@ and duplicate-row semantics are proven.
 
 ## Official reference-rate boundary
 
-Milestone 11C Phase B admits exact official ECB €STR observations and immutable
-request/raw provenance for EUR. Phase C0 advances that evidence to the
-provider-neutral provenance v2 contract without admitting another benchmark.
+Milestone 11C admits exact official ECB €STR observations for EUR and New York
+Fed daily SOFR observations for USD with immutable request/raw provenance.
+Phase C0's provider-neutral provenance v2 contract remains unchanged.
 Provider-issued revision/dataset identities remain distinct from the required
-system snapshot identity.
+system snapshot identity. €STR is unsecured euro overnight borrowing evidence;
+SOFR is secured U.S. Treasury repo overnight financing evidence. They are not
+semantically interchangeable.
 
 Every admitted observation has a conservative UTC availability boundary.
 `PROVIDER_REPORTED` requires actual provider timestamp evidence;
@@ -91,6 +93,15 @@ not authorization.
 Admission establishes evidence identity only; it does not establish a
 benchmark-to-portfolio-date alignment methodology or authorize risk-adjusted
 portfolio metrics.
+
+The New York Fed response supplies value dates and exact percentage-point rates
+but no exact observation publication timestamp, provider revision ID, or
+provider dataset version. Its empty `revisionIndicator` is retained exactly.
+Because the official schedule is approximate and has calendar exceptions,
+SOFR uses `RETRIEVAL_BOUND`: every observation is unavailable before the exact
+artifact retrieval time. The two official footnote-2 records retain their
+published SOFR rate and explicit `NA` percentile summaries; a missing
+`percentRate` is never filled.
 
 Reference-rate values remain exact `Decimal` evidence. Do not forward-fill an
 unknown date, substitute zero or a policy rate, infer holiday applicability,

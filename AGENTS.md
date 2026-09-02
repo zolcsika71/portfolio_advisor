@@ -10,11 +10,10 @@ ranking are typed Python functions controlled by reviewed configuration.
 by default. `--import` retains the workbook-import workflow. The active policy
 is `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1.
 
-Milestone 11C Phase C0 installs provider-neutral reference-rate provenance
-contract v2 and preserves the one immutable official ECB €STR history artifact.
-Only EUR €STR evidence is admitted; SOFR was not imported and must be retried as
-a separate Phase C checkpoint. HUFONIA, benchmark alignment, NAV remediation,
-portfolio metrics/ranking, and finalist comparison remain unavailable. The
+Milestone 11C admits immutable official ECB €STR and New York Fed daily SOFR
+history artifacts through provider-neutral reference-rate provenance contract
+v2. EUR and USD benchmark evidence are admitted. HUFONIA, benchmark alignment,
+NAV remediation, portfolio metrics/ranking, and finalist comparison remain unavailable. The
 construction runtime is `IMPLEMENTED_BLOCKED_BY_DATA` and production cutover is
 `NOT_AUTHORIZED`.
 
@@ -34,8 +33,8 @@ construction runtime is `IMPLEMENTED_BLOCKED_BY_DATA` and production cutover is
   persistence, and read-only foundation audit.
 - `reference_rates/`: provider-neutral v2 benchmark/source/manifest/observation
   contracts, explicit provider versus internal identity, conservative
-  availability boundaries, the official ECB €STR adapter, deterministic
-  offline migration/import, and read-only evidence validation. Tests never
+  availability boundaries, official ECB €STR and New York Fed SOFR adapters,
+  deterministic offline migration/import, and multi-benchmark validation. Tests never
   contact a provider.
 - `history/`: provenance-aware constituent history, lifecycle/reconciliation
   evidence, strict resolvability, local source stores, and reconstruction
@@ -78,7 +77,7 @@ Their code, tests, deterministic schemas, and validated policy are versioned.
 Do not add credentials, tokens, cookies, private account data, or
 machine-specific paths.
 
-ECB acquisition is always an explicit operator action. Raw response bytes and
+Provider acquisition is always an explicit operator action. Raw response bytes and
 their receipt are immutable local evidence; repeat import and validation are
 offline. No scheduler or ordinary advisor workflow may invoke acquisition.
 
@@ -100,6 +99,11 @@ poetry run python scripts/validate_ecb_estr_reference_rate.py --help
 poetry run python scripts/migrate_reference_rate_provenance_contract.py --help
 poetry run python scripts/validate_reference_rate_schema.py --help
 poetry run python scripts/validate_reference_rate_provenance.py --help
+poetry run python scripts/acquire_sofr.py
+poetry run python scripts/build_sofr_candidate.py --help
+poetry run python scripts/import_sofr_reference_rate.py --help
+poetry run python scripts/validate_sofr_reference_rate.py --help
+poetry run python scripts/validate_reference_rate_provenance.py --require-sofr
 ```
 
 The due-monitor LaunchAgent, when explicitly installed, invokes only the

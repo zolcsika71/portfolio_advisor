@@ -4,8 +4,10 @@ This bounded Phase A foundation defined how official €STR, SOFR, and HUFONIA e
 be represented. At completion it performed no network acquisition, ingestion, benchmark alignment,
 compounding, portfolio calculation, or runtime enablement.
 
-Phase B subsequently admitted one official ECB €STR history artifact without changing this schema
-contract. See [Milestone 11C Phase B](milestone_11c_phase_b_ecb_estr_ingestion.md). Production
+Phase B subsequently admitted one official ECB €STR history artifact, and Phase C admitted one
+official New York Fed SOFR history artifact under provenance v2 without another schema revision.
+See [Milestone 11C Phase B](milestone_11c_phase_b_ecb_estr_ingestion.md) and
+[Milestone 11C Phase C](milestone_11c_phase_c_sofr_ingestion.md). Production
 remains `IMPLEMENTED_BLOCKED_BY_DATA` and `NOT_AUTHORIZED`.
 
 > **Forward correction:** this document records the historical revision-1
@@ -81,7 +83,8 @@ while `scripts/validate_reference_rate_provenance.py` validates all stored bundl
 
 ## Remaining gates
 
-Phase B established those source and parser facts for ECB €STR and admitted EUR evidence. SOFR and
-HUFONIA still require their own reviewed adapters. Separate work is still required for
+Phase B established those source and parser facts for ECB €STR and admitted EUR evidence. Phase C
+did the same for New York Fed daily SOFR and USD evidence. HUFONIA still requires its own reviewed
+adapter. Separate work is still required for
 benchmark-to-portfolio-date alignment, Sharpe, Sortino, portfolio metrics, ranking, and production
 cutover.

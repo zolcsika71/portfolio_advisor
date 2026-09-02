@@ -561,8 +561,13 @@ def import_ecb_estr_evidence(
         with connect(target) as connection:
             _validate_current_reference_rate_schema(connection)
             _validated_reference_rate_schema_contract(connection)
-            existing = _reference_counts(connection)
-            if any(existing.values()):
+            existing = int(
+                connection.execute(
+                    "SELECT count(*) FROM reference_rate_definition WHERE benchmark_id=?",
+                    (ECB_ESTR_BENCHMARK_ID,),
+                ).fetchone()[0]
+            )
+            if existing:
                 _require_existing_bundle(
                     connection,
                     definition=definition,
@@ -1015,25 +1020,36 @@ def _require_existing_bundle(
     observations: Sequence[ReferenceRateObservation],
 ) -> None:
     definition_rows = connection.execute(
-        "SELECT * FROM reference_rate_definition ORDER BY reference_rate_definition_id"
+        """SELECT * FROM reference_rate_definition
+           WHERE benchmark_id=? ORDER BY reference_rate_definition_id""",
+        (ECB_ESTR_BENCHMARK_ID,),
     ).fetchall()
+    if len(definition_rows) != 1:
+        raise EcbEstrError("ECB scope contains a missing or extra definition")
+    definition_id = int(definition_rows[0]["reference_rate_definition_id"])
     source_rows = connection.execute(
-        "SELECT * FROM reference_rate_source ORDER BY reference_rate_source_id"
+        """SELECT * FROM reference_rate_source
+           WHERE reference_rate_definition_id=? ORDER BY reference_rate_source_id""",
+        (definition_id,),
     ).fetchall()
     manifest_rows = connection.execute(
-        "SELECT * FROM reference_rate_import_manifest ORDER BY reference_rate_import_manifest_id"
+        """SELECT * FROM reference_rate_import_manifest
+           WHERE reference_rate_definition_id=?
+           ORDER BY reference_rate_import_manifest_id""",
+        (definition_id,),
     ).fetchall()
     observation_rows = connection.execute(
         """SELECT * FROM reference_rate_observation
-           ORDER BY observation_date, revision_sequence, reference_rate_observation_id"""
+           WHERE reference_rate_definition_id=?
+           ORDER BY observation_date, revision_sequence, reference_rate_observation_id""",
+        (definition_id,),
     ).fetchall()
     if (
-        len(definition_rows) != 1
-        or len(source_rows) != 1
+        len(source_rows) != 1
         or len(manifest_rows) != 1
         or len(observation_rows) != len(observations)
     ):
-        raise EcbEstrError("reference-rate tables contain missing or extra evidence rows")
+        raise EcbEstrError("ECB scope contains missing or extra evidence rows")
     definition_row = definition_rows[0]
     actual_definition = ReferenceRateDefinition(
         contract_schema_version=_stored_integer(

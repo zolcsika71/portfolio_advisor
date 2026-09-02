@@ -48,17 +48,25 @@ migrator preserves all non-reference logical data and the exact ECB business
 projection, updates the feature marker last, and is byte-identical on v2
 replay. Exact `ABSENT`, `V1`, and `V2` states are recognized; partial, mixed,
 constraint-damaged, index-damaged, or future states fail closed.
+Phase C adds no schema revision: the existing provenance-v2 tables admit a
+second benchmark-scoped definition/source/manifest/observation bundle. The
+SOFR candidate builder copies the populated installation, preserves every
+stored €STR field, imports only retained offline SOFR evidence, and requires
+the same schema-contract fingerprint.
 
 ```bash
 poetry run python scripts/migrate_reference_rate_provenance_contract.py --help
 poetry run python scripts/validate_reference_rate_schema.py --help
 poetry run python scripts/validate_ecb_estr_reference_rate.py --help
 poetry run python scripts/validate_reference_rate_provenance.py --help
+poetry run python scripts/build_sofr_candidate.py --help
+poetry run python scripts/validate_sofr_reference_rate.py --help
+poetry run python scripts/validate_reference_rate_provenance.py --require-sofr
 ```
 
-The schema validator now checks the exact current v2 structure whether empty
-or populated. The ECB validator checks the retained official bundle, and the
-complete provenance validator checks every bundle read-only. Installation
+The schema validator checks the exact current v2 structure whether empty or
+populated. The ECB and SOFR validators check their retained official bundles,
+and the complete provenance validator checks both bundles read-only. Installation
 still requires a verified external backup, a fully gated candidate, atomic
 replacement, and immediate rollback on any post-installation failure.
 

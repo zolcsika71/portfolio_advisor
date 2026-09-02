@@ -35,12 +35,16 @@ and operational constraints.
 | Script | Purpose |
 |---|---|
 | `acquire_ecb_estr.py` | The sole network-capable path: perform one bounded request to the reviewed official ECB €STR endpoint and retain validated content-addressed bytes plus a receipt. |
+| `acquire_sofr.py` | The sole New York Fed network boundary: perform one bounded fixed SOFR request with redirects disabled and retain exact content-addressed JSON plus a receipt. |
 | `build_ecb_estr_candidate.py` | Historical Phase B path: copy an empty reference-rate target, import retained €STR evidence offline, and reconcile pre-existing logical data. |
+| `build_sofr_candidate.py` | Copy the populated provenance-v2 installation to a disposable target, import retained SOFR offline, and prove exact €STR/non-reference preservation. |
 | `import_ecb_estr_reference_rate.py` | Deterministically import an explicit retained raw/receipt pair into an explicit database target; an identical repeat is a byte-preserving no-op. |
+| `import_sofr_reference_rate.py` | Deterministically import the fixed retained SOFR raw/receipt pair; exact replay inserts zero rows and leaves database bytes unchanged. |
 | `migrate_reference_rate_provenance_contract.py` | Copy an exact populated v1 installation to an explicit disposable candidate, or replay an explicit v2 candidate with `--target`; verify the retained ECB pair offline and transactionally reconstruct provider-neutral v2 provenance. It never installs the candidate. |
 | `validate_ecb_estr_reference_rate.py` | Validate the admitted ECB evidence, raw provenance, fingerprints, row contracts, integrity, foreign keys, and zero constructed-portfolio rows read-only. |
+| `validate_sofr_reference_rate.py` | Validate benchmark-scoped SOFR contracts, retained raw/receipt evidence, conservative availability, fingerprints, integrity, foreign keys, and zero constructed rows read-only. |
 | `validate_reference_rate_schema.py` | Validate the exact current v2 reference-rate DDL and feature marker read-only, whether the feature is empty or populated. |
-| `validate_reference_rate_provenance.py` | Validate the exact Phase C0 ESTR scope, internal identity, provider fields, retained artifact/receipt reconciliation, availability, revision chains, fingerprints, and benchmark-wide source isolation read-only. `--validation-registry` supplies an explicit reviewed offline schedule/revision approval registry when those paths are used. |
+| `validate_reference_rate_provenance.py` | Validate every admitted benchmark bundle, internal identity, provider fields, retained artifact/receipt reconciliation, availability, revision chains, fingerprints, and benchmark-wide source isolation read-only. `--require-sofr` requires the completed ESTR+SOFR Phase C scope. |
 
 Automated tests, offline import, candidate construction, and validation never
 contact a provider. Missing provider revision IDs or dataset versions are
@@ -48,8 +52,8 @@ represented as `NULL`, never synthesized. Raw empty revision indicators remain
 distinct from absent fields, and `RETRIEVAL_BOUND` evidence is unavailable
 before exact capture. Malformed, empty, wrong-series, duplicate, unauthorized
 revision, conflicting, or provenance-inconsistent evidence fails closed and is
-never silently overwritten. Only EUR €STR is admitted; SOFR remains unadmitted,
-HUFONIA remains pending, and no benchmark is aligned to portfolio returns.
+never silently overwritten. EUR €STR and USD daily SOFR are admitted; HUFONIA
+remains pending, and no benchmark is aligned to portfolio returns.
 
 ## Historical evidence and source audits
 

@@ -33,6 +33,11 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--require-sofr",
+        action="store_true",
+        help="require the complete Phase C ESTR plus SOFR benchmark scope",
+    )
     arguments = parser.parse_args(argv)
     try:
         registry = (
@@ -49,6 +54,7 @@ def main(argv: list[str] | None = None) -> int:
             approved_revision_contracts=(
                 registry.approved_revision_contracts if registry is not None else ()
             ),
+            require_sofr=arguments.require_sofr,
         )
         if registry is not None:
             result["validation_registry_sha256"] = registry.artifact_sha256

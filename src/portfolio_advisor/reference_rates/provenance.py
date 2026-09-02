@@ -31,6 +31,7 @@ from portfolio_advisor.database.schema.v3 import (
     validate_schema,
 )
 from portfolio_advisor.reference_rates.ecb_estr import EcbEstrError
+from portfolio_advisor.reference_rates.sofr import SofrError
 
 from .contracts import (
     ApprovedAvailabilitySchedule,
@@ -206,6 +207,7 @@ def validate_reference_rate_database(
     repository_root: Path,
     approved_schedules: tuple[ApprovedAvailabilitySchedule, ...] = (),
     approved_revision_contracts: tuple[ProviderRevisionTransitionContract, ...] = (),
+    require_sofr: bool = False,
 ) -> dict[str, object]:
     """Validate all benchmark bundles and exact v2 schema without modifying bytes."""
     if target.is_symlink() or repository_root.is_symlink():
@@ -241,17 +243,28 @@ def validate_reference_rate_database(
                 approved_revision_contracts=approved_revision_contracts,
             )
             benchmark_ids = {item.benchmark_id for item in definitions.values()}
-            if benchmark_ids != {"ESTR"}:
+            allowed_scopes = ({"ESTR"}, {"ESTR", "SOFR"})
+            if benchmark_ids not in allowed_scopes or (
+                require_sofr and benchmark_ids != {"ESTR", "SOFR"}
+            ):
                 raise ReferenceRateProvenanceValidationError(
-                    "Phase C0 admits exactly the existing ESTR benchmark scope"
+                    "reference-rate scope must contain ESTR and, when required, SOFR"
                 )
-            _validate_phase_c0_ecb_bundle(
+            _validate_ecb_bundle(
                 definitions=definitions,
                 sources=sources,
                 manifests=manifests,
                 observations=observations,
                 repository_root=root,
             )
+            if "SOFR" in benchmark_ids:
+                _validate_sofr_bundle(
+                    definitions=definitions,
+                    sources=sources,
+                    manifests=manifests,
+                    observations=observations,
+                    repository_root=root,
+                )
             integrity = tuple(
                 str(row[0]) for row in connection.execute("PRAGMA integrity_check")
             )
@@ -269,6 +282,7 @@ def validate_reference_rate_database(
     except (
         sqlite3.Error,
         EcbEstrError,
+        SofrError,
         ReferenceRateContractError,
         SchemaVersionError,
         ReferenceRateProvenanceMigrationError,
@@ -334,11 +348,13 @@ def validate_reference_rate_database(
         "production_cutover": "NOT_AUTHORIZED",
         "provider_revision_status_counts": dict(sorted(revision_counts.items())),
         "reference_rate_runtime_admission": (
-            "EUR_ESTR_ONLY" if benchmark_ids == {"ESTR"} else "NO_GO"
+            "EUR_ESTR_ONLY"
+            if benchmark_ids == {"ESTR"}
+            else "EUR_ESTR_AND_USD_SOFR"
         ),
         "schema_contract_fingerprint": canonical_fingerprint(schema_contract),
         "sofr_evidence": (
-            "NOT_ADMITTED" if "SOFR" not in benchmark_ids else "PRESENT_UNEXPECTED"
+            "NOT_ADMITTED" if "SOFR" not in benchmark_ids else "ADMITTED_VALIDATED"
         ),
         "source_count": len(sources),
         "status": "PASS",
@@ -371,7 +387,7 @@ def _definitions(connection: sqlite3.Connection) -> dict[int, ReferenceRateDefin
     return result
 
 
-def _validate_phase_c0_ecb_bundle(
+def _validate_ecb_bundle(
     *,
     definitions: dict[int, ReferenceRateDefinition],
     sources: dict[int, tuple[int, ReferenceRateSource]],
@@ -379,11 +395,21 @@ def _validate_phase_c0_ecb_bundle(
     observations: dict[int, ReferenceRateObservation],
     repository_root: Path,
 ) -> None:
-    if len(definitions) != 1 or len(sources) != 1 or len(manifests) != 1:
+    definition_entries = [
+        (key, item) for key, item in definitions.items() if item.benchmark_id == "ESTR"
+    ]
+    if len(definition_entries) != 1:
         raise ReferenceRateProvenanceValidationError(
-            "Phase C0 requires exactly one preserved ECB ESTR evidence bundle"
+            "reference-rate scope requires exactly one ECB ESTR definition"
         )
-    stored_manifest = next(iter(manifests.values()))[2]
+    definition_id, stored_definition = definition_entries[0]
+    scoped_sources = [item for item in sources.values() if item[0] == definition_id]
+    scoped_manifests = [item for item in manifests.values() if item[0] == definition_id]
+    if len(scoped_sources) != 1 or len(scoped_manifests) != 1:
+        raise ReferenceRateProvenanceValidationError(
+            "reference-rate scope requires one ECB ESTR source and manifest"
+        )
+    stored_manifest = scoped_manifests[0][2]
     raw_artifact = repository_root / PurePosixPath(
         stored_manifest.raw_artifact_reference
     )
@@ -393,24 +419,77 @@ def _validate_phase_c0_ecb_bundle(
         receipt_path=raw_artifact.with_suffix(".receipt.json"),
     )
     stored_observations = tuple(
-        observations[key]
-        for key in sorted(
-            observations,
-            key=lambda item: (
-                observations[item].observation_date,
-                observations[item].revision_sequence,
-                item,
+        sorted(
+            (
+                item for item in observations.values() if item.benchmark_id == "ESTR"
             ),
+            key=lambda item: (item.observation_date, item.revision_sequence),
         )
     )
     if (
-        tuple(definitions.values()) != (prepared.definition,)
-        or tuple(item[1] for item in sources.values()) != (prepared.source,)
-        or tuple(item[2] for item in manifests.values()) != (prepared.manifest,)
+        stored_definition != prepared.definition
+        or tuple(item[1] for item in scoped_sources) != (prepared.source,)
+        or tuple(item[2] for item in scoped_manifests) != (prepared.manifest,)
         or stored_observations != prepared.observations
     ):
         raise ReferenceRateProvenanceValidationError(
             "stored ESTR bundle differs from retained ECB artifact and receipt"
+        )
+
+
+def _validate_sofr_bundle(
+    *,
+    definitions: dict[int, ReferenceRateDefinition],
+    sources: dict[int, tuple[int, ReferenceRateSource]],
+    manifests: dict[int, tuple[int, int, ReferenceRateImportManifest]],
+    observations: dict[int, ReferenceRateObservation],
+    repository_root: Path,
+) -> None:
+    from .sofr import SOFR_BENCHMARK_ID, prepare_sofr_bundle
+
+    definition_entries = [
+        (key, item)
+        for key, item in definitions.items()
+        if item.benchmark_id == SOFR_BENCHMARK_ID
+    ]
+    if len(definition_entries) != 1:
+        raise ReferenceRateProvenanceValidationError(
+            "reference-rate scope requires exactly one SOFR definition"
+        )
+    definition_id, stored_definition = definition_entries[0]
+    scoped_sources = [item for item in sources.values() if item[0] == definition_id]
+    scoped_manifests = [item for item in manifests.values() if item[0] == definition_id]
+    if len(scoped_sources) != 1 or len(scoped_manifests) != 1:
+        raise ReferenceRateProvenanceValidationError(
+            "reference-rate scope requires one SOFR source and manifest"
+        )
+    stored_manifest = scoped_manifests[0][2]
+    raw_artifact = repository_root / PurePosixPath(
+        stored_manifest.raw_artifact_reference
+    )
+    prepared = prepare_sofr_bundle(
+        repository_root=repository_root,
+        raw_artifact=raw_artifact,
+        receipt_path=raw_artifact.with_suffix(".receipt.json"),
+    )
+    stored_observations = tuple(
+        sorted(
+            (
+                item
+                for item in observations.values()
+                if item.benchmark_id == SOFR_BENCHMARK_ID
+            ),
+            key=lambda item: (item.observation_date, item.revision_sequence),
+        )
+    )
+    if (
+        stored_definition != prepared.definition
+        or tuple(item[1] for item in scoped_sources) != (prepared.source,)
+        or tuple(item[2] for item in scoped_manifests) != (prepared.manifest,)
+        or stored_observations != prepared.observations
+    ):
+        raise ReferenceRateProvenanceValidationError(
+            "stored SOFR bundle differs from retained artifact and receipt"
         )
 
 

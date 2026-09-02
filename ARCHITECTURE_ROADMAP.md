@@ -65,7 +65,7 @@ roadmap completion or production readiness.
 ## 1.2 Verified implementation status
 
 This status is grounded in repository history, versioned contracts and the installed schema-v3
-validators through the Milestone 11C Phase C0 provenance-contract release.
+validators through the Milestone 11C Phase C SOFR-evidence release.
 
 | Checkpoint | State | Verified boundary |
 | --- | --- | --- |
@@ -75,7 +75,8 @@ validators through the Milestone 11C Phase C0 provenance-contract release.
 | Milestone 11C Phase A — reference-rate schema foundation | `COMPLETED` | Commit `37d9e0c2a9f57de1837a8d7a43aab54f9ef38772`; empty evidence schema and immutable contracts. |
 | Milestone 11C Phase B — ECB €STR evidence | `COMPLETED` | Exact official EUR history, immutable raw provenance, offline import and read-only validation; no metric activation. |
 | Milestone 11C Phase C0 — provider-neutral provenance | `COMPLETED` | Reference-rate feature/contract revision 2, explicit provider-versus-internal identity, conservative availability evidence, exact v1/v2 detection, and lossless ECB migration; no new benchmark admitted. |
-| Overall roadmap-compliant Milestone 11 | `BLOCKED_BY_DATA` | EUR €STR evidence is admitted, but current NAV, remaining currency benchmarks, alignment and portfolio analytics cannot produce a governed real candidate. |
+| Milestone 11C Phase C — New York Fed SOFR evidence | `COMPLETED` | Exact official USD daily overnight SOFR, immutable raw provenance, retrieval-bound availability, offline import and multi-benchmark validation; no metric activation. |
+| Overall roadmap-compliant Milestone 11 | `BLOCKED_BY_DATA` | EUR €STR and USD SOFR evidence are admitted, but current NAV, HUFONIA, alignment and portfolio analytics cannot produce a governed real candidate. |
 | Roadmap-compliant Milestone 12 | `BLOCKED_BY_DATA` | No real persisted `SHORTLIST_FINALIST` exists for portfolio-to-portfolio comparison. |
 | Milestone 13 | `PLANNED` / `NO-GO` | Dividend evidence work remains deferred. |
 | Production cutover | `NOT_AUTHORIZED` | No checkpoint authorizes production cutover. |
@@ -529,19 +530,34 @@ revision and publication evidence and the `PROVIDER_REPORTED` availability bound
 `VALID_TO` supplies explicit supersession. Exact `OBS_STATUS` is retained as the raw revision
 indicator.
 
-Installed production row counts are one definition, one source, one import manifest and 1,771
+The preserved ECB scope remains one definition, one source, one import manifest and 1,771
 observations. Dataset fingerprint
 `99a1a2ff837688bb78fd0b81cbef1ef64f27f1cab36cc2acdb0ded5026cc534e` binds the parsed
 history. The raw bytes and request/retrieval receipt remain immutable local evidence. Exact repeat
 import is a no-op; malformed, missing, wrong-series, duplicate or conflicting evidence fails
-closed. Reference-rate runtime admission, benchmark alignment, cash-return treatment, Sharpe and
-Sortino remain unavailable.
+closed.
 
 Phase C0 migration identity is
 `MILESTONE_11C_PHASE_C0_REFERENCE_RATE_PROVENANCE_V2`. The ECB dataset fingerprint, raw/receipt
 hashes, dates, exact rates and row counts remain unchanged. Definition and manifest fingerprints
-intentionally change under v2; the source fingerprint remains unchanged. SOFR is not admitted by
-this checkpoint.
+intentionally change under v2; the source fingerprint remains unchanged.
+
+Phase C adds the official New York Fed daily overnight SOFR series for USD. The fixed Markets Data
+API request covers `2018-04-02` through `2026-08-31` with `type=rate`. Its exact HTTP 200 JSON is
+445,820 bytes with SHA-256
+`16031a7ffb8865e9fd7eb066ab119198edca696eba4278f455c30c892d952ecf` and contains 2,102
+unique `type=SOFR` observations. `percentRate` is parsed directly as a two-decimal percentage-point
+`Decimal`; no SOFR average, index or other reference-rate product is admitted. The SOFR dataset
+fingerprint is `48053c9ced286708de4e6dcfbe571db055dd6c4c2b677c28980bb24872ee180f`.
+
+The API supplies no exact observation publication timestamp, provider revision ID or provider
+dataset version. Those fields remain null. Every exact empty `revisionIndicator` is retained as
+supplied-empty, and all observations use conservative `RETRIEVAL_BOUND` availability at
+`2026-09-02T17:00:39.000000Z`. Two footnote-2 rows retain official SOFR rates and explicit `NA`
+percentile summaries; missing daily rates are never filled. Installed totals are two definitions,
+two sources, two manifests and 3,873 observation versions. Runtime reference-rate evidence supports
+daily EUR €STR and daily USD SOFR only; HUFONIA, benchmark alignment, cash-return treatment, Sharpe
+and Sortino remain unavailable.
 
 ---
 
@@ -1474,9 +1490,10 @@ The 20% cash sleeve does not imply a benchmark return or any other cash return. 
 treatment is a separate governed policy decision and must not be inferred from the Sharpe/Sortino
 reference series.
 
-Official EUR €STR evidence is admitted through Phase B and preserved under Phase C0 provenance v2,
-but admission does not prove future alignment or portfolio calculation contracts. SOFR remains
-unadmitted pending a separate Phase C retry; HUFONIA remains absent.
+Official EUR €STR evidence is admitted through Phase B and preserved under Phase C0 provenance v2.
+Official daily USD SOFR is admitted through Phase C with conservative retrieval-bound availability.
+Admission does not prove alignment or portfolio calculation contracts. €STR and SOFR are not
+interchangeable, and HUFONIA remains absent.
 
 ---
 
@@ -2084,9 +2101,9 @@ category, NAV, currency, benchmark or methodology evidence fails closed. Officia
 reference-rate evidence is required before Sharpe or Sortino can participate in portfolio ranking.
 
 The machinery is implemented, but the current production runtime is
-`IMPLEMENTED_BLOCKED_BY_DATA`. EUR €STR evidence is admitted, but governed alignment and
-portfolio metrics are not implemented, SOFR/HUFONIA are absent, and retained NAV is insufficient
-and stale. Production contains zero constructed portfolio candidates.
+`IMPLEMENTED_BLOCKED_BY_DATA`. EUR €STR and USD SOFR evidence are admitted, but governed alignment
+and portfolio metrics are not implemented, HUFONIA is absent, and retained NAV is insufficient and
+stale. Production contains zero constructed portfolio candidates.
 
 ---
 
@@ -3254,8 +3271,8 @@ current status: overall Milestone 11 is BLOCKED_BY_DATA
 | Milestone 11C Phase A — reference-rate schema foundation | `COMPLETED` | Empty official-rate evidence schema, contracts, copy-on-write migration and read-only validator; commit `37d9e0c2a9f57de1837a8d7a43aab54f9ef38772`. |
 | Milestone 11C Phase B — ECB €STR adapter | `COMPLETED` | Official EUR history, immutable raw/receipt provenance, exact offline import, idempotency and read-only validation. |
 | Milestone 11C Phase C0 — provider-neutral provenance remediation | `COMPLETED` | Contract/feature revision 2, optional provider IDs, system snapshot identity, explicit availability evidence, exact migration and ECB preservation; no SOFR import. |
-| Milestone 11C Phase C — NY Fed SOFR adapter retry | `PLANNED` — next | Retry official USD benchmark acquisition and admission under provenance v2. |
-| Milestone 11C Phase D — MNB HUFONIA adapter | `PLANNED` | Admit official HUF benchmark evidence. |
+| Milestone 11C Phase C — NY Fed SOFR adapter | `COMPLETED` | Official USD daily overnight SOFR, exact retained JSON/receipt, retrieval-bound availability, idempotent offline admission and complete multi-benchmark validation. |
+| Milestone 11C Phase D — MNB HUFONIA adapter | `PLANNED` — next | Admit official HUF benchmark evidence. |
 | Milestone 11C Phase E — NAV provenance upgrade and EUR/HUF refresh | `PLANNED` | Add complete raw-source/manifests/revision provenance and refresh the smallest feasible exact-share-class universes. |
 | Milestone 11C Phase F — aligned portfolio analytics and real finalist | `PLANNED` | Governed aligned returns, covariance-aware portfolio metrics, runtime construction, real-candidate persistence, ranking and `SHORTLIST_FINALIST` selection. |
 
@@ -3503,18 +3520,17 @@ Do not combine terminology migration with unrelated ranking or construction chan
 The next engineering milestone is:
 
 ```text
-MILESTONE 11C PHASE C
-NEW YORK FED SOFR ADAPTER
+MILESTONE 11C PHASE D
+MNB HUFONIA ADAPTER
 ```
 
-Phase B and the Phase C0 provider-neutral contract remediation are completed forward history.
-Phase C may be retried only as a bounded official-USD reference-rate ingestion path under v2. Its
-scope is:
+Phase B, Phase C0 and Phase C are completed forward history. Phase D is the next bounded
+reference-rate checkpoint. Its scope is:
 
 ```text
-A. official Federal Reserve Bank of New York endpoint only
+A. official Magyar Nemzeti Bank source only
 
-B. exact SOFR benchmark and series identity
+B. exact HUFONIA benchmark and series identity
 
 C. immutable raw-response retention with SHA-256
 
@@ -3540,8 +3556,9 @@ K. complete source, schema, integrity, foreign-key and logical-preservation vali
 
 This checkpoint must not change NAV evidence, calculate portfolio metrics, activate Sharpe or
 Sortino, construct a production portfolio, or authorize production cutover. It must preserve the
-completed ECB evidence unchanged and apply the same candidate-first, fail-closed release boundary.
-HUFONIA, NAV remediation, portfolio metrics and real construction remain later checkpoints.
+completed ECB and New York Fed evidence unchanged and apply the same candidate-first, fail-closed
+release boundary. NAV remediation, portfolio metrics and real construction remain later
+checkpoints.
 
 ---
 

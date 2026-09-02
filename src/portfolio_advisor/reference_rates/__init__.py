@@ -1,4 +1,4 @@
-"""Governed reference-rate contracts and official ECB €STR evidence adapter."""
+"""Governed reference-rate contracts and official ECB/NY Fed evidence adapters."""
 
 from .contracts import (
     INTERNAL_EVIDENCE_IDENTITY_SCHEME,
@@ -37,6 +37,24 @@ from .ecb_estr import (
     validate_ecb_estr_database,
 )
 from .ecb_estr_acquisition import EcbEstrAcquisitionResult, acquire_ecb_estr
+from .sofr import (
+    SOFR_ADAPTER_SCHEMA_VERSION,
+    SOFR_BENCHMARK_ID,
+    SOFR_EXPECTED_OBSERVATION_COUNT,
+    SOFR_MACHINE_URL,
+    SOFR_REQUEST_PARAMETERS,
+    ParsedSofrDataset,
+    ParsedSofrObservation,
+    SofrAcquisitionReceipt,
+    SofrError,
+    SofrImportResult,
+    import_sofr_evidence,
+    load_sofr_receipt,
+    parse_sofr_json,
+    prepare_sofr_bundle,
+    validate_sofr_database,
+)
+from .sofr_acquisition import SofrAcquisitionResult, acquire_sofr
 
 __all__ = [
     "ECB_ESTR_ADAPTER_SCHEMA_VERSION",
@@ -49,6 +67,11 @@ __all__ = [
     "INTERNAL_EVIDENCE_IDENTITY_SCHEME",
     "LEGACY_REFERENCE_RATE_CONTRACT_SCHEMA_VERSION",
     "REFERENCE_RATE_CONTRACT_SCHEMA_VERSION",
+    "SOFR_ADAPTER_SCHEMA_VERSION",
+    "SOFR_BENCHMARK_ID",
+    "SOFR_EXPECTED_OBSERVATION_COUNT",
+    "SOFR_MACHINE_URL",
+    "SOFR_REQUEST_PARAMETERS",
     "ApprovedAvailabilitySchedule",
     "EcbEstrAcquisitionReceipt",
     "EcbEstrAcquisitionResult",
@@ -56,21 +79,33 @@ __all__ = [
     "EcbEstrImportResult",
     "EvidenceTransition",
     "ParsedEcbEstrDataset",
+    "ParsedSofrDataset",
+    "ParsedSofrObservation",
     "ProviderRevisionTransitionContract",
     "ReferenceRateContractError",
     "ReferenceRateDefinition",
     "ReferenceRateImportManifest",
     "ReferenceRateObservation",
     "ReferenceRateSource",
+    "SofrAcquisitionReceipt",
+    "SofrAcquisitionResult",
+    "SofrError",
+    "SofrImportResult",
     "acquire_ecb_estr",
+    "acquire_sofr",
     "canonical_utc_timestamp",
     "classify_evidence_transition",
     "import_ecb_estr_evidence",
+    "import_sofr_evidence",
     "internal_evidence_identity",
     "load_ecb_estr_receipt",
+    "load_sofr_receipt",
     "observations_available_as_of",
     "parse_ecb_estr_csv",
+    "parse_sofr_json",
+    "prepare_sofr_bundle",
     "validate_ecb_estr_database",
     "validate_observation_availability",
     "validate_policy_binding",
+    "validate_sofr_database",
 ]
