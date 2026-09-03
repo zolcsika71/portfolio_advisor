@@ -31,6 +31,7 @@ from portfolio_advisor.database.schema.v3 import (
     validate_schema,
 )
 from portfolio_advisor.reference_rates.ecb_estr import EcbEstrError
+from portfolio_advisor.reference_rates.hufonia import HufoniaError
 from portfolio_advisor.reference_rates.sofr import SofrError
 
 from .contracts import (
@@ -208,6 +209,7 @@ def validate_reference_rate_database(
     approved_schedules: tuple[ApprovedAvailabilitySchedule, ...] = (),
     approved_revision_contracts: tuple[ProviderRevisionTransitionContract, ...] = (),
     require_sofr: bool = False,
+    require_hufonia: bool = False,
 ) -> dict[str, object]:
     """Validate all benchmark bundles and exact v2 schema without modifying bytes."""
     if target.is_symlink() or repository_root.is_symlink():
@@ -243,12 +245,22 @@ def validate_reference_rate_database(
                 approved_revision_contracts=approved_revision_contracts,
             )
             benchmark_ids = {item.benchmark_id for item in definitions.values()}
-            allowed_scopes = ({"ESTR"}, {"ESTR", "SOFR"})
-            if benchmark_ids not in allowed_scopes or (
-                require_sofr and benchmark_ids != {"ESTR", "SOFR"}
+            allowed_scopes = (
+                {"ESTR"},
+                {"ESTR", "SOFR"},
+                {"ESTR", "SOFR", "HUFONIA"},
+            )
+            if (
+                benchmark_ids not in allowed_scopes
+                or (require_sofr and "SOFR" not in benchmark_ids)
+                or (
+                    require_hufonia
+                    and benchmark_ids != {"ESTR", "SOFR", "HUFONIA"}
+                )
             ):
                 raise ReferenceRateProvenanceValidationError(
-                    "reference-rate scope must contain ESTR and, when required, SOFR"
+                    "reference-rate scope must be the ordered ESTR, ESTR+SOFR, or "
+                    "ESTR+SOFR+HUFONIA admission set"
                 )
             _validate_ecb_bundle(
                 definitions=definitions,
@@ -259,6 +271,14 @@ def validate_reference_rate_database(
             )
             if "SOFR" in benchmark_ids:
                 _validate_sofr_bundle(
+                    definitions=definitions,
+                    sources=sources,
+                    manifests=manifests,
+                    observations=observations,
+                    repository_root=root,
+                )
+            if "HUFONIA" in benchmark_ids:
+                _validate_hufonia_bundle(
                     definitions=definitions,
                     sources=sources,
                     manifests=manifests,
@@ -282,6 +302,7 @@ def validate_reference_rate_database(
     except (
         sqlite3.Error,
         EcbEstrError,
+        HufoniaError,
         SofrError,
         ReferenceRateContractError,
         SchemaVersionError,
@@ -336,7 +357,9 @@ def validate_reference_rate_database(
         "feature_revision": REFERENCE_RATE_FEATURE_REVISION,
         "foreign_key_violations": 0,
         "hufonia_evidence": (
-            "NOT_STARTED" if "HUFONIA" not in benchmark_ids else "PRESENT_UNEXPECTED"
+            "NOT_ADMITTED"
+            if "HUFONIA" not in benchmark_ids
+            else "ADMITTED_VALIDATED"
         ),
         "integrity_check": "ok",
         "manifest_count": len(manifests),
@@ -347,11 +370,13 @@ def validate_reference_rate_database(
         "observation_version_count": len(observations),
         "production_cutover": "NOT_AUTHORIZED",
         "provider_revision_status_counts": dict(sorted(revision_counts.items())),
-        "reference_rate_runtime_admission": (
-            "EUR_ESTR_ONLY"
-            if benchmark_ids == {"ESTR"}
-            else "EUR_ESTR_AND_USD_SOFR"
-        ),
+        "reference_rate_runtime_admission": {
+            frozenset({"ESTR"}): "EUR_ESTR_ONLY",
+            frozenset({"ESTR", "SOFR"}): "EUR_ESTR_AND_USD_SOFR",
+            frozenset({"ESTR", "SOFR", "HUFONIA"}): (
+                "EUR_ESTR_USD_SOFR_AND_HUF_HUFONIA"
+            ),
+        }[frozenset(benchmark_ids)],
         "schema_contract_fingerprint": canonical_fingerprint(schema_contract),
         "sofr_evidence": (
             "NOT_ADMITTED" if "SOFR" not in benchmark_ids else "ADMITTED_VALIDATED"
@@ -490,6 +515,62 @@ def _validate_sofr_bundle(
     ):
         raise ReferenceRateProvenanceValidationError(
             "stored SOFR bundle differs from retained artifact and receipt"
+        )
+
+
+def _validate_hufonia_bundle(
+    *,
+    definitions: dict[int, ReferenceRateDefinition],
+    sources: dict[int, tuple[int, ReferenceRateSource]],
+    manifests: dict[int, tuple[int, int, ReferenceRateImportManifest]],
+    observations: dict[int, ReferenceRateObservation],
+    repository_root: Path,
+) -> None:
+    from .hufonia import HUFONIA_BENCHMARK_ID, prepare_hufonia_bundle
+
+    definition_entries = [
+        (key, item)
+        for key, item in definitions.items()
+        if item.benchmark_id == HUFONIA_BENCHMARK_ID
+    ]
+    if len(definition_entries) != 1:
+        raise ReferenceRateProvenanceValidationError(
+            "reference-rate scope requires exactly one HUFONIA definition"
+        )
+    definition_id, stored_definition = definition_entries[0]
+    scoped_sources = [item for item in sources.values() if item[0] == definition_id]
+    scoped_manifests = [item for item in manifests.values() if item[0] == definition_id]
+    if len(scoped_sources) != 1 or len(scoped_manifests) != 1:
+        raise ReferenceRateProvenanceValidationError(
+            "reference-rate scope requires one HUFONIA source and manifest"
+        )
+    stored_manifest = scoped_manifests[0][2]
+    raw_artifact = repository_root / PurePosixPath(
+        stored_manifest.raw_artifact_reference
+    )
+    prepared = prepare_hufonia_bundle(
+        repository_root=repository_root,
+        raw_artifact=raw_artifact,
+        receipt_path=raw_artifact.with_suffix(".receipt.json"),
+    )
+    stored_observations = tuple(
+        sorted(
+            (
+                item
+                for item in observations.values()
+                if item.benchmark_id == HUFONIA_BENCHMARK_ID
+            ),
+            key=lambda item: (item.observation_date, item.revision_sequence),
+        )
+    )
+    if (
+        stored_definition != prepared.definition
+        or tuple(item[1] for item in scoped_sources) != (prepared.source,)
+        or tuple(item[2] for item in scoped_manifests) != (prepared.manifest,)
+        or stored_observations != prepared.observations
+    ):
+        raise ReferenceRateProvenanceValidationError(
+            "stored HUFONIA bundle differs from retained artifact and receipt"
         )
 
 

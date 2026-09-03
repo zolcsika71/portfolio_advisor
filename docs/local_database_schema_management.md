@@ -53,6 +53,10 @@ second benchmark-scoped definition/source/manifest/observation bundle. The
 SOFR candidate builder copies the populated installation, preserves every
 stored €STR field, imports only retained offline SOFR evidence, and requires
 the same schema-contract fingerprint.
+Phase D likewise adds no schema revision. Its candidate builder requires the
+exact populated €STR+SOFR Phase C scope, preserves every stored field in both
+existing bundles, imports one retained HUFONIA bundle, and requires the
+unchanged provenance-v2 feature and schema fingerprints.
 
 ```bash
 poetry run python scripts/migrate_reference_rate_provenance_contract.py --help
@@ -62,13 +66,17 @@ poetry run python scripts/validate_reference_rate_provenance.py --help
 poetry run python scripts/build_sofr_candidate.py --help
 poetry run python scripts/validate_sofr_reference_rate.py --help
 poetry run python scripts/validate_reference_rate_provenance.py --require-sofr
+poetry run python scripts/build_hufonia_candidate.py --help
+poetry run python scripts/validate_hufonia_reference_rate.py --help
+poetry run python scripts/validate_reference_rate_provenance.py --require-hufonia
 ```
 
 The schema validator checks the exact current v2 structure whether empty or
-populated. The ECB and SOFR validators check their retained official bundles,
-and the complete provenance validator checks both bundles read-only. Installation
-still requires a verified external backup, a fully gated candidate, atomic
-replacement, and immediate rollback on any post-installation failure.
+populated. The ECB, SOFR, and HUFONIA validators check their retained official
+bundles, and the complete provenance validator checks all admitted bundles
+read-only. Installation still requires a verified external backup, a fully
+gated candidate, atomic replacement, and immediate rollback on any
+post-installation failure.
 
 The other stores have no current detected schema drift. If any of their
 schemas changes, add an explicit component migration contract in its existing

@@ -20,9 +20,9 @@ source-backed methodology, constraints, and explainability.
   365-day outcome slots without fabricating outcomes.
 - Actual TBSZ evidence is separate from the model portfolio, remains local,
   and never submits brokerage orders.
-- Official ECB €STR and New York Fed daily SOFR history artifacts are admitted
-  as exact EUR and USD reference-rate evidence under provider-neutral provenance
-  contract v2. HUFONIA remains pending. Evidence admission does not activate
+- Official ECB €STR, New York Fed daily SOFR, and MNB HUFONIA history artifacts
+  are admitted as exact EUR, USD, and HUF reference-rate evidence under
+  provider-neutral provenance contract v2. Evidence admission does not activate
   benchmark alignment, Sharpe/Sortino, portfolio construction, trading, or
   production cutover.
 
@@ -112,7 +112,7 @@ the operational commands.
 | `database/model_portfolio.sqlite` | Local snapshot source; never mutated by ranking/backtesting. |
 | `src/portfolio_advisor/ranking/` | Approved policy loading, fail-closed eligibility, normalization, scoring, and stable ranking. |
 | `src/portfolio_advisor/construction/` | Reviewed normalized 80/20 construction domain and persistence foundation; production remains data-blocked. |
-| `src/portfolio_advisor/reference_rates/` | Provider-neutral v2 provenance, conservative availability boundaries, official ECB €STR and New York Fed SOFR adapters, exact offline import, and read-only multi-benchmark validation. |
+| `src/portfolio_advisor/reference_rates/` | Provider-neutral v2 provenance, conservative availability boundaries, official ECB €STR, New York Fed SOFR, and MNB HUFONIA adapters, exact offline import, and read-only multi-benchmark validation. |
 | `src/portfolio_advisor/history/` | Provenance-aware source resolution, lifecycle evidence, local official constituent history, and reconstruction freeze. |
 | `src/portfolio_advisor/backtesting/` | Strict forward-window eligibility and canonical metric handling. |
 | `src/portfolio_advisor/features/` | Point-in-time features and explicit official-forward-label availability records. |
@@ -125,13 +125,13 @@ local under `database/` and `data/`; they are deliberately ignored because
 they may be large, provider-controlled, or machine-specific. The code and
 tests that reproduce their deterministic handling are versioned.
 
-See [methodology](docs/methodology.md), [SOFR Phase C evidence](docs/milestone_11c_phase_c_sofr_ingestion.md), [provider-neutral Phase C0 provenance](docs/milestone_11c_phase_c0_reference_rate_provenance_contract.md), [ECB €STR Phase B evidence](docs/milestone_11c_phase_b_ecb_estr_ingestion.md), [historical source rules](docs/historical_nav_sources.md), [backtesting and prospective validation](docs/backtesting.md), [launchd operations](ops/launchd/README.md), and the [script catalog](scripts/README.md).
+See [methodology](docs/methodology.md), [HUFONIA Phase D evidence](docs/milestone_11c_phase_d_hufonia_ingestion.md), [SOFR Phase C evidence](docs/milestone_11c_phase_c_sofr_ingestion.md), [provider-neutral Phase C0 provenance](docs/milestone_11c_phase_c0_reference_rate_provenance_contract.md), [ECB €STR Phase B evidence](docs/milestone_11c_phase_b_ecb_estr_ingestion.md), [historical source rules](docs/historical_nav_sources.md), [backtesting and prospective validation](docs/backtesting.md), [launchd operations](ops/launchd/README.md), and the [script catalog](scripts/README.md).
 
 ## Official reference-rate evidence operations
 
-The acquisition command below is the only network path. It performs one
-bounded request to the reviewed official ECB endpoint and retains immutable
-content-addressed raw bytes plus a provenance receipt:
+Each provider-specific acquisition command is an explicit network boundary. It
+performs one bounded request to its reviewed official endpoint and retains
+immutable content-addressed raw bytes plus a provenance receipt. For ECB €STR:
 
 ```bash
 poetry run python scripts/acquire_ecb_estr.py
@@ -152,15 +152,20 @@ poetry run python scripts/build_sofr_candidate.py --help
 poetry run python scripts/import_sofr_reference_rate.py --help
 poetry run python scripts/validate_sofr_reference_rate.py --help
 poetry run python scripts/validate_reference_rate_provenance.py --require-sofr
+poetry run python scripts/acquire_hufonia.py
+poetry run python scripts/build_hufonia_candidate.py --help
+poetry run python scripts/import_hufonia_reference_rate.py --help
+poetry run python scripts/validate_hufonia_reference_rate.py --help
+poetry run python scripts/validate_reference_rate_provenance.py --require-hufonia
 ```
 
 The acquisition commands are explicit operator-only network boundaries; every
-import and validation command is offline. EUR €STR and USD daily overnight SOFR
-are admitted, but they are different secured/unsecured benchmarks and are not
-interchangeable. HUF HUFONIA, NAV remediation, benchmark-to-portfolio-date
-alignment, cash-return treatment, Sharpe/Sortino, and real shortlist
-construction remain fail-closed. Milestone 11 remains NO-GO; Milestones 12 and
-13 remain NO-GO; production cutover remains `NOT_AUTHORIZED`.
+import and validation command is offline. EUR €STR, USD daily overnight SOFR,
+and HUF HUFONIA are admitted, but they are distinct benchmarks and are not
+interchangeable. NAV remediation, benchmark-to-portfolio-date alignment,
+cash-return treatment, Sharpe/Sortino, and real shortlist construction remain
+fail-closed. Milestone 11 remains NO-GO; Milestones 12 and 13 remain NO-GO;
+production cutover remains `NOT_AUTHORIZED`.
 
 ## Prospective validation operations
 

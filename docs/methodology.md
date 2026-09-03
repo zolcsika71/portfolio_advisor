@@ -66,9 +66,10 @@ and duplicate-row semantics are proven.
 
 ## Official reference-rate boundary
 
-Milestone 11C admits exact official ECB €STR observations for EUR and New York
-Fed daily SOFR observations for USD with immutable request/raw provenance.
-Phase C0's provider-neutral provenance v2 contract remains unchanged.
+Milestone 11C admits exact official ECB €STR observations for EUR, New York Fed
+daily SOFR observations for USD, and MNB HUFONIA observations for HUF with
+immutable request/raw provenance. Phase C0's provider-neutral provenance v2
+contract remains unchanged.
 Provider-issued revision/dataset identities remain distinct from the required
 system snapshot identity. €STR is unsecured euro overnight borrowing evidence;
 SOFR is secured U.S. Treasury repo overnight financing evidence. They are not
@@ -102,6 +103,16 @@ SOFR uses `RETRIEVAL_BOUND`: every observation is unavailable before the exact
 artifact retrieval time. The two official footnote-2 records retain their
 published SOFR rate and explicit `NA` percentile summaries; a missing
 `percentRate` is never filled.
+
+The official MNB workbook defines HUFONIA as an effective, transaction-amount-
+weighted overnight rate for unsecured interbank HUF lending. Its historical
+worksheets use value dates before 2016-10-04 and trade dates from that date, as
+the provider annotation states. MNB reports a next-MNB-working-day publication
+schedule, but the evidence set has no approved complete historical MNB calendar
+or exact per-observation timestamp. HUFONIA therefore also uses
+`RETRIEVAL_BOUND`; no historical publication time is inferred. The workbook's
+2015 correction annotation is retained as an explicit raw revision indicator,
+but it does not authorize any future changed-value transition.
 
 Reference-rate values remain exact `Decimal` evidence. Do not forward-fill an
 unknown date, substitute zero or a policy rate, infer holiday applicability,

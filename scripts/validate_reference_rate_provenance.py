@@ -36,7 +36,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--require-sofr",
         action="store_true",
-        help="require the complete Phase C ESTR plus SOFR benchmark scope",
+        help="require at least the completed Phase C ESTR plus SOFR benchmark scope",
+    )
+    parser.add_argument(
+        "--require-hufonia",
+        action="store_true",
+        help="require the complete Phase D ESTR, SOFR, and HUFONIA scope",
     )
     arguments = parser.parse_args(argv)
     try:
@@ -55,6 +60,7 @@ def main(argv: list[str] | None = None) -> int:
                 registry.approved_revision_contracts if registry is not None else ()
             ),
             require_sofr=arguments.require_sofr,
+            require_hufonia=arguments.require_hufonia,
         )
         if registry is not None:
             result["validation_registry_sha256"] = registry.artifact_sha256
