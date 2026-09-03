@@ -34,7 +34,7 @@ and operational constraints.
 
 | Script | Purpose |
 |---|---|
-| `acquire_ecb_estr.py` | The sole network-capable path: perform one bounded request to the reviewed official ECB €STR endpoint and retain validated content-addressed bytes plus a receipt. |
+| `acquire_ecb_estr.py` | The sole ECB network boundary: perform one bounded request to the reviewed official ECB €STR endpoint and retain validated content-addressed bytes plus a receipt. |
 | `acquire_sofr.py` | The sole New York Fed network boundary: perform one bounded fixed SOFR request with redirects disabled and retain exact content-addressed JSON plus a receipt. |
 | `acquire_hufonia.py` | The sole MNB HUFONIA network boundary: perform one bounded workbook request with redirects disabled and retain exact content-addressed BIFF8 bytes plus a receipt. |
 | `build_ecb_estr_candidate.py` | Historical Phase B path: copy an empty reference-rate target, import retained €STR evidence offline, and reconcile pre-existing logical data. |

@@ -162,24 +162,32 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 
-# Local data, including Graphify source documents. The proposed ranking policy
-# is the one reviewed configuration exception.
-# These explicit examples are also covered by the local-data default below.
+# Local financial evidence and generated outputs. Reviewed executable policies
+# remain versioned; raw provider artifacts, receipts, and audits do not.
 /data/audit/
 /data/raw/
-/data/tbsz/source/
-/data/tbsz/manual_confirmations.json
-/data/*
-!/data/knowledge/
-/data/knowledge/*
-!/data/knowledge/validated_rules/
-/data/knowledge/validated_rules/*
-!/data/knowledge/validated_rules/capital_preservation_ranking.yaml
-!/data/knowledge/validated_rules/capital_defensive_construction.yaml
-/database/tbsz_portfolio.sqlite
-/database/
-identifier.sqlite
+/data/tbsz/
+/data/xls/
+/data/features/
+/data/alternative_price_sources/
+/data/mnb_otc/
+/data/security_lifecycle/
+/data/knowledge/graphify-out/
+/data/knowledge/pdfs/
+# Local-only metadata; executable policy YAML files in this directory are tracked.
+/data/knowledge/validated_rules/README.md
+/data/knowledge/validated_rules/codex.yaml
+# Local SQLite stores, sidecars, and rollback backups. database/schema.sql is
+# an untracked local schema export and is intentionally retained locally.
+/database/*.sqlite
+/database/*.sqlite-journal
+/database/*.sqlite-wal
+/database/*.sqlite-shm
+/database/backups/
+/database/schema.sql
+
 # Root-level local identifier cache SQLite sidecars.
+identifier.sqlite
 identifier.sqlite-wal
 identifier.sqlite-shm
 identifier.sqlite-journal
@@ -187,11 +195,11 @@ identifier.sqlite-journal
 # Local environment or credentials.
 .env.*
 
-# Local research scratch output and operational logs. Retained raw evidence,
-# deterministic audit artifacts, and local SQLite stores are intentionally
-# local-only project data.
+# Local research scratch output and operational logs.
 /tmp/
-/history/
+# Local, unadmitted direct-performance research artifact; the versioned runtime
+# implementation lives under src/.
+/history/official_portfolio_performance_research.py
 /logs/
 *.log
 
