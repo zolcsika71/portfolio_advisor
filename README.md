@@ -35,6 +35,12 @@ historical evidence, and the parts not implemented today.
   provenance from Erste Market as an `APPROVED_DISTRIBUTOR_NON_AUTHORITATIVE`;
   Erste Market is not an authoritative NAV administrator. Portfolio analytics
   and construction remain a later checkpoint.
+- Phase F1 approves and fingerprints the portfolio-metrics methodology contract,
+  including strict date intersection, buy-and-hold drift, unremunerated cash,
+  benchmark alignment, exact Decimal boundaries, and an explicitly model-based
+  irregular-interval volatility estimator. No metric engine or real candidate
+  is implemented. EUR remains blocked by unknown share-class distribution
+  treatment; HUF remains blocked by HUFONIA convention evidence.
 - No runtime retrieves Graphify citations for a recommendation and no OpenAI
   explanation layer exists. Neither system supplies financial inputs, metrics,
   rankings, or a final selection.
@@ -142,7 +148,7 @@ local under `database/` and `data/`; they are deliberately ignored because
 they may be large, provider-controlled, or machine-specific. The code and
 tests that reproduce their deterministic handling are versioned.
 
-See the [current workflow and availability contract](docs/portfolio_workflow_status.md), [methodology](docs/methodology.md), [Phase E NAV evidence](docs/milestone_11c_phase_e_nav_provenance.md), [HUFONIA Phase D evidence](docs/milestone_11c_phase_d_hufonia_ingestion.md), [SOFR Phase C evidence](docs/milestone_11c_phase_c_sofr_ingestion.md), [provider-neutral Phase C0 provenance](docs/milestone_11c_phase_c0_reference_rate_provenance_contract.md), [ECB €STR Phase B evidence](docs/milestone_11c_phase_b_ecb_estr_ingestion.md), [historical source rules](docs/historical_nav_sources.md), [backtesting and prospective validation](docs/backtesting.md), [launchd operations](ops/launchd/README.md), and the [script catalog](scripts/README.md).
+See the [current workflow and availability contract](docs/portfolio_workflow_status.md), [methodology](docs/methodology.md), [Phase F1 methodology policy](docs/milestone_11c_phase_f1_portfolio_metrics_policy.md), [Phase E NAV evidence](docs/milestone_11c_phase_e_nav_provenance.md), [HUFONIA Phase D evidence](docs/milestone_11c_phase_d_hufonia_ingestion.md), [SOFR Phase C evidence](docs/milestone_11c_phase_c_sofr_ingestion.md), [provider-neutral Phase C0 provenance](docs/milestone_11c_phase_c0_reference_rate_provenance_contract.md), [ECB €STR Phase B evidence](docs/milestone_11c_phase_b_ecb_estr_ingestion.md), [historical source rules](docs/historical_nav_sources.md), [backtesting and prospective validation](docs/backtesting.md), [launchd operations](ops/launchd/README.md), and the [script catalog](scripts/README.md).
 
 ## Official reference-rate evidence operations
 

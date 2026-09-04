@@ -3342,12 +3342,16 @@ current status: overall Milestone 11 is IN_PROGRESS
 | Milestone 11C Phase C — NY Fed SOFR adapter | `COMPLETED` | Official USD daily overnight SOFR, exact retained JSON/receipt, retrieval-bound availability, idempotent offline admission and complete multi-benchmark validation. |
 | Milestone 11C Phase D — MNB HUFONIA adapter | `COMPLETED` | Official HUF history, strict BIFF8/Decimal parsing, retained raw/receipt provenance, retrieval-bound availability, exact €STR/SOFR preservation, and three-benchmark validation. |
 | Milestone 11C Phase E — NAV provenance upgrade and EUR/HUF refresh | `COMPLETED` | Additive immutable source/manifest/observation lineage and exact Decimal NAV for eight exact-share-class EUR and eight HUF instruments; Erste Market is an approved non-authoritative distributor, not a NAV administrator. |
-| Milestone 11C Phase F — aligned portfolio analytics and real finalist | `PLANNED` | Governed aligned returns, covariance-aware portfolio metrics, runtime construction, real-candidate persistence, ranking and `SHORTLIST_FINALIST` selection. |
+| Milestone 11C Phase F1 — metric-methodology policy | `COMPLETED` | Human-approved, fingerprinted alignment, cash, benchmark, return, volatility, precision, evidence and lineage contract. No calculation or evidence admission. |
+| Milestone 11C Phase F2 — synthetic metric engine | `PLANNED` | Implement and validate the exact approved formulas using synthetic fixtures only; production evidence remains prohibited. |
+| Milestone 11C Phase F3 — disposable real candidate | `BLOCKED` | Requires separately admitted bounded NAV prefixes, proven distribution treatment and, for HUF, authoritative HUFONIA convention evidence before construction, persistence or ranking. |
+| Milestone 11C Phase F4 — installation and release | `BLOCKED` | Candidate-first installation, full reconciliation, documentation and release only after F2 and F3 pass. |
 
 Phase D admits HUFONIA evidence conservatively at retrieval time. Phase E adds exact-share-class
-EUR/HUF NAV evidence without changing the three reference-rate bundles. Neither phase aligns a
-benchmark to portfolio dates or defines cash-return treatment. Those later uses remain fail-closed
-until Phase F's policy and implementation contracts are approved.
+EUR/HUF NAV evidence without changing the three reference-rate bundles. Phase F1 now governs
+strict benchmark/date alignment, unremunerated cash, buy-and-hold drift, exact Decimal boundaries
+and an explicitly model-based irregular-interval volatility estimator. It performs no calculation
+and does not remove the remaining EUR distribution or HUF benchmark-convention blockers.
 
 USD shortlist construction remains blocked until at least eight exact-share-class histories in one
 USD construction universe have the required admitted history, staleness and common aligned
@@ -3590,35 +3594,38 @@ Do not combine terminology migration with unrelated ranking or construction chan
 The next engineering milestone is:
 
 ```text
-MILESTONE 11C PHASE F
-ALIGNED PORTFOLIO ANALYTICS AND REAL FINALIST
+MILESTONE 11C PHASE F2
+SYNTHETIC DETERMINISTIC PORTFOLIO-METRIC ENGINE
 ```
 
-Phases B, C0, C, D and E are completed forward history. Phase F is the next bounded implementation
+Phases B, C0, C, D, E and F1 are completed. Phase F2 is the next bounded implementation
 checkpoint. Its scope is:
 
 ```text
 A. preserve admitted ECB €STR, New York Fed SOFR, MNB HUFONIA and Phase E NAV evidence exactly
 
-B. define governed same-currency NAV/benchmark alignment and cash-return treatment
+B. implement the already approved Phase F1 methodology without altering it
 
-C. implement covariance-aware portfolio metrics without interpolation, FX or synthetic history
+C. use synthetic fixtures only; do not admit supplementary NAV or use production evidence
 
-D. construct one deterministic policy-compliant EUR or HUF candidate per authorized run
+D. test the exact constant-drift/constant-diffusion irregular-interval volatility formula,
+   irregular gaps, equal-gap equivalence, zero variance, invalid wealth, deterministic Decimal
+   behavior and endpoint reconciliation
 
-E. persist complete construction and metric lineage and select a real `SHORTLIST_FINALIST`
+E. test simple and geometric returns, buy-and-hold wealth drift, unremunerated cash, drawdown,
+   benchmark interval alignment, Sharpe/Sortino availability and fail-closed missing data
 
-F. preserve the synthetic portfolio-NAV reconstruction freeze until all methodology facts exist
+F. define no real metric-ranking weights or thresholds; that review remains deferred
 
-G. keep rebalancing, trading, Milestones 12–13 and production cutover outside this checkpoint
+G. make no schema migration, database installation, real construction, rebalancing, trading,
+   Milestones 12–13 or production cutover
 
-H. complete source, schema, integrity, foreign-key and logical-preservation validation
-   before atomic installation
+H. retain deterministic policy identity and canonical result serialization in every fixture
 ```
 
-Phase E did not calculate portfolio metrics, activate Sharpe or Sortino, construct a portfolio, or
-authorize production cutover. Phase F may begin only as a separately authorized, candidate-first,
-fail-closed checkpoint; this roadmap entry does not itself authorize its writes or production use.
+Phase F1 did not calculate portfolio metrics, activate Sharpe or Sortino, construct a portfolio, or
+authorize production use. Phase F2 requires separate authorization; this roadmap entry does not
+authorize its implementation or any use of retained production evidence.
 
 ---
 

@@ -72,17 +72,19 @@ nearest dates, interpolation, proxy series, zero returns, or invented history.
 
 | User-facing objective | Current status | Boundary |
 | --- | --- | --- |
-| `CAPITAL_CONSERVATION` | **Partially implemented; not a complete portfolio workflow.** | `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1 supports reviewed model/singleton-screening foundations. The reviewed `CAPITAL_DEFENSIVE` 80/20 construction policy and schema foundation exist, but aligned return-series methodology, portfolio metrics, real shortlist construction, finalist comparison, and transition reporting remain unavailable pending Phase F approval and implementation. |
+| `CAPITAL_CONSERVATION` | **Partially implemented; not a complete portfolio workflow.** | `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1 supports reviewed model/singleton-screening foundations. The `CAPITAL_DEFENSIVE` 80/20 construction foundation and Phase F1 portfolio-metrics methodology contract are reviewed, but the calculation engine, supplementary evidence admission, real shortlist construction, metric ranking, finalist comparison, and transition reporting remain unavailable. |
 | `DIVIDEND_MAXIMIZATION` | **Unavailable.** | The current code has the legacy compatibility objective identity `dividend_portfolio`/`DIVIDEND_PORTFOLIO`, but no validated active dividend policy, dividend evidence, eligibility, construction, ranking, or finalist-comparison contract. No dividend portfolio may be fabricated to populate an interface. |
 
 `DIVIDEND_MAXIMIZATION` is the target user-facing label. It is not an alias
 accepted by the current objective parser; no code or data migration is implied
 by this documentation.
 
-Phase E admitted immutable exact-share-class EUR/HUF NAV provenance but did
-not approve the Phase F metric methodology or activate construction. In
-particular, admitted evidence alone does not prove a policy-compliant common
-return window, a cash-return convention, or a comparable portfolio metric.
+Phase E admitted immutable exact-share-class EUR/HUF NAV provenance. Phase F1
+subsequently approved the future metric methodology, but did not admit the
+bounded supplementary NAV prefixes, implement the calculation engine, or
+activate construction. EUR remains blocked because all eight share classes
+lack admitted accumulation/distribution treatment. HUF additionally lacks
+authoritative HUFONIA day-count/applicability evidence.
 
 ## Output contract examples
 
@@ -153,10 +155,13 @@ retrieval/citations in an explanation, OpenAI explanation, current-versus-
 target calculation, buy/sell/cash proposal, rebalancing plan, order, or
 production recommendation.
 
-Phase F must first approve the financial methodology and then implement and
-test deterministic return-series calculations before any disposable candidate
-construction may be considered. The detailed evidence, provenance, and Phase E
-boundaries are recorded in [the Phase E record](milestone_11c_phase_e_nav_provenance.md).
+Phase F1 has approved the financial methodology. Phase F2 must still implement
+and test its deterministic return-series calculations on synthetic fixtures
+before any production evidence may use them. The policy and explicit
+constant-drift/constant-diffusion volatility assumption are recorded in
+[the Phase F1 record](milestone_11c_phase_f1_portfolio_metrics_policy.md); the
+installed evidence boundary remains in
+[the Phase E record](milestone_11c_phase_e_nav_provenance.md).
 
 ## Non-negotiable safety boundary
 

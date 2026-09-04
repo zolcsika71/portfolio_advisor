@@ -1,0 +1,295 @@
+schema_version: 1
+policy_id: CAPITAL_DEFENSIVE_PORTFOLIO_METRICS_POLICY
+version: "1.0.0"
+objective: CAPITAL_CONSERVATION
+strategy: CAPITAL_DEFENSIVE
+status: APPROVED
+approval:
+  milestone: MILESTONE_11C_PHASE_F1
+  profile_token: APPROVE_PHASE_F1_PROFILE
+  decision_count: 22
+  decisions:
+    F1-D01: APPEND_COMPLETE_BOUNDED_PREFIXES_TO_COMMON_WINDOW_START
+    F1-D02: EUR_FIRST_HUF_BLOCKED
+    F1-D03: PHASE_E_RELEASE_COMMIT_UTC_ASOF
+    F1-D04: STRICT_EIGHT_WAY_INTERSECTION
+    F1-D05: OBSERVED_ENDPOINTS_EXACT_ELAPSED_DAYS
+    F1-D06: BUY_AND_HOLD_DRIFT
+    F1-D07: UNREMUNERATED_NOMINAL_CASH
+    F1-D08: ESTR_OBSERVED_SEGMENT_ACT360
+    F1-D09: HUF_FAIL_CLOSED_PENDING_AUTHORITATIVE_CONVENTION
+    F1-D10: GEOMETRIC_CHAIN_ENDPOINT_RECONCILE
+    F1-D11: ACT365F_LOG_ELAPSED_TIME_SAMPLE_VOLATILITY
+    F1-D12: EXACT_INTERVAL_RISK_FREE_RETURN
+    F1-D13: ALIGNED_BENCHMARK_MAR_SORTINO
+    F1-D14: FAIL_WHOLE_RISK_ADJUSTED_RESULT
+    F1-D15: ENFORCE_365_AND_252_SAME_WINDOW
+    F1-D16: BLOCK_UNLESS_ACCUMULATING_OR_DISTRIBUTIONS_ADMITTED
+    F1-D17: DECIMAL50_Q18_OUTPUT_EXPLICIT_RECONCILIATION
+    F1-D18: NEW_REAL_PORTFOLIO_POLICY_FAMILY
+    F1-D19: INDEPENDENT_SAME_CURRENCY_NO_CROSS_CURRENCY_RANKING
+    F1-D20: ADDITIVE_EXACT_LINEAGE_SCHEMA
+    F1-D21: LATEST_MINIMAL_COMMON_365D_252_WINDOW
+    F1-D22: DEFER_SCORING_VALUES_PENDING_F2_REVIEW
+implementation_boundary:
+  implemented_here: POLICY_AND_CONTRACT_ONLY
+  supplementary_nav_admission: NOT_PERFORMED
+  phase_f2_metric_engine: NOT_IMPLEMENTED
+  production_data_metric_use: BLOCKED_PENDING_PHASE_F2
+  real_portfolio_construction: NOT_AUTHORIZED
+  metric_ranking: NOT_IMPLEMENTED
+  portfolio_persistence: NOT_IMPLEMENTED
+  database_migration: NOT_PERFORMED
+  rebalancing: NOT_AUTHORIZED
+  trading: NOT_AUTHORIZED
+  production_cutover: NOT_AUTHORIZED
+decision_context:
+  decision_as_of_utc: "2026-09-04T12:24:23.000000Z"
+  decision_as_of_semantics: PHASE_E_RELEASE_RESEARCH_TIMESTAMP
+  immutable_repository_artifact: "79ab552afdceed7d5feacee42e0a7d1ade2003f8"
+  immutable_repository_epoch: 1788524663
+  immutable_repository_timezone_offset: "+0200"
+  nav_evidence_cutoff: "2026-08-31"
+  investment_horizon_is_metric_lookback: false
+delivery_sequence:
+  first_currency: EUR
+  huf_status: BLOCKED_PENDING_AUTHORITATIVE_HUFONIA_DAY_COUNT_AND_APPLICABILITY
+  usd_status: OUTSIDE_PHASE_F_SCOPE
+  cross_currency_comparison: PROHIBITED
+supplementary_nav:
+  admission_semantics: APPEND_ONLY_NEW_MANIFESTS
+  replace_existing_evidence: false
+  source: RETAINED_IMMUTABLE_PHASE_E_RAW_RESPONSES
+  observed_rows_only: true
+  synthesized_dates: PROHIBITED
+  cherry_pick_intersection_only_rows: PROHIBITED
+  boundary: ALL_RETAINED_OBSERVATIONS_FROM_COMMON_WINDOW_START_BEFORE_FIRST_ADMITTED_DATE
+  status: APPROVED_NOT_ADMITTED
+  currencies:
+    EUR:
+      common_window_start: "2025-05-23"
+      current_common_window_end: "2026-08-28"
+      common_date_count_after_admission: 253
+      return_interval_count_after_admission: 252
+      calendar_span_days: 462
+      supplementary_observation_count: 527
+      resulting_phase_e_observation_count: 2486
+      instruments:
+        - isin: AT0000673322
+          first_date: "2025-05-23"
+          last_date: "2025-08-28"
+          observation_count: 66
+        - isin: AT0000A00GL9
+          first_date: "2025-05-23"
+          last_date: "2025-08-28"
+          observation_count: 66
+        - isin: AT0000A0H8D4
+          first_date: "2025-05-23"
+          last_date: "2025-08-28"
+          observation_count: 66
+        - isin: HU0000722442
+          first_date: "2025-05-23"
+          last_date: "2025-08-28"
+          observation_count: 68
+        - isin: LU0244270723
+          first_date: "2025-05-23"
+          last_date: "2025-08-28"
+          observation_count: 67
+        - isin: LU0594300682
+          first_date: "2025-05-23"
+          last_date: "2025-08-28"
+          observation_count: 70
+        - isin: LU1931957093
+          first_date: "2025-05-23"
+          last_date: "2025-08-27"
+          observation_count: 57
+        - isin: LU2334866550
+          first_date: "2025-05-23"
+          last_date: "2025-08-28"
+          observation_count: 67
+    HUF:
+      common_window_start: "2025-08-14"
+      current_common_window_end: "2026-08-31"
+      common_date_count_after_admission: 253
+      return_interval_count_after_admission: 252
+      calendar_span_days: 382
+      supplementary_observation_count: 83
+      resulting_phase_e_observation_count: 2108
+      instruments:
+        - isin: AT0000A00GE4
+          first_date: "2025-08-14"
+          last_date: "2025-08-28"
+          observation_count: 10
+        - isin: HU0000702477
+          first_date: "2025-08-14"
+          last_date: "2025-08-28"
+          observation_count: 10
+        - isin: HU0000708243
+          first_date: "2025-08-14"
+          last_date: "2025-08-28"
+          observation_count: 10
+        - isin: HU0000722434
+          first_date: "2025-08-14"
+          last_date: "2025-08-28"
+          observation_count: 10
+        - isin: HU0000723572
+          first_date: "2025-08-14"
+          last_date: "2025-08-28"
+          observation_count: 10
+        - isin: LU0979392684
+          first_date: "2025-08-14"
+          last_date: "2025-08-28"
+          observation_count: 11
+        - isin: LU0979393062
+          first_date: "2025-08-14"
+          last_date: "2025-08-28"
+          observation_count: 11
+        - isin: LU1295422502
+          first_date: "2025-08-14"
+          last_date: "2025-08-28"
+          observation_count: 11
+alignment:
+  constituent_dates: STRICT_EIGHT_WAY_INTERSECTION
+  endpoints: OBSERVED_NAV_DATES_ONLY
+  missing_constituent_date: REJECT_INTERVAL
+  missing_benchmark_coverage: FAIL_WHOLE_RISK_ADJUSTED_RESULT
+  interpolation: PROHIBITED
+  nearest_date_substitution: PROHIBITED
+  proxy_substitution: PROHIBITED
+  calendar_date_synthesis: PROHIBITED
+  elapsed_time: EXACT_CALENDAR_DAYS_BETWEEN_ENDPOINTS
+portfolio_dynamics:
+  initial_security_count: 8
+  initial_weight_per_security: "0.10"
+  initial_cash_weight: "0.20"
+  method: BUY_AND_HOLD_WEIGHT_DRIFT
+  periodic_rebalancing: PROHIBITED
+  constituent_units: FIXED_AFTER_INITIAL_ALLOCATION
+  portfolio_wealth: SUM_OF_CURRENT_CONSTITUENT_VALUES_AND_NOMINAL_CASH
+cash:
+  return_treatment: UNREMUNERATED_NOMINAL_CASH
+  initial_amount: EXACTLY_20_PERCENT_OF_INVESTABLE_AMOUNT
+  nominal_amount_after_initial_allocation: CONSTANT
+  reference_rate_is_cash_return: false
+reference_rates:
+  EUR:
+    benchmark: "€STR"
+    availability: ADMITTED_OFFICIAL_EVIDENCE_REQUIRED
+    percentage_point_conversion: DIVIDE_BY_100
+    day_count: ACT_360
+    interval_method: GEOMETRIC_PRODUCT_OF_OBSERVED_RATE_SEGMENTS
+    missing_segment: FAIL_WHOLE_RISK_ADJUSTED_RESULT
+  HUF:
+    benchmark: HUFONIA
+    availability: BLOCKED
+    blocker: AUTHORITATIVE_DAY_COUNT_AND_APPLICABILITY_NOT_ADMITTED
+  sharpe_reference: EXACT_ALIGNED_INTERVAL_BENCHMARK_RETURN
+  sortino_minimum_acceptable_return: EXACT_ALIGNED_INTERVAL_BENCHMARK_RETURN
+  missing_benchmark: FAIL_WHOLE_RISK_ADJUSTED_RESULT
+returns:
+  constituent_return: SIMPLE_NAV_RETURN_BETWEEN_ALIGNED_ENDPOINTS
+  portfolio_return: SIMPLE_WEALTH_RETURN_BETWEEN_ALIGNED_ENDPOINTS
+  total_return: GEOMETRIC_CHAIN_OF_PORTFOLIO_SIMPLE_RETURNS
+  annualized_return: GEOMETRIC_ELAPSED_CALENDAR_TIME
+  endpoint_reconciliation: REQUIRED
+volatility:
+  metric: ANNUALIZED_PORTFOLIO_VOLATILITY
+  model_class: CONSTANT_DRIFT_CONSTANT_DIFFUSION
+  interpretation: MODEL_BASED_ESTIMATOR_FOR_IRREGULAR_OBSERVED_INTERVALS
+  model_free_claim: PROHIBITED
+  universal_validity_claim: PROHIBITED
+  return_type: NATURAL_LOG_PORTFOLIO_WEALTH_RETURN
+  time_fraction: ACTUAL_CALENDAR_DAYS_DIVIDED_BY_365
+  day_count: ACT_365_FIXED
+  drift_estimator: SUM_LOG_RETURNS_DIVIDED_BY_SUM_TIME_FRACTIONS
+  variance_estimator: SUM_SQUARED_DRIFT_RESIDUALS_DIVIDED_BY_TIME_FRACTION_THEN_BY_N_MINUS_1
+  degrees_of_freedom: N_MINUS_1
+  annualization: INHERENT_IN_YEAR_TIME_FRACTIONS_NO_ADDITIONAL_SCALING
+  mathematical_minimum_return_intervals: 2
+  governed_minimum_return_intervals: 252
+  governed_minimum_calendar_span_days: 365
+  zero_variance_result: EXACT_ZERO
+  invalid_or_nonpositive_wealth: REJECT_WHOLE_METRIC_RESULT
+  missing_or_nonincreasing_endpoint: REJECT_WHOLE_METRIC_RESULT
+  phase_f2_required_tests:
+    - EXACT_FORMULA
+    - IRREGULAR_GAPS
+    - EQUAL_GAP_EQUIVALENCE
+    - ZERO_VARIANCE
+    - INVALID_WEALTH
+    - DETERMINISTIC_DECIMAL
+    - ENDPOINT_RECONCILIATION
+risk_adjusted_metrics:
+  sharpe_numerator: ALIGNED_PORTFOLIO_RETURN_MINUS_ALIGNED_BENCHMARK_RETURN
+  sortino_minimum_acceptable_return: ALIGNED_BENCHMARK_RETURN
+  interval_alignment: EXACT
+  missing_benchmark: FAIL_WHOLE_RISK_ADJUSTED_RESULT
+  zero_denominator: UNAVAILABLE
+eligibility:
+  minimum_history_span_calendar_days: 365
+  minimum_aligned_return_intervals: 252
+  both_minima_apply_to_same_window: true
+  latest_minimal_qualifying_window: REQUIRED
+  maximum_nav_staleness_calendar_days: 30
+  exact_share_class: REQUIRED
+  same_currency: REQUIRED
+  distribution_evidence: REQUIRED
+distributions:
+  permitted_total_return_inputs:
+    - PROVEN_ACCUMULATING_SHARE_CLASS
+    - PROVEN_DISTRIBUTING_SHARE_CLASS_WITH_COMPLETE_ADMITTED_DISTRIBUTIONS
+  infer_from_fund_name: PROHIBITED
+  price_return_with_unknown_distribution_status: PROHIBITED
+  current_eur_candidate_status: BLOCKED
+  eur_instruments:
+    AT0000673322: UNKNOWN
+    AT0000A00GL9: UNKNOWN
+    AT0000A0H8D4: UNKNOWN
+    HU0000722442: UNKNOWN
+    LU0244270723: UNKNOWN
+    LU0594300682: UNKNOWN
+    LU1931957093: UNKNOWN
+    LU2334866550: UNKNOWN
+fees_taxes_and_costs:
+  fund_level_fees_embedded_in_nav: RETAINED_AS_REPORTED_NAV_EFFECT
+  external_fees: EXCLUDED_UNLESS_ADMITTED
+  taxes: EXCLUDED_UNLESS_ADMITTED
+  transaction_costs: EXCLUDED_UNLESS_ADMITTED
+  unknown_distribution_effects: BLOCK_METRICS
+precision:
+  input_boundary: EXACT_DECIMAL_TEXT
+  binary_float: PROHIBITED
+  decimal_context_precision_significant_digits: 50
+  decimal_rounding_mode: ROUND_HALF_EVEN
+  deterministic_operation_order: REQUIRED
+  explicit_intermediate_quantization: PROHIBITED
+  canonical_output_scale_decimal_places: 18
+  canonical_output_quantum: "0.000000000000000001"
+  canonical_scale_is_economic_accuracy_claim: false
+  source_resolution_metadata: REQUIRED
+  endpoint_reconciliation_relative_tolerance: "0.0000000000000000000000000000000000000001"
+  derived_weight_sum_absolute_tolerance: "0.0000000000000000000000000000000000000001"
+  independently_serialized_nine_component_weight_tolerance: "0.0000000000000000045"
+  persisted_numeric_half_quantum_tolerance: "0.0000000000000000005"
+  target_weight_sum: EXACT
+  nominal_cash_reconciliation: EXACT
+  ranking_comparison: EXACT_UNQUANTIZED_DECIMAL_NO_EPSILON_TIES
+  repeated_canonical_result: BYTE_IDENTICAL
+ranking:
+  policy_family: NEW_REAL_PORTFOLIO_METRIC_RANKING_POLICY_REQUIRED
+  reuse_legacy_reported_indicator_proxy_policy: PROHIBITED
+  score_weights_and_thresholds: DEFERRED_PENDING_PHASE_F2_REVIEW
+  selectable_real_candidate: UNAVAILABLE
+persistence_boundary:
+  migration_required: ADDITIVE_SCHEMA_REQUIRED_IN_LATER_CHECKPOINT
+  immutable_run_identity: REQUIRED
+  exact_policy_id_version_fingerprint: REQUIRED
+  decision_context_lineage: REQUIRED
+  constituent_nav_manifest_lineage: REQUIRED
+  benchmark_manifest_lineage: REQUIRED
+  interval_observation_lineage: REQUIRED
+  holdings_and_cash_lineage: REQUIRED
+  metric_result_lineage: REQUIRED
+  candidate_and_result_fingerprints: REQUIRED
+  idempotency: REQUIRED
+  prior_evidence_mutation: PROHIBITED

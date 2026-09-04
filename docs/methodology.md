@@ -68,11 +68,11 @@ and duplicate-row semantics are proven.
 
 The current application ranks model portfolios from allocation-weighted
 reported snapshot indicators; that is not a constructed-portfolio return
-series or a model-versus-shortlist finalist comparison. The reviewed capital
-policy and construction foundation therefore do not yet authorize real
-shortlist construction, portfolio-level metrics, a recommendation, or a
-current-LTIA transition proposal. Those steps require the Phase F methodology
-contract and implementation.
+series or a model-versus-shortlist finalist comparison. Phase F1 has approved
+and implemented the strict policy contract for future portfolio metrics, but
+it implements no calculation engine and admits no additional evidence. Real
+shortlist construction, portfolio-level metrics, a recommendation, and a
+current-LTIA transition proposal therefore remain unavailable.
 
 The target user-facing objectives are `CAPITAL_CONSERVATION` and
 `DIVIDEND_MAXIMIZATION`. Current code uses the stable identities
@@ -85,6 +85,9 @@ selection may fill missing dates, history, benchmark observations, or prices.
 The complete target workflow, placeholder output contracts, current LTIA
 boundary, and implementation status are in
 [Portfolio workflow and current availability](portfolio_workflow_status.md).
+The approved future calculation semantics, explicit model assumptions,
+precision contract and remaining evidence blockers are in
+[the Phase F1 methodology policy](milestone_11c_phase_f1_portfolio_metrics_policy.md).
 
 ## Official reference-rate boundary
 

@@ -13,9 +13,14 @@ is `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1.
 Milestone 11C admits immutable official ECB €STR, New York Fed daily SOFR, and
 MNB HUFONIA history artifacts through provider-neutral reference-rate
 provenance contract v2. EUR, USD, and HUF benchmark evidence are admitted.
-Benchmark alignment, NAV remediation, portfolio metrics/ranking, and finalist
-comparison remain unavailable. The construction runtime is
-`IMPLEMENTED_BLOCKED_BY_DATA` and production cutover is `NOT_AUTHORIZED`.
+Phase E exact-share-class EUR/HUF NAV evidence is installed. Phase F1 adds the
+approved portfolio-metrics methodology contract, including an explicitly
+model-based constant-drift/constant-diffusion irregular-interval volatility
+estimator, but no calculation engine or supplementary NAV admission. Real
+metrics/ranking and finalist comparison remain unavailable. EUR is blocked by
+unknown distribution treatment and HUF by benchmark-convention evidence. The
+construction runtime is `IMPLEMENTED_BLOCKED_BY_DATA` and production cutover
+is `NOT_AUTHORIZED`.
 
 ## Core components
 
