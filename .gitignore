@@ -167,6 +167,7 @@ cython_debug/
 /data/audit/
 /data/raw/
 /data/tbsz/
+/data/tbsz/source/
 /data/xls/
 /data/features/
 /data/alternative_price_sources/
@@ -180,6 +181,7 @@ cython_debug/
 # Local SQLite stores, sidecars, and rollback backups. database/schema.sql is
 # an untracked local schema export and is intentionally retained locally.
 /database/*.sqlite
+/database/tbsz_portfolio.sqlite
 /database/*.sqlite-journal
 /database/*.sqlite-wal
 /database/*.sqlite-shm
