@@ -106,21 +106,23 @@ their provenance locally.
 | `admit_prospective_portfolio_outcome.py` | Admit one due, direct, validated official outcome supplied locally. |
 | `schedule_prospective_outcome_due_checks.py` | Generate or explicitly install a monitor-only rolling launchd schedule. |
 
-## TBSZ observed-portfolio workflow
+## LTIA observed-current-state workflow (legacy TBSZ compatibility)
 
-The separate local TBSZ database records facts the user already owns or has
-already traded; it never connects to a broker or submits an order.
+The separate local LTIA database records facts the user already owns or has
+already traded; it never connects to a broker or submits an order. Script,
+directory, package, and database names containing `tbsz` are legacy
+compatibility identifiers.
 
 | Script | Purpose |
 |---|---|
-| `initialize_tbsz_portfolio_from_pdfs.py` | Import only explicitly confirmed George PDF facts from `data/tbsz/source/`; `--write-template` creates a filename-only confirmation template when a screen cannot be reliably parsed. |
+| `initialize_tbsz_portfolio_from_pdfs.py` | Import only explicitly confirmed LTIA facts from legacy path `data/tbsz/source/`; `--write-template` creates a filename-only confirmation template when a screen cannot be reliably parsed. |
 | `migrate_tbsz_portfolio.py` | Apply only the recognized local schema migration after creating and verifying an ignored backup; it does not import sources or compare portfolios. |
-| `show_tbsz_current_portfolio.py` | Show one read-only, unified current view for one account: explicit `ASSET` and `CASH` rows retain native source currencies and separate position/cash snapshot provenance. |
+| `show_tbsz_current_portfolio.py` | Show one read-only, unified LTIA current view for one account: explicit `ASSET` and `CASH` rows retain native source currencies and separate position/cash snapshot provenance. |
 | `update_tbsz_transaction.py` | Append one user-completed BUY or SELL to the manual transaction ledger. It is not a brokerage command. |
 | `confirm_tbsz_instrument_mapping.py` | Add a reviewed manual ISIN/alias mapping; fuzzy similarity is never promoted. |
 | `reconcile_tbsz_pdf_snapshots.py` | Compare two retained, dated position snapshots without rewriting history. |
-| `compare_tbsz_portfolio.py` | Read-only TBSZ-vs-model target-allocation comparison with an explicit tolerance, identity/FX blockers, separate cash, and no provider or FX fetch. |
-| `create_tbsz_current_portfolio_once.py` | One-time isolated current-standings read model from retained, manually confirmed TBSZ PDFs. It contains current ASSET and CASH rows only; normal reruns refuse overwrite and `--force` first creates a verified ignored backup. |
+| `compare_tbsz_portfolio.py` | Read-only LTIA-vs-model target-allocation comparison with an explicit tolerance, identity/FX blockers, separate cash, and no provider or FX fetch. |
+| `create_tbsz_current_portfolio_once.py` | One-time isolated LTIA current-standings read model from retained, manually confirmed PDFs in legacy TBSZ paths. It contains current ASSET and CASH rows only; normal reruns refuse overwrite and `--force` first creates a verified ignored backup. |
 
 Source PDFs, manual confirmations, and `database/tbsz_portfolio.sqlite` are
 local-only and ignored by Git. Initial observed positions are not fabricated as
@@ -132,6 +134,12 @@ historical transactions; later PDF evidence is appended and reconciled.
 `data/knowledge` before using Graphify. `update_graphify.zsh` updates the
 external CLI; it is not part of financial validation. `export_schema.zsh`
 exports the local SQLite schema.
+
+Graphify is not a financial-data input, metric engine, ranker, or decision
+maker. No script implements retrieved Graphify citations in a portfolio
+explanation, an OpenAI explanation, a constructed-shortlist finalist, or a
+buy/sell/cash proposal. Those target responsibilities and current availability
+are defined in [Portfolio workflow and current availability](../docs/portfolio_workflow_status.md).
 
 ## Safety
 

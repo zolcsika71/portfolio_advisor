@@ -47,9 +47,9 @@ comparison remain unavailable. The construction runtime is
   offline due monitoring, and provenance-gated direct-outcome admission.
 - `operations/`: the bounded, current-user WatchPaths XLS import wrapper and
   its fail-closed LaunchAgent installer.
-- `tbsz/`: a separate local database of observed TBSZ evidence, manually
+- `tbsz/`: a separate local database of observed LTIA evidence, manually
   recorded completed transactions, reconciliation, and advisory-only model
-  portfolio comparison.
+  portfolio comparison. `tbsz` is a legacy compatibility identifier.
 
 ## Critical boundaries
 
@@ -70,9 +70,10 @@ comparison remain unavailable. The construction runtime is
 
 ## Local data conventions
 
-`database/`, generated `data/audit/`, retained `data/raw/`, `data/tbsz/`,
-`logs/`, and `tmp/` are local-only. They may contain provider-controlled
-evidence, generated audits, private TBSZ records, or machine-specific state.
+`database/`, generated `data/audit/`, retained `data/raw/`, legacy compatibility
+path `data/tbsz/`, `logs/`, and `tmp/` are local-only. They may contain
+provider-controlled evidence, generated audits, private LTIA records, or
+machine-specific state.
 Their code, tests, deterministic schemas, and validated policy are versioned.
 Do not add credentials, tokens, cookies, private account data, or
 machine-specific paths.

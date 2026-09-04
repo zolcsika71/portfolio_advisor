@@ -14,7 +14,7 @@ Its purpose is to:
 6. present recommended portfolios to the user;
 7. let the user make the final portfolio choice;
 8. compare the selected target portfolio with the user's actual LTIA investments;
-9. produce advisory, account-aware rebalancing guidance;
+9. produce a proposed, account-aware transition report;
 10. track future outcomes and determine whether the recommendation methodology actually works.
 
 The project must remain:
@@ -24,6 +24,11 @@ The project must remain:
 * deterministic;
 * source-backed;
 * fail-closed when evidence is incomplete.
+
+The current user-facing workflow and implementation boundary are maintained in
+[Portfolio workflow and current availability](docs/portfolio_workflow_status.md).
+This roadmap describes the target architecture; a listed target capability is
+not evidence that it is implemented or authorized.
 
 ## 1.1 Roadmap governance
 
@@ -158,12 +163,19 @@ What is the best portfolio
 for the selected investment objective?
 ```
 
-The initial supported objectives are:
+The target user-facing objectives are:
 
 ```text
 CAPITAL_CONSERVATION
-DIVIDEND_PORTFOLIO
+DIVIDEND_MAXIMIZATION
 ```
+
+The current reviewed-code identities remain `capital_conservation` and the
+legacy compatibility identity `dividend_portfolio` (`DIVIDEND_PORTFOLIO`). The
+capital identity has a reviewed model-ranking policy, but does not yet have a
+roadmap-complete constructed-portfolio workflow. The dividend identity has no
+validated active policy and is unavailable. `DIVIDEND_MAXIMIZATION` is a
+target user-facing label, not an unimplemented parser alias.
 
 The architecture must support future objectives without requiring another database redesign.
 
@@ -184,8 +196,18 @@ INFLATION_PROTECTION
 
 # 4. Final user workflow
 
+The following is the governed target workflow. It becomes operational only
+when each stated policy, evidence, calculation, and persistence gate has been
+implemented and approved. A 90-, 180-, or 365-day investment horizon is a
+user objective; it is distinct from a reviewed metric lookback, NAV cutoff,
+decision timestamp, and minimum common-history/observation requirement.
+
 ```text
                     SELECT INVESTMENT OBJECTIVE
+                              │
+                              ▼
+                   SELECT GOVERNED HORIZON
+                       (90 / 180 / 365 days)
                               │
                               ▼
                       objective policy
@@ -230,7 +252,8 @@ INFLATION_PROTECTION
                       ALLOCATION GAP
                               │
                               ▼
-                   ADVISORY REBALANCING
+                  PROPOSED TRANSITION REPORT
+                (no automatic external action)
                               │
                               ▼
                      PROSPECTIVE TRACKING
@@ -242,6 +265,16 @@ INFLATION_PROTECTION
 The final investment decision remains with the user.
 
 Portfolio Advisor must never place brokerage orders.
+
+The transition report must retain assets to retain, sell, and buy; current and
+target weights; currency-specific monetary differences, available cash,
+required spending, and residual cash; currency mismatches; unavailable prices
+or identifiers; assumptions; and explicit blocking conditions. It is only a
+proposal until the user makes an explicit decision. Graphify may supply
+retrieved citations for an explanation, and a separately approved OpenAI layer
+may explain the governed report; neither may calculate, rank, recommend, or
+select. The full placeholder contract and present availability are maintained
+in [Portfolio workflow and current availability](docs/portfolio_workflow_status.md).
 
 ---
 
@@ -264,7 +297,7 @@ Python remains authoritative for:
 * stress/scenario calculations;
 * outcome admission;
 * validation metrics;
-* rebalancing calculations.
+* any future, separately approved transition calculations.
 
 ---
 
@@ -277,6 +310,11 @@ LLMs may:
 * produce human-readable reports;
 * explain strengths and weaknesses;
 * generate source-backed narrative.
+
+An OpenAI layer, if separately implemented and approved, receives governed
+results and retrieved Graphify citations only. It may explain them, but it may
+not calculate a metric, invent evidence, change eligibility/ranking, or make
+the final selection. No OpenAI explanation runtime is currently implemented.
 
 LLMs must not change:
 
@@ -311,6 +349,10 @@ Graphify must never generate:
 * rankings;
 * realized outcomes;
 * security identities.
+
+Graphify retrieval and citation use in a recommendation explanation are target
+capabilities only; current Graphify material is not a financial input or a
+production explanation service.
 
 ---
 
@@ -375,7 +417,7 @@ Investment objective:
 
 ```text
 CAPITAL_CONSERVATION
-DIVIDEND_PORTFOLIO
+DIVIDEND_MAXIMIZATION (target user-facing label)
 future objectives
 ```
 
@@ -1872,11 +1914,16 @@ CAPITAL_CONSERVATION_365D
 
 # 51. Dividend objective
 
-Canonical code:
+Legacy compatibility code identity (not an active dividend policy):
 
 ```text
 DIVIDEND_PORTFOLIO
 ```
+
+The target user-facing label is `DIVIDEND_MAXIMIZATION`. It remains unavailable
+until reviewed dividend evidence, eligibility, construction, ranking, and
+finalist-comparison contracts exist; this section is an architectural target,
+not authorization to fabricate a dividend result.
 
 Mandate:
 

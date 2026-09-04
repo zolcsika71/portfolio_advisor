@@ -21,12 +21,13 @@ count diagnostics without printing retained financial values.
 | Database | Authoritative schema owner | Schema SQL file | Version model |
 | --- | --- | --- | --- |
 | `portfolio_advisor.sqlite` | `portfolio_advisor.database.schema.v3`, additive Milestone 11B/11C migrations, and their validators | No | `PRAGMA user_version = 3` plus deterministic `schema_feature_contract` markers |
-| `tbsz_portfolio.sqlite` | `portfolio_advisor.tbsz.repository` | No | `PRAGMA user_version`; current version 2 |
+| `tbsz_portfolio.sqlite` (legacy compatibility name) | `portfolio_advisor.tbsz.repository` | No | `PRAGMA user_version`; current version 2 |
 | `model_portfolio.sqlite` | `DB_creation.database_create` and `history.mnb_otc` | No | Source-column contract; incompatible workbook schemas fail closed |
 | `official_historical_nav.sqlite` | `history.official_nav_store` | No | Embedded single-table evidence-store contract |
 | `prospective_portfolio_validation.sqlite` | `prospective.validation` | No | Embedded append-only ledger contract |
 
-TBSZ v2 is created for a fresh database. A recognized v1 (or historical
+The local LTIA store currently retains the legacy `tbsz_portfolio.sqlite`
+identifier. Legacy TBSZ v2 is created for a fresh database. A recognized v1 (or historical
 pre-versioned v0) database may receive the transactional, data-preserving
 upgrade chain. The v1-to-v2 step adds only nullable source-supported
 `position_snapshots.observed_roi`; it neither rewrites retained rows nor
@@ -92,3 +93,14 @@ post-installation failure.
 The other stores have no current detected schema drift. If any of their
 schemas changes, add an explicit component migration contract in its existing
 code owner rather than introducing an independent `schema.sql` copy.
+
+## Current workflow boundary
+
+`portfolio_advisor.sqlite` contains objective-neutral analytical evidence,
+including model-portfolio and shortlist imports. The legacy-named local LTIA
+database contains the user's current holdings and cash evidence; it is not a
+target-allocation, order, or trading database. The three governed inputs and
+their future comparison contract are described in
+[Portfolio workflow and current availability](portfolio_workflow_status.md).
+No schema currently persists a roadmap-complete constructed-shortlist finalist,
+portfolio-level metric result, user recommendation, or buy/sell/cash proposal.

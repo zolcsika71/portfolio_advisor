@@ -8,6 +8,12 @@ windows and uses only later data for outcome metrics. A forward outcome is
 official only when the exact portfolio and full required history pass the
 strict source and eligibility gates.
 
+These historical forward windows are not, by themselves, a user investment-
+horizon selector or a portfolio-metric lookback contract. The governed target
+workflow must retain the horizon, historical lookback, NAV cutoff, decision
+timestamp, and minimum evidence requirements separately; see
+[Portfolio workflow and current availability](portfolio_workflow_status.md).
+
 `DIAGNOSTICS_ONLY`, rejected, reconciled, unusable, or incomplete source
 results are never performance labels. Missing data remains unavailable: the
 implementation does not drop constituents, renormalize weights, use cash/zero

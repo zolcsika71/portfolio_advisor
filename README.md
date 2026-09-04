@@ -2,10 +2,15 @@
 
 Portfolio Advisor imports dated model-portfolio workbooks, calculates
 point-in-time portfolio indicators, and applies a deterministic
-capital-preservation ranking policy. It also keeps a separate, local-only TBSZ
-observed-portfolio record for advisory comparison. Financial calculations,
-eligibility, and ranking are typed Python code; Graphify is limited to
-source-backed methodology, constraints, and explainability.
+capital-preservation ranking policy. It also keeps separate, local-only LTIA
+(Long-Term Investment Account) holdings and cash evidence for later advisory
+comparison. Financial calculations, eligibility, and ranking are typed Python
+code; Graphify is limited to source-backed methodology, constraints, and
+explainability.
+
+See the [current workflow and availability contract](docs/portfolio_workflow_status.md)
+for the governed target workflow, the distinction between user horizon and
+historical evidence, and the parts not implemented today.
 
 ## Current operating boundaries
 
@@ -18,8 +23,9 @@ source-backed methodology, constraints, and explainability.
   portfolio evidence is absent.
 - The prospective ledger records finalized live decisions and pending 90/180/
   365-day outcome slots without fabricating outcomes.
-- Actual TBSZ evidence is separate from the model portfolio, remains local,
-  and never submits brokerage orders.
+- Actual LTIA evidence is separate from model portfolios, remains local, and
+  never submits brokerage orders. Legacy `tbsz` names are compatibility
+  identifiers only.
 - Official ECB €STR, New York Fed daily SOFR, and MNB HUFONIA history artifacts
   are admitted as exact EUR, USD, and HUF reference-rate evidence under
   provider-neutral provenance contract v2. Evidence admission does not activate
@@ -29,6 +35,12 @@ source-backed methodology, constraints, and explainability.
   provenance from Erste Market as an `APPROVED_DISTRIBUTOR_NON_AUTHORITATIVE`;
   Erste Market is not an authoritative NAV administrator. Portfolio analytics
   and construction remain a later checkpoint.
+- No runtime retrieves Graphify citations for a recommendation and no OpenAI
+  explanation layer exists. Neither system supplies financial inputs, metrics,
+  rankings, or a final selection.
+- No current workflow calculates a current-LTIA-versus-target transition,
+  proposes buy/sell/cash changes, rebalances, submits an order, or authorizes
+  production cutover.
 
 ## Model-portfolio workflow
 
@@ -81,15 +93,16 @@ to the existing importer. It does not fetch providers or admit outcomes. See
 [launchd operations](ops/launchd/README.md) for explicit dry-run and install
 commands.
 
-## TBSZ observed-portfolio workflow
+## LTIA current-investment workflow (legacy TBSZ compatibility)
 
-TBSZ records are separate from model-portfolio recommendations and are never
-used to change ranking policy or execute a trade:
+LTIA records are separate from model-portfolio recommendations and are never
+used to change ranking policy or execute a trade. The retained local source
+and implementation paths still use `tbsz` as a compatibility identifier:
 
 ```text
 local George PDFs in data/tbsz/source/
         ↓
-confirmed TBSZ source import
+confirmed LTIA source import
         ↓
 database/tbsz_portfolio.sqlite
         ↓
@@ -100,8 +113,8 @@ later PDF reconciliation
 read-only comparison with a recommended model portfolio
 ```
 
-The source directory, manual confirmations, and TBSZ database are ignored by
-Git. The importer preserves filename/hash provenance and unknown source fields
+The source directory, manual confirmations, and legacy-named LTIA database are
+ignored by Git. The importer preserves filename/hash provenance and unknown source fields
 as `NULL`; it requires manual confirmation rather than OCR or fuzzy identity
 promotion. Manual BUY/SELL commands record an action the user has already
 executed—they are not brokerage orders. Cash remains separate by currency and
@@ -112,7 +125,7 @@ the operational commands.
 
 | Layer | Responsibility |
 |---|---|
-| `src/portfolio_advisor/DB_creation/` | Validates and imports visible model-portfolio worksheets. |
+| `src/portfolio_advisor/DB_creation/` | Validates and imports the visible `modell portfóliók` model-portfolio worksheet. |
 | `database/model_portfolio.sqlite` | Local snapshot source; never mutated by ranking/backtesting. |
 | `src/portfolio_advisor/ranking/` | Approved policy loading, fail-closed eligibility, normalization, scoring, and stable ranking. |
 | `src/portfolio_advisor/construction/` | Reviewed normalized 80/20 construction domain and persistence foundation; production remains data-blocked. |
@@ -122,14 +135,14 @@ the operational commands.
 | `src/portfolio_advisor/features/` | Point-in-time features and explicit official-forward-label availability records. |
 | `src/portfolio_advisor/prospective/` | Append-only decision ledger, due monitoring, and provenance-gated future outcome admission. |
 | `src/portfolio_advisor/operations/` | Event-driven XLS watcher orchestration and current-user LaunchAgent installation safety. |
-| `src/portfolio_advisor/tbsz/` | Local observed TBSZ evidence, manual transactions, reconciliation, and read-only comparison. |
+| `src/portfolio_advisor/tbsz/` | Local observed LTIA evidence, manual transactions, reconciliation, and read-only comparison; `tbsz` is a compatibility package name. |
 
 Generated databases, audit JSON, raw evidence, and operational logs stay
 local under `database/` and `data/`; they are deliberately ignored because
 they may be large, provider-controlled, or machine-specific. The code and
 tests that reproduce their deterministic handling are versioned.
 
-See [methodology](docs/methodology.md), [Phase E NAV evidence](docs/milestone_11c_phase_e_nav_provenance.md), [HUFONIA Phase D evidence](docs/milestone_11c_phase_d_hufonia_ingestion.md), [SOFR Phase C evidence](docs/milestone_11c_phase_c_sofr_ingestion.md), [provider-neutral Phase C0 provenance](docs/milestone_11c_phase_c0_reference_rate_provenance_contract.md), [ECB €STR Phase B evidence](docs/milestone_11c_phase_b_ecb_estr_ingestion.md), [historical source rules](docs/historical_nav_sources.md), [backtesting and prospective validation](docs/backtesting.md), [launchd operations](ops/launchd/README.md), and the [script catalog](scripts/README.md).
+See the [current workflow and availability contract](docs/portfolio_workflow_status.md), [methodology](docs/methodology.md), [Phase E NAV evidence](docs/milestone_11c_phase_e_nav_provenance.md), [HUFONIA Phase D evidence](docs/milestone_11c_phase_d_hufonia_ingestion.md), [SOFR Phase C evidence](docs/milestone_11c_phase_c_sofr_ingestion.md), [provider-neutral Phase C0 provenance](docs/milestone_11c_phase_c0_reference_rate_provenance_contract.md), [ECB €STR Phase B evidence](docs/milestone_11c_phase_b_ecb_estr_ingestion.md), [historical source rules](docs/historical_nav_sources.md), [backtesting and prospective validation](docs/backtesting.md), [launchd operations](ops/launchd/README.md), and the [script catalog](scripts/README.md).
 
 ## Official reference-rate evidence operations
 

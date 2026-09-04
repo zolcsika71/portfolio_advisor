@@ -64,6 +64,28 @@ particular, portfolio NAV reconstruction from constituent history remains
 frozen until portfolio-specific allocation, timing, currency, distribution,
 and duplicate-row semantics are proven.
 
+## Portfolio-workflow availability
+
+The current application ranks model portfolios from allocation-weighted
+reported snapshot indicators; that is not a constructed-portfolio return
+series or a model-versus-shortlist finalist comparison. The reviewed capital
+policy and construction foundation therefore do not yet authorize real
+shortlist construction, portfolio-level metrics, a recommendation, or a
+current-LTIA transition proposal. Those steps require the Phase F methodology
+contract and implementation.
+
+The target user-facing objectives are `CAPITAL_CONSERVATION` and
+`DIVIDEND_MAXIMIZATION`. Current code uses the stable identities
+`capital_conservation` and legacy compatibility `dividend_portfolio`; the
+latter has no validated active policy. A user-selected 90-, 180-, or 365-day
+investment horizon is distinct from the reviewed metric lookback, NAV cutoff,
+decision timestamp, and minimum common-history/observation contract. No
+selection may fill missing dates, history, benchmark observations, or prices.
+
+The complete target workflow, placeholder output contracts, current LTIA
+boundary, and implementation status are in
+[Portfolio workflow and current availability](portfolio_workflow_status.md).
+
 ## Official reference-rate boundary
 
 Milestone 11C admits exact official ECB €STR observations for EUR, New York Fed
@@ -126,6 +148,11 @@ Graphify may preserve source-backed methodology, constraints, and warnings.
 It cannot supply a historical weight, price, NAV, rebalance instruction, FX
 rate, or realized outcome. `INFERRED` relationships never become executable
 financial rules without separately reviewed evidence.
+
+Graphify citations may later support an explanation of already governed
+results. An OpenAI explanation layer is not implemented; if approved later,
+it may explain only those results and citations. It must not calculate metrics,
+invent evidence, modify rankings, or select a portfolio.
 
 ## Validation
 
