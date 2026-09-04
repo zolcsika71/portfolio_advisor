@@ -59,6 +59,22 @@ REFERENCE_RATE_FEATURE_FINGERPRINT = canonical_fingerprint(
         ),
     }
 )
+NAV_PROVENANCE_FEATURE_ID = "MILESTONE_11C_PHASE_E_NAV_PROVENANCE"
+NAV_PROVENANCE_FEATURE_REVISION = 1
+NAV_PROVENANCE_CONTRACT_VERSION = 1
+NAV_PROVENANCE_TABLES = frozenset({
+    "nav_evidence_source",
+    "nav_import_manifest",
+    "nav_observation_version",
+})
+NAV_PROVENANCE_FEATURE_FINGERPRINT = canonical_fingerprint(
+    {
+        "contract_version": NAV_PROVENANCE_CONTRACT_VERSION,
+        "feature_id": NAV_PROVENANCE_FEATURE_ID,
+        "revision": NAV_PROVENANCE_FEATURE_REVISION,
+        "tables": tuple(sorted(NAV_PROVENANCE_TABLES)),
+    }
+)
 _ISIN = re.compile(r"^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
 _APPROVED_DERIVATION_STATUSES = frozenset({
     "APPROVED_DIRECT_OCCURRENCE",
@@ -220,6 +236,99 @@ def upgrade_schema_v3_reference_rate_extension(connection: sqlite3.Connection) -
                     connection.execute(statement)
         _insert_reference_rate_feature_marker(connection)
     validate_schema(connection)
+
+
+def upgrade_schema_v3_nav_provenance_extension(connection: sqlite3.Connection) -> None:
+    """Install the additive Phase E exact-Decimal NAV provenance contract."""
+    validate_schema(connection)
+    names = {
+        str(row[0])
+        for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    present = NAV_PROVENANCE_TABLES & names
+    marker = connection.execute(
+        "SELECT revision, contract_fingerprint FROM schema_feature_contract WHERE feature_id=?",
+        (NAV_PROVENANCE_FEATURE_ID,),
+    ).fetchall()
+    if present and present != NAV_PROVENANCE_TABLES:
+        raise SchemaVersionError("NAV provenance schema feature is partially installed")
+    if not present and marker:
+        raise SchemaVersionError("NAV provenance marker exists without its tables")
+    if not present:
+        with transaction(connection):
+            _execute_complete_statements(connection, _NAV_PROVENANCE_SCHEMA_SQL)
+            connection.execute(
+                "INSERT INTO schema_feature_contract(feature_id, revision, contract_fingerprint) "
+                "VALUES (?, ?, ?)",
+                (
+                    NAV_PROVENANCE_FEATURE_ID,
+                    NAV_PROVENANCE_FEATURE_REVISION,
+                    NAV_PROVENANCE_FEATURE_FINGERPRINT,
+                ),
+            )
+    validate_nav_provenance_schema(connection)
+
+
+def validate_nav_provenance_schema(connection: sqlite3.Connection) -> None:
+    """Require the complete, exact Phase E table set and feature marker."""
+    validate_schema(connection)
+    names = {
+        str(row[0])
+        for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    present = NAV_PROVENANCE_TABLES & names
+    if present != NAV_PROVENANCE_TABLES:
+        raise SchemaVersionError("NAV provenance schema feature is absent or partial")
+    marker = [
+        tuple(row)
+        for row in connection.execute(
+            "SELECT revision, contract_fingerprint FROM schema_feature_contract WHERE feature_id=?",
+            (NAV_PROVENANCE_FEATURE_ID,),
+        ).fetchall()
+    ]
+    if marker != [
+        (NAV_PROVENANCE_FEATURE_REVISION, NAV_PROVENANCE_FEATURE_FINGERPRINT)
+    ]:
+        raise SchemaVersionError("NAV provenance schema feature marker is missing or stale")
+    if _nav_provenance_schema_objects(connection) != _nav_provenance_schema_objects_from_sql(
+        _NAV_PROVENANCE_SCHEMA_SQL
+    ):
+        raise SchemaVersionError("NAV provenance schema objects are damaged or incompatible")
+
+
+def _nav_provenance_schema_objects(
+    connection: sqlite3.Connection,
+) -> tuple[tuple[str, ...], ...]:
+    rows = connection.execute(
+        """SELECT type, name, tbl_name, sql
+           FROM sqlite_master
+           WHERE sql IS NOT NULL
+             AND (name GLOB 'nav_*' OR tbl_name GLOB 'nav_*')
+           ORDER BY type, name"""
+    ).fetchall()
+    return tuple(
+        (str(row[0]), str(row[1]), str(row[2]), " ".join(str(row[3]).split()))
+        for row in rows
+    )
+
+
+def _nav_provenance_schema_objects_from_sql(sql: str) -> tuple[tuple[str, ...], ...]:
+    with sqlite3.connect(":memory:") as scratch:
+        scratch.execute("PRAGMA foreign_keys=ON")
+        scratch.execute("CREATE TABLE instrument(instrument_id INTEGER PRIMARY KEY)")
+        _execute_complete_statements(scratch, sql)
+        return _nav_provenance_schema_objects(scratch)
+
+
+def _execute_complete_statements(connection: sqlite3.Connection, sql: str) -> None:
+    statement = ""
+    for line in sql.splitlines(keepends=True):
+        statement += line
+        if sqlite3.complete_statement(statement):
+            connection.execute(statement)
+            statement = ""
+    if statement.strip():
+        raise SchemaVersionError("schema SQL ended with an incomplete statement")
 
 
 def validate_schema(connection: sqlite3.Connection) -> None:
@@ -1254,6 +1363,163 @@ CREATE INDEX reference_rate_observation_availability
 ON reference_rate_observation(reference_rate_definition_id,
                               availability_boundary_utc,
                               observation_date, revision_sequence);
+"""
+
+
+_NAV_PROVENANCE_SCHEMA_SQL = """
+CREATE TABLE nav_evidence_source (
+    nav_evidence_source_id INTEGER PRIMARY KEY,
+    contract_version INTEGER NOT NULL CHECK(contract_version = 1),
+    source_code TEXT NOT NULL UNIQUE CHECK(length(trim(source_code)) > 0),
+    source_organization TEXT NOT NULL CHECK(length(trim(source_organization)) > 0),
+    source_governance TEXT NOT NULL
+        CHECK(source_governance = 'APPROVED_DISTRIBUTOR_NON_AUTHORITATIVE'),
+    identity_url_template TEXT NOT NULL CHECK(length(trim(identity_url_template)) > 0),
+    series_url_template TEXT NOT NULL CHECK(length(trim(series_url_template)) > 0),
+    source_role TEXT NOT NULL CHECK(source_role = 'APPROVED_DISTRIBUTOR'),
+    approval_basis TEXT NOT NULL CHECK(length(trim(approval_basis)) > 0),
+    licensing_reference TEXT NOT NULL CHECK(length(trim(licensing_reference)) > 0),
+    automated_use_status TEXT NOT NULL CHECK(automated_use_status = 'PREVIOUSLY_APPROVED'),
+    raw_retention_status TEXT NOT NULL CHECK(raw_retention_status = 'PREVIOUSLY_APPROVED'),
+    source_fingerprint TEXT NOT NULL UNIQUE
+        CHECK(length(source_fingerprint) = 64
+              AND source_fingerprint NOT GLOB '*[^0-9a-f]*')
+);
+
+CREATE TABLE nav_import_manifest (
+    nav_import_manifest_id INTEGER PRIMARY KEY,
+    contract_version INTEGER NOT NULL CHECK(contract_version = 1),
+    nav_evidence_source_id INTEGER NOT NULL
+        REFERENCES nav_evidence_source(nav_evidence_source_id) ON DELETE RESTRICT,
+    instrument_id INTEGER NOT NULL REFERENCES instrument(instrument_id) ON DELETE RESTRICT,
+    exact_isin TEXT NOT NULL CHECK(length(exact_isin) = 12),
+    share_class_name TEXT NOT NULL CHECK(length(trim(share_class_name)) > 0),
+    nav_currency TEXT NOT NULL CHECK(nav_currency IN ('EUR', 'HUF')),
+    provider_instrument_id TEXT NOT NULL CHECK(length(trim(provider_instrument_id)) > 0),
+    identity_request_url TEXT NOT NULL CHECK(length(trim(identity_request_url)) > 0),
+    identity_retrieval_timestamp TEXT NOT NULL CHECK(length(trim(identity_retrieval_timestamp)) > 0),
+    identity_raw_artifact_reference TEXT NOT NULL CHECK(length(trim(identity_raw_artifact_reference)) > 0),
+    identity_raw_artifact_sha256 TEXT NOT NULL
+        CHECK(length(identity_raw_artifact_sha256) = 64
+              AND identity_raw_artifact_sha256 NOT GLOB '*[^0-9a-f]*'),
+    identity_receipt_reference TEXT NOT NULL CHECK(length(trim(identity_receipt_reference)) > 0),
+    identity_receipt_sha256 TEXT NOT NULL
+        CHECK(length(identity_receipt_sha256) = 64
+              AND identity_receipt_sha256 NOT GLOB '*[^0-9a-f]*'),
+    series_request_url TEXT NOT NULL CHECK(length(trim(series_request_url)) > 0),
+    series_retrieval_timestamp TEXT NOT NULL CHECK(length(trim(series_retrieval_timestamp)) > 0),
+    series_raw_artifact_reference TEXT NOT NULL CHECK(length(trim(series_raw_artifact_reference)) > 0),
+    series_raw_artifact_sha256 TEXT NOT NULL
+        CHECK(length(series_raw_artifact_sha256) = 64
+              AND series_raw_artifact_sha256 NOT GLOB '*[^0-9a-f]*'),
+    series_receipt_reference TEXT NOT NULL CHECK(length(trim(series_receipt_reference)) > 0),
+    series_receipt_sha256 TEXT NOT NULL
+        CHECK(length(series_receipt_sha256) = 64
+              AND series_receipt_sha256 NOT GLOB '*[^0-9a-f]*'),
+    currency_bundle_manifest_reference TEXT NOT NULL CHECK(length(trim(currency_bundle_manifest_reference)) > 0),
+    currency_bundle_manifest_sha256 TEXT NOT NULL
+        CHECK(length(currency_bundle_manifest_sha256) = 64
+              AND currency_bundle_manifest_sha256 NOT GLOB '*[^0-9a-f]*'),
+    combined_bundle_manifest_reference TEXT NOT NULL CHECK(length(trim(combined_bundle_manifest_reference)) > 0),
+    combined_bundle_manifest_sha256 TEXT NOT NULL
+        CHECK(length(combined_bundle_manifest_sha256) = 64
+              AND combined_bundle_manifest_sha256 NOT GLOB '*[^0-9a-f]*'),
+    acquisition_identity TEXT NOT NULL UNIQUE
+        CHECK(length(acquisition_identity) = 64
+              AND acquisition_identity NOT GLOB '*[^0-9a-f]*'),
+    evidence_cutoff TEXT NOT NULL CHECK(length(evidence_cutoff) = 10),
+    admitted_first_date TEXT NOT NULL CHECK(length(admitted_first_date) = 10),
+    admitted_last_date TEXT NOT NULL CHECK(length(admitted_last_date) = 10),
+    admitted_observation_count INTEGER NOT NULL CHECK(admitted_observation_count > 0),
+    revision_semantics TEXT NOT NULL
+        CHECK(revision_semantics IN ('PROVIDER_REVISION_FIELD_NOT_SUPPLIED', 'EXPLICIT_REPLACEMENT')),
+    replaces_manifest_id INTEGER NULL
+        REFERENCES nav_import_manifest(nav_import_manifest_id) ON DELETE RESTRICT,
+    replacement_reason TEXT NULL,
+    dataset_fingerprint TEXT NOT NULL
+        CHECK(length(dataset_fingerprint) = 64
+              AND dataset_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    manifest_fingerprint TEXT NOT NULL UNIQUE
+        CHECK(length(manifest_fingerprint) = 64
+              AND manifest_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    import_status TEXT NOT NULL CHECK(import_status = 'VALIDATED_ADMITTED'),
+    CHECK((revision_semantics = 'PROVIDER_REVISION_FIELD_NOT_SUPPLIED'
+           AND replaces_manifest_id IS NULL AND replacement_reason IS NULL)
+          OR (revision_semantics = 'EXPLICIT_REPLACEMENT'
+              AND replaces_manifest_id IS NOT NULL
+              AND length(trim(replacement_reason)) > 0)),
+    UNIQUE(nav_import_manifest_id, instrument_id, exact_isin),
+    UNIQUE(nav_evidence_source_id, instrument_id, dataset_fingerprint)
+);
+
+CREATE TABLE nav_observation_version (
+    nav_observation_version_id INTEGER PRIMARY KEY,
+    nav_import_manifest_id INTEGER NOT NULL,
+    instrument_id INTEGER NOT NULL,
+    exact_isin TEXT NOT NULL CHECK(length(exact_isin) = 12),
+    observation_date TEXT NOT NULL CHECK(length(observation_date) = 10),
+    nav_decimal TEXT NOT NULL
+        CHECK(typeof(nav_decimal) = 'text' AND length(trim(nav_decimal)) > 0
+              AND nav_decimal = trim(nav_decimal)),
+    currency_code TEXT NOT NULL CHECK(currency_code IN ('EUR', 'HUF')),
+    provider_observation_identity TEXT NOT NULL
+        CHECK(length(trim(provider_observation_identity)) > 0),
+    provider_revision_id TEXT NULL,
+    revision_sequence INTEGER NOT NULL CHECK(revision_sequence > 0),
+    supersedes_observation_id INTEGER NULL
+        REFERENCES nav_observation_version(nav_observation_version_id) ON DELETE RESTRICT,
+    raw_artifact_sha256 TEXT NOT NULL
+        CHECK(length(raw_artifact_sha256) = 64
+              AND raw_artifact_sha256 NOT GLOB '*[^0-9a-f]*'),
+    quality_status TEXT NOT NULL CHECK(quality_status = 'ADMITTED_VALIDATED'),
+    observation_fingerprint TEXT NOT NULL UNIQUE
+        CHECK(length(observation_fingerprint) = 64
+              AND observation_fingerprint NOT GLOB '*[^0-9a-f]*'),
+    FOREIGN KEY(nav_import_manifest_id, instrument_id, exact_isin)
+        REFERENCES nav_import_manifest(nav_import_manifest_id, instrument_id, exact_isin)
+        ON DELETE RESTRICT,
+    FOREIGN KEY(supersedes_observation_id, instrument_id, observation_date)
+        REFERENCES nav_observation_version(
+            nav_observation_version_id, instrument_id, observation_date
+        ) ON DELETE RESTRICT,
+    CHECK((revision_sequence = 1 AND supersedes_observation_id IS NULL
+           AND provider_revision_id IS NULL)
+          OR (revision_sequence > 1 AND supersedes_observation_id IS NOT NULL
+              AND length(trim(provider_revision_id)) > 0)),
+    UNIQUE(nav_observation_version_id, instrument_id, observation_date),
+    UNIQUE(nav_import_manifest_id, observation_date),
+    UNIQUE(instrument_id, observation_date, revision_sequence),
+    UNIQUE(nav_import_manifest_id, provider_observation_identity)
+);
+CREATE UNIQUE INDEX nav_observation_version_single_successor
+ON nav_observation_version(supersedes_observation_id)
+WHERE supersedes_observation_id IS NOT NULL;
+CREATE INDEX nav_observation_version_date
+ON nav_observation_version(instrument_id, observation_date);
+CREATE TRIGGER nav_evidence_source_immutable_update
+BEFORE UPDATE ON nav_evidence_source BEGIN
+    SELECT RAISE(ABORT, 'NAV sources are immutable');
+END;
+CREATE TRIGGER nav_evidence_source_immutable_delete
+BEFORE DELETE ON nav_evidence_source BEGIN
+    SELECT RAISE(ABORT, 'NAV sources are immutable');
+END;
+CREATE TRIGGER nav_import_manifest_immutable_update
+BEFORE UPDATE ON nav_import_manifest BEGIN
+    SELECT RAISE(ABORT, 'NAV manifests are immutable');
+END;
+CREATE TRIGGER nav_import_manifest_immutable_delete
+BEFORE DELETE ON nav_import_manifest BEGIN
+    SELECT RAISE(ABORT, 'NAV manifests are immutable');
+END;
+CREATE TRIGGER nav_observation_version_immutable_update
+BEFORE UPDATE ON nav_observation_version BEGIN
+    SELECT RAISE(ABORT, 'NAV observations are immutable');
+END;
+CREATE TRIGGER nav_observation_version_immutable_delete
+BEFORE DELETE ON nav_observation_version BEGIN
+    SELECT RAISE(ABORT, 'NAV observations are immutable');
+END;
 """
 
 

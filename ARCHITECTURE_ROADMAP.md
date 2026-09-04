@@ -65,7 +65,7 @@ roadmap completion or production readiness.
 ## 1.2 Verified implementation status
 
 This status is grounded in repository history, versioned contracts and the installed schema-v3
-validators through the Milestone 11C Phase D HUFONIA-evidence release.
+validators through the Milestone 11C Phase E EUR/HUF NAV-evidence release.
 
 | Checkpoint | State | Verified boundary |
 | --- | --- | --- |
@@ -77,7 +77,8 @@ validators through the Milestone 11C Phase D HUFONIA-evidence release.
 | Milestone 11C Phase C0 — provider-neutral provenance | `COMPLETED` | Reference-rate feature/contract revision 2, explicit provider-versus-internal identity, conservative availability evidence, exact v1/v2 detection, and lossless ECB migration; no new benchmark admitted. |
 | Milestone 11C Phase C — New York Fed SOFR evidence | `COMPLETED` | Exact official USD daily overnight SOFR, immutable raw provenance, retrieval-bound availability, offline import and multi-benchmark validation; no metric activation. |
 | Milestone 11C Phase D — MNB HUFONIA evidence | `COMPLETED` | Exact official HUF overnight history, immutable BIFF8 provenance, value/trade-date semantics, retrieval-bound availability, offline import and three-benchmark validation; no metric activation. |
-| Overall roadmap-compliant Milestone 11 | `BLOCKED_BY_DATA` | EUR €STR, USD SOFR, and HUF HUFONIA evidence are admitted, but current NAV, alignment and portfolio analytics cannot produce a governed real candidate. |
+| Milestone 11C Phase E — EUR/HUF NAV provenance | `COMPLETED` | Exact-share-class EUR/HUF cohorts, immutable raw/receipt/manifest lineage, exact Decimal storage, deterministic offline import, and legacy/reference-rate preservation; approved non-authoritative distributor evidence only. |
+| Overall roadmap-compliant Milestone 11 | `IN_PROGRESS` | Phase E makes EUR/HUF NAV evidence available, but Phase F aligned portfolio analytics, construction, finalist persistence, and selection are not implemented. |
 | Roadmap-compliant Milestone 12 | `BLOCKED_BY_DATA` | No real persisted `SHORTLIST_FINALIST` exists for portfolio-to-portfolio comparison. |
 | Milestone 13 | `PLANNED` / `NO-GO` | Dividend evidence work remains deferred. |
 | Production cutover | `NOT_AUTHORIZED` | No checkpoint authorizes production cutover. |
@@ -2120,10 +2121,10 @@ Ranking-policy feature weights are not portfolio-allocation weights. Incomplete 
 category, NAV, currency, benchmark or methodology evidence fails closed. Official currency-specific
 reference-rate evidence is required before Sharpe or Sortino can participate in portfolio ranking.
 
-The machinery is implemented, but the current production runtime is
-`IMPLEMENTED_BLOCKED_BY_DATA`. EUR €STR, USD SOFR, and HUF HUFONIA evidence are admitted, but
-governed alignment and portfolio metrics are not implemented, and retained NAV is insufficient and
-stale. Production contains zero constructed portfolio candidates.
+The construction foundation is implemented, but the current production runtime remains
+`IMPLEMENTED_BLOCKED_BY_DATA`. EUR €STR, USD SOFR, HUF HUFONIA, and exact-share-class Phase E
+EUR/HUF NAV evidence are admitted. Governed alignment and portfolio metrics are not implemented;
+USD has no Phase E construction cohort. Production contains zero constructed portfolio candidates.
 
 ---
 
@@ -3281,7 +3282,7 @@ reason:        implementation and source-readiness evidence exposed separate pol
 prerequisite:  retain completed 11A, 11B and prior 11C contracts and forward history
 replacement:   replace the former single broad Milestone 11 step with checkpoints 11A, 11B
                and 11C Phases A–F below
-current status: overall Milestone 11 is BLOCKED_BY_DATA
+current status: overall Milestone 11 is IN_PROGRESS
 ```
 
 | Checkpoint | State | Scope |
@@ -3293,19 +3294,21 @@ current status: overall Milestone 11 is BLOCKED_BY_DATA
 | Milestone 11C Phase C0 — provider-neutral provenance remediation | `COMPLETED` | Contract/feature revision 2, optional provider IDs, system snapshot identity, explicit availability evidence, exact migration and ECB preservation; no SOFR import. |
 | Milestone 11C Phase C — NY Fed SOFR adapter | `COMPLETED` | Official USD daily overnight SOFR, exact retained JSON/receipt, retrieval-bound availability, idempotent offline admission and complete multi-benchmark validation. |
 | Milestone 11C Phase D — MNB HUFONIA adapter | `COMPLETED` | Official HUF history, strict BIFF8/Decimal parsing, retained raw/receipt provenance, retrieval-bound availability, exact €STR/SOFR preservation, and three-benchmark validation. |
-| Milestone 11C Phase E — NAV provenance upgrade and EUR/HUF refresh | `PLANNED` | Add complete raw-source/manifests/revision provenance and refresh the smallest feasible exact-share-class universes. |
+| Milestone 11C Phase E — NAV provenance upgrade and EUR/HUF refresh | `COMPLETED` | Additive immutable source/manifest/observation lineage and exact Decimal NAV for eight exact-share-class EUR and eight HUF instruments; Erste Market is an approved non-authoritative distributor, not a NAV administrator. |
 | Milestone 11C Phase F — aligned portfolio analytics and real finalist | `PLANNED` | Governed aligned returns, covariance-aware portfolio metrics, runtime construction, real-candidate persistence, ranking and `SHORTLIST_FINALIST` selection. |
 
-Phase D admits HUFONIA evidence conservatively at retrieval time. It does not infer a historical
-MNB calendar, align HUFONIA to portfolio dates, or define cash-return treatment. Those later uses
-remain fail-closed until their own policy and data contracts are approved.
+Phase D admits HUFONIA evidence conservatively at retrieval time. Phase E adds exact-share-class
+EUR/HUF NAV evidence without changing the three reference-rate bundles. Neither phase aligns a
+benchmark to portfolio dates or defines cash-return treatment. Those later uses remain fail-closed
+until Phase F's policy and implementation contracts are approved.
 
 USD shortlist construction remains blocked until at least eight exact-share-class histories in one
 USD construction universe have the required admitted history, staleness and common aligned
 coverage.
 
-Overall roadmap-compliant Milestone 11 remains `BLOCKED_BY_DATA`. The earlier singleton-ranking
-workflow is useful intermediate screening, not completion of this milestone.
+Overall roadmap-compliant Milestone 11 is `IN_PROGRESS`. Phase F remains required to produce and
+persist a governed real finalist. The earlier singleton-ranking workflow is useful intermediate
+screening, not completion of this milestone.
 
 ---
 
@@ -3540,36 +3543,35 @@ Do not combine terminology migration with unrelated ranking or construction chan
 The next engineering milestone is:
 
 ```text
-MILESTONE 11C PHASE E
-NAV PROVENANCE UPGRADE AND EUR/HUF REFRESH
+MILESTONE 11C PHASE F
+ALIGNED PORTFOLIO ANALYTICS AND REAL FINALIST
 ```
 
-Phases B, C0, C and D are completed forward history. Phase E is the next bounded data-readiness
+Phases B, C0, C, D and E are completed forward history. Phase F is the next bounded implementation
 checkpoint. Its scope is:
 
 ```text
-A. preserve admitted ECB €STR, New York Fed SOFR and MNB HUFONIA evidence exactly
+A. preserve admitted ECB €STR, New York Fed SOFR, MNB HUFONIA and Phase E NAV evidence exactly
 
-B. upgrade NAV source/manifests/revision provenance without synthetic reconstruction
+B. define governed same-currency NAV/benchmark alignment and cash-return treatment
 
-C. refresh the smallest feasible exact-share-class EUR/HUF universes from approved sources
+C. implement covariance-aware portfolio metrics without interpolation, FX or synthetic history
 
-D. retain immutable source artifacts, receipts and exact identities
+D. construct one deterministic policy-compliant EUR or HUF candidate per authorized run
 
-E. prove point-in-time dates, currency, distribution, revision and missing-value semantics
+E. persist complete construction and metric lineage and select a real `SHORTLIST_FINALIST`
 
 F. preserve the synthetic portfolio-NAV reconstruction freeze until all methodology facts exist
 
-G. keep portfolio metrics, construction and finalist selection blocked during this checkpoint
+G. keep rebalancing, trading, Milestones 12–13 and production cutover outside this checkpoint
 
 H. complete source, schema, integrity, foreign-key and logical-preservation validation
    before atomic installation
 ```
 
-This checkpoint must not calculate portfolio metrics, activate Sharpe or Sortino, construct a
-production portfolio, or authorize production cutover. It must preserve all completed reference-
-rate evidence unchanged and apply the same candidate-first, fail-closed release boundary.
-Portfolio metrics and real construction remain later checkpoints.
+Phase E did not calculate portfolio metrics, activate Sharpe or Sortino, construct a portfolio, or
+authorize production cutover. Phase F may begin only as a separately authorized, candidate-first,
+fail-closed checkpoint; this roadmap entry does not itself authorize its writes or production use.
 
 ---
 

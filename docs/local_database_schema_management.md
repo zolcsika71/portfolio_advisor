@@ -57,6 +57,14 @@ Phase D likewise adds no schema revision. Its candidate builder requires the
 exact populated €STR+SOFR Phase C scope, preserves every stored field in both
 existing bundles, imports one retained HUFONIA bundle, and requires the
 unchanged provenance-v2 feature and schema fingerprints.
+Phase E adds an independent NAV provenance feature under schema-v3 without
+changing `PRAGMA user_version`: `nav_evidence_source`, `nav_import_manifest`,
+and `nav_observation_version`, with two indexes and six immutability triggers.
+The feature fingerprint is
+`3ca7121ded39f483bda86582764bc2ac0724c18353130ade317092d7ab39d072`.
+It stores exact Decimal text and complete raw/receipt/manifest lineage while
+preserving all legacy NAV and reference-rate content. Partial or damaged Phase
+E schema fails closed.
 
 ```bash
 poetry run python scripts/migrate_reference_rate_provenance_contract.py --help
@@ -69,6 +77,9 @@ poetry run python scripts/validate_reference_rate_provenance.py --require-sofr
 poetry run python scripts/build_hufonia_candidate.py --help
 poetry run python scripts/validate_hufonia_reference_rate.py --help
 poetry run python scripts/validate_reference_rate_provenance.py --require-hufonia
+poetry run python scripts/build_phase_e_nav_candidate.py --help
+poetry run python scripts/import_phase_e_nav.py --help
+poetry run python scripts/audit_milestone_11c_phase_e.py --help
 ```
 
 The schema validator checks the exact current v2 structure whether empty or

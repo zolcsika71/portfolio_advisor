@@ -49,6 +49,10 @@ and operational constraints.
 | `validate_hufonia_reference_rate.py` | Validate benchmark-scoped HUFONIA contracts, retained workbook/receipt evidence, date-basis transition, Decimal precision, conservative availability, fingerprints, integrity, foreign keys, and zero constructed rows read-only. |
 | `validate_reference_rate_schema.py` | Validate the exact current v2 reference-rate DDL and feature marker read-only, whether the feature is empty or populated. |
 | `validate_reference_rate_provenance.py` | Validate every admitted benchmark bundle, internal identity, provider fields, retained artifact/receipt reconciliation, availability, revision chains, fingerprints, and benchmark-wide source isolation read-only. `--require-sofr` requires at least the completed Phase C scope; `--require-hufonia` requires the exact ESTR+SOFR+HUFONIA Phase D scope. |
+| `acquire_phase_e_nav.py` | Explicit operator-only Erste Market acquisition boundary, classified `APPROVED_DISTRIBUTOR_NON_AUTHORITATIVE`; complete responses are retained before validation, rejected transport is quarantined, and `--offline-audit` deterministically replays existing evidence without network or writes. |
+| `build_phase_e_nav_candidate.py` | Copy an explicit installed database to a disposable path, add only Phase E NAV provenance schema, import the retained EUR/HUF bundles offline, and reconcile every pre-existing logical table. |
+| `import_phase_e_nav.py` | Import the retained 16 exact-share-class manifests and 3,984 exact Decimal NAV observations into an explicit Phase E candidate; identical replay is a byte-preserving no-op. |
+| `audit_milestone_11c_phase_e.py` | Validate installed Phase E schema, exact cohorts, raw/receipt/manifest/observation lineage, fingerprints, legacy NAV, integrity, foreign keys, and zero constructed rows read-only. |
 
 Automated tests, offline import, candidate construction, and validation never
 contact a provider. Missing provider revision IDs or dataset versions are
@@ -58,6 +62,13 @@ before exact capture. Malformed, empty, wrong-series, duplicate, unauthorized
 revision, conflicting, or provenance-inconsistent evidence fails closed and is
 never silently overwritten. EUR €STR, USD daily SOFR, and HUF HUFONIA are
 admitted, and no benchmark is aligned to portfolio returns.
+
+Phase E's retained Erste Market chart responses preserve the strict global
+`application/json` transport contract. Only the exact HTTPS numeric chart
+endpoint has a separate semantic assessment for whole-body JSON mislabelled
+`text/html; charset=utf-8`; the original transport classification remains
+`QUARANTINED_REJECTED_RESPONSE`. See the
+[Phase E evidence record](../docs/milestone_11c_phase_e_nav_provenance.md).
 
 ## Historical evidence and source audits
 
