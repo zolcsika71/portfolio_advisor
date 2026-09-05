@@ -14,9 +14,10 @@ Milestone 11C admits immutable official ECB €STR, New York Fed daily SOFR, and
 MNB HUFONIA history artifacts through provider-neutral reference-rate
 provenance contract v2. EUR, USD, and HUF benchmark evidence are admitted.
 Phase E exact-share-class EUR/HUF NAV evidence is installed. Phase F1 adds the
-approved portfolio-metrics methodology contract, including an explicitly
-model-based constant-drift/constant-diffusion irregular-interval volatility
-estimator, but no calculation engine or supplementary NAV admission. Real
+approved portfolio-metrics methodology contract. Phase F2 adds the pure,
+Decimal-only metric foundation, including the explicitly model-based
+constant-drift/constant-diffusion irregular-interval volatility estimator, but
+no portfolio-wealth construction or supplementary NAV admission. Real
 metrics/ranking and finalist comparison remain unavailable. EUR is blocked by
 unknown distribution treatment and HUF by benchmark-convention evidence. The
 construction runtime is `IMPLEMENTED_BLOCKED_BY_DATA` and production cutover
@@ -29,8 +30,9 @@ is `NOT_AUTHORIZED`.
   snapshots into `model_portfolios`.
 - `database/repository.py`: read-only date and holding access for analysis,
   feature construction, and historical audits.
-- `metrics/`: allocation-weighted reported snapshot indicators and standalone
-  return-series formulas for an already approved series.
+- `metrics/`: allocation-weighted reported snapshot indicators, historical
+  equal-period compatibility formulas, the Phase F1 policy contract, and the
+  separate Phase F2 Decimal/provenance governed metric foundation.
 - `ranking/`: policy validation, strict eligibility, normalization, scoring,
   and deterministic tie-breaking.
 - `construction/`: deprecated instrument-screening compatibility plus the

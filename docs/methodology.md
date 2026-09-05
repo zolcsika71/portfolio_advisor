@@ -59,6 +59,19 @@ annualized return, volatility, maximum drawdown, downside deviation, Sharpe,
 Sortino, historical VaR, and CVaR. Non-finite or insufficient input fails
 closed; ratios are unavailable rather than infinite.
 
+Those float/equal-period utilities retain their historical backtest semantics.
+They are not the Phase F2 governed portfolio-metric engine. Phase F2 uses the
+separate Decimal-only path in `metrics/governed.py`, bound to the exact Phase F1
+policy fingerprint. It implements observed-endpoint simple/geometric return,
+elapsed-calendar-time annualized return, non-positive maximum drawdown, and the
+explicitly model-based D11 irregular-interval volatility estimator. It neither
+constructs portfolio wealth nor feeds current ranking.
+
+Sharpe, Sortino, and downside deviation remain policy-blocked because Phase F1
+does not completely specify their irregular-interval aggregation and
+annualization. VaR and CVaR are not authorized by Phase F1. The governed engine
+does not import the older equal-period conventions to fill those gaps.
+
 The existence of these formulas does not authorize reconstruction. In
 particular, portfolio NAV reconstruction from constituent history remains
 frozen until portfolio-specific allocation, timing, currency, distribution,
@@ -68,11 +81,12 @@ and duplicate-row semantics are proven.
 
 The current application ranks model portfolios from allocation-weighted
 reported snapshot indicators; that is not a constructed-portfolio return
-series or a model-versus-shortlist finalist comparison. Phase F1 has approved
-and implemented the strict policy contract for future portfolio metrics, but
-it implements no calculation engine and admits no additional evidence. Real
-shortlist construction, portfolio-level metrics, a recommendation, and a
-current-LTIA transition proposal therefore remain unavailable.
+series or a model-versus-shortlist finalist comparison. Phase F1 approved the
+strict policy contract and Phase F2 implements its pure metric-computation
+foundation. Phase F2 admits no evidence and cannot derive a portfolio wealth
+series from constituent NAV. Real shortlist construction, production portfolio
+metrics, a recommendation, and a current-LTIA transition proposal therefore
+remain unavailable.
 
 The target user-facing objectives are `CAPITAL_CONSERVATION` and
 `DIVIDEND_MAXIMIZATION`. Current code uses the stable identities
@@ -88,6 +102,8 @@ boundary, and implementation status are in
 The approved future calculation semantics, explicit model assumptions,
 precision contract and remaining evidence blockers are in
 [the Phase F1 methodology policy](milestone_11c_phase_f1_portfolio_metrics_policy.md).
+The implemented formula/failure-state boundary is documented in
+[the Phase F2 metric foundation](milestone_11c_phase_f2_metric_foundation.md).
 
 ## Official reference-rate boundary
 

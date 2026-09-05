@@ -3343,7 +3343,7 @@ current status: overall Milestone 11 is IN_PROGRESS
 | Milestone 11C Phase D — MNB HUFONIA adapter | `COMPLETED` | Official HUF history, strict BIFF8/Decimal parsing, retained raw/receipt provenance, retrieval-bound availability, exact €STR/SOFR preservation, and three-benchmark validation. |
 | Milestone 11C Phase E — NAV provenance upgrade and EUR/HUF refresh | `COMPLETED` | Additive immutable source/manifest/observation lineage and exact Decimal NAV for eight exact-share-class EUR and eight HUF instruments; Erste Market is an approved non-authoritative distributor, not a NAV administrator. |
 | Milestone 11C Phase F1 — metric-methodology policy | `COMPLETED` | Human-approved, fingerprinted alignment, cash, benchmark, return, volatility, precision, evidence and lineage contract. No calculation or evidence admission. |
-| Milestone 11C Phase F2 — synthetic metric engine | `PLANNED` | Implement and validate the exact approved formulas using synthetic fixtures only; production evidence remains prohibited. |
+| Milestone 11C Phase F2 — governed metric foundation | `IMPLEMENTED_PENDING_RELEASE_REVIEW` | One F1-bound Decimal engine validates provenance and computes governed return, D11 volatility, and MDD fixtures; real evidence use, Sharpe/Sortino, ranking, and selection remain blocked. |
 | Milestone 11C Phase F3 — disposable real candidate | `BLOCKED` | Requires separately admitted bounded NAV prefixes, proven distribution treatment and, for HUF, authoritative HUFONIA convention evidence before construction, persistence or ranking. |
 | Milestone 11C Phase F4 — installation and release | `BLOCKED` | Candidate-first installation, full reconciliation, documentation and release only after F2 and F3 pass. |
 
@@ -3591,31 +3591,31 @@ Do not combine terminology migration with unrelated ranking or construction chan
 
 # 100. Immediate next implementation milestone
 
-The next engineering milestone is:
+The next engineering checkpoint is:
 
 ```text
-MILESTONE 11C PHASE F2
-SYNTHETIC DETERMINISTIC PORTFOLIO-METRIC ENGINE
+MILESTONE 11C PHASE F2 RELEASE REVIEW
+GOVERNED PORTFOLIO-METRIC COMPUTATION FOUNDATION
 ```
 
-Phases B, C0, C, D, E and F1 are completed. Phase F2 is the next bounded implementation
-checkpoint. Its scope is:
+Phases B, C0, C, D, E and F1 are completed. The Phase F2 implementation is
+ready for a separate bounded release review. That review must verify:
 
 ```text
 A. preserve admitted ECB €STR, New York Fed SOFR, MNB HUFONIA and Phase E NAV evidence exactly
 
-B. implement the already approved Phase F1 methodology without altering it
+B. preserve the already approved Phase F1 methodology without altering it
 
-C. use synthetic fixtures only; do not admit supplementary NAV or use production evidence
+C. verify synthetic fixtures and read-only rejection of unsuitable Phase E NAV
 
 D. test the exact constant-drift/constant-diffusion irregular-interval volatility formula,
    irregular gaps, equal-gap equivalence, zero variance, invalid wealth, deterministic Decimal
    behavior and endpoint reconciliation
 
-E. test simple and geometric returns, buy-and-hold wealth drift, unremunerated cash, drawdown,
-   benchmark interval alignment, Sharpe/Sortino availability and fail-closed missing data
+E. test simple and geometric returns, governed series metadata, drawdown, Sharpe/Sortino policy
+   blocks and fail-closed missing data
 
-F. define no real metric-ranking weights or thresholds; that review remains deferred
+F. confirm Sharpe/Sortino/downside remain policy-blocked and VaR/CVaR unauthorized
 
 G. make no schema migration, database installation, real construction, rebalancing, trading,
    Milestones 12–13 or production cutover
@@ -3623,9 +3623,9 @@ G. make no schema migration, database installation, real construction, rebalanci
 H. retain deterministic policy identity and canonical result serialization in every fixture
 ```
 
-Phase F1 did not calculate portfolio metrics, activate Sharpe or Sortino, construct a portfolio, or
-authorize production use. Phase F2 requires separate authorization; this roadmap entry does not
-authorize its implementation or any use of retained production evidence.
+Phase F2 implements formula execution only. It does not activate Sharpe, Sortino, real evidence
+use, portfolio construction, ranking, selection, persistence, or production. Release and every
+later capability require separate authorization.
 
 ---
 

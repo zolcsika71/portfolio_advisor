@@ -14,12 +14,17 @@ from portfolio_advisor.database.schema.v3 import (
 )
 from scripts.validate_schema_v3_shortlist import validate_shortlist_stage
 
+type AuditValue = str | int | list[dict[str, AuditValue]] | dict[str, AuditValue]
 
-def _row(row: int, isin: str, name: str) -> dict[str, object]:
+
+def _row(row: int, isin: str, name: str) -> dict[str, AuditValue]:
     return {"isin": isin, "source_row": row, "product_name": name, "normalized_product_name": name.casefold(), "currency": "USD", "asset_class": "Equity", "sub_asset_class": "Global", "source_values": {"1yr": "0.1", "1Y Sharpe": "0.2"}}
 
 
-def _sheet(rows: list[dict[str, object]], signature: str = stage.SUPPORTED_SIGNATURE) -> dict[str, object]:
+def _sheet(
+    rows: list[dict[str, AuditValue]],
+    signature: str = stage.SUPPORTED_SIGNATURE,
+) -> dict[str, AuditValue]:
     return {"source_type":"SHORTLIST_XLS","status":"AUDITED","header_signature":signature,"file":"fixture.xls","file_sha256":"a" * 64,"sheet":"shortlist","snapshot_date":"2024-01-01","identity_records":rows}
 
 
@@ -88,9 +93,12 @@ def test_no_portfolio_or_holding_is_constructed(tmp_path: Path, monkeypatch: pyt
         assert connection.execute("SELECT count(*) FROM portfolio_cash").fetchone()[0] == 0
 
 
-def _validated_target(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, dict[object, object]]:
+def _validated_target(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[Path, dict[str, AuditValue]]:
     target = tmp_path / "validated.sqlite"; _target(target)
-    audit: dict[object, object] = {"files":[_sheet([_row(2,"US0378331005","One"), _row(3,"US5949181045","Alpha"), _row(4,"US5949181045","Beta")])]}
+    audit: dict[str, AuditValue] = {"files":[_sheet([_row(2,"US0378331005","One"), _row(3,"US5949181045","Alpha"), _row(4,"US5949181045","Beta")])]}
     monkeypatch.setattr(stage, "audit_workbooks", lambda _path: audit)
     stage.integrate_shortlist(workbook_directory=tmp_path, target=target, apply=True)
     return target, audit
@@ -116,7 +124,11 @@ def test_validator_rejects_source_row_tampering(tmp_path: Path, monkeypatch: pyt
 
 def test_validator_rejects_workbook_sha_tampering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     target, audit = _validated_target(tmp_path, monkeypatch)
-    sheet = audit["files"][0]; sheet["file_sha256"] = "b" * 64
+    files = audit["files"]
+    assert isinstance(files, list)
+    sheet = files[0]
+    assert isinstance(sheet, dict)
+    sheet["file_sha256"] = "b" * 64
     with pytest.raises(RuntimeError, match="stale manifest"): validate_shortlist_stage(target, audit)
 
 
@@ -213,7 +225,7 @@ def _assert_database_healthy(target: Path) -> None:
 
 def _assert_read_only_rejection(
     target: Path,
-    audit: dict[object, object],
+    audit: dict[str, AuditValue],
     message: str,
 ) -> None:
     before = target.read_bytes()

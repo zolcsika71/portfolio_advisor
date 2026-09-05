@@ -72,7 +72,7 @@ nearest dates, interpolation, proxy series, zero returns, or invented history.
 
 | User-facing objective | Current status | Boundary |
 | --- | --- | --- |
-| `CAPITAL_CONSERVATION` | **Partially implemented; not a complete portfolio workflow.** | `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1 supports reviewed model/singleton-screening foundations. The `CAPITAL_DEFENSIVE` 80/20 construction foundation and Phase F1 portfolio-metrics methodology contract are reviewed, but the calculation engine, supplementary evidence admission, real shortlist construction, metric ranking, finalist comparison, and transition reporting remain unavailable. |
+| `CAPITAL_CONSERVATION` | **Partially implemented; not a complete portfolio workflow.** | `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1 supports reviewed model/singleton-screening foundations. The `CAPITAL_DEFENSIVE` 80/20 construction foundation, Phase F1 methodology contract, and Phase F2 pure metric engine exist, but supplementary evidence admission, governed portfolio-wealth construction, real metric ranking, finalist comparison, and transition reporting remain unavailable. |
 | `DIVIDEND_MAXIMIZATION` | **Unavailable.** | The current code has the legacy compatibility objective identity `dividend_portfolio`/`DIVIDEND_PORTFOLIO`, but no validated active dividend policy, dividend evidence, eligibility, construction, ranking, or finalist-comparison contract. No dividend portfolio may be fabricated to populate an interface. |
 
 `DIVIDEND_MAXIMIZATION` is the target user-facing label. It is not an alias
@@ -155,11 +155,14 @@ retrieval/citations in an explanation, OpenAI explanation, current-versus-
 target calculation, buy/sell/cash proposal, rebalancing plan, order, or
 production recommendation.
 
-Phase F1 has approved the financial methodology. Phase F2 must still implement
-and test its deterministic return-series calculations on synthetic fixtures
-before any production evidence may use them. The policy and explicit
-constant-drift/constant-diffusion volatility assumption are recorded in
-[the Phase F1 record](milestone_11c_phase_f1_portfolio_metrics_policy.md); the
+Phase F1 approved the financial methodology, and Phase F2 implements and tests
+the deterministic formula foundation with synthetic fixtures. Production
+evidence still cannot use it: no governed portfolio-wealth series exists, EUR
+distribution treatment is unknown, and HUF benchmark convention evidence is
+incomplete. The policy is recorded in
+[the Phase F1 record](milestone_11c_phase_f1_portfolio_metrics_policy.md) and
+the implementation boundary in
+[the Phase F2 record](milestone_11c_phase_f2_metric_foundation.md); the
 installed evidence boundary remains in
 [the Phase E record](milestone_11c_phase_e_nav_provenance.md).
 

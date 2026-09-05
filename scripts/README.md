@@ -53,6 +53,7 @@ and operational constraints.
 | `build_phase_e_nav_candidate.py` | Copy an explicit installed database to a disposable path, add only Phase E NAV provenance schema, import the retained EUR/HUF bundles offline, and reconcile every pre-existing logical table. |
 | `import_phase_e_nav.py` | Import the retained 16 exact-share-class manifests and 3,984 exact Decimal NAV observations into an explicit Phase E candidate; identical replay is a byte-preserving no-op. |
 | `audit_milestone_11c_phase_e.py` | Validate installed Phase E schema, exact cohorts, raw/receipt/manifest/observation lineage, fingerprints, legacy NAV, integrity, foreign keys, and zero constructed rows read-only. |
+| `audit_phase_f2_metric_foundation.py` | Revalidate Phase E read-only and emit the deterministic Phase F2 policy/metric-foundation audit with regular, irregular, and flat synthetic references; it does not admit evidence, construct wealth, rank, select, or activate production use. |
 
 Automated tests, offline import, candidate construction, and validation never
 contact a provider. Missing provider revision IDs or dataset versions are
