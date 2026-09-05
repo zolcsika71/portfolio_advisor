@@ -3343,7 +3343,8 @@ current status: overall Milestone 11 is IN_PROGRESS
 | Milestone 11C Phase D — MNB HUFONIA adapter | `COMPLETED` | Official HUF history, strict BIFF8/Decimal parsing, retained raw/receipt provenance, retrieval-bound availability, exact €STR/SOFR preservation, and three-benchmark validation. |
 | Milestone 11C Phase E — NAV provenance upgrade and EUR/HUF refresh | `COMPLETED` | Additive immutable source/manifest/observation lineage and exact Decimal NAV for eight exact-share-class EUR and eight HUF instruments; Erste Market is an approved non-authoritative distributor, not a NAV administrator. |
 | Milestone 11C Phase F1 — metric-methodology policy | `COMPLETED` | Human-approved, fingerprinted alignment, cash, benchmark, return, volatility, precision, evidence and lineage contract. No calculation or evidence admission. |
-| Milestone 11C Phase F2 — governed metric foundation | `IMPLEMENTED_PENDING_RELEASE_REVIEW` | One F1-bound Decimal engine validates provenance and computes governed return, D11 volatility, and MDD fixtures; real evidence use, Sharpe/Sortino, ranking, and selection remain blocked. |
+| Milestone 11C Phase F2 — governed metric foundation | `COMPLETED` | One F1-bound Decimal engine validates provenance and computes governed return, D11 volatility, and MDD fixtures; released in commit `807e2c8ea00d3c652a9a478dab1455882dfdab47`. Real evidence use, Sharpe/Sortino, ranking, and selection remain blocked. |
+| Milestone 11C Phase F3A — synthetic EUR portfolio wealth | `COMPLETED` | Pure Decimal fixture builder proves strict intersection, latest-minimal 365-day/252-interval window selection, fixed-unit 80/20 wealth, recomputed lineage, and unchanged F2 synthetic integration. It does not admit or use real evidence. |
 | Milestone 11C Phase F3 — disposable real candidate | `BLOCKED` | Requires separately admitted bounded NAV prefixes, proven distribution treatment and, for HUF, authoritative HUFONIA convention evidence before construction, persistence or ranking. |
 | Milestone 11C Phase F4 — installation and release | `BLOCKED` | Candidate-first installation, full reconciliation, documentation and release only after F2 and F3 pass. |
 
@@ -3591,41 +3592,39 @@ Do not combine terminology migration with unrelated ranking or construction chan
 
 # 100. Immediate next implementation milestone
 
-The next engineering checkpoint is:
+The next bounded checkpoint, only after separate authorization, is:
 
 ```text
-MILESTONE 11C PHASE F2 RELEASE REVIEW
-GOVERNED PORTFOLIO-METRIC COMPUTATION FOUNDATION
+MILESTONE 11C PHASE F3 REAL-EVIDENCE READINESS
+DISTRIBUTION, SUPPLEMENTARY NAV, TRUSTED LINEAGE AND PERSISTENCE BOUNDARIES
 ```
 
-Phases B, C0, C, D, E and F1 are completed. The Phase F2 implementation is
-ready for a separate bounded release review. That review must verify:
+Phases B, C0, C, D, E, F1, F2 and the synthetic-only F3A foundation are
+completed. Real-evidence work remains blocked and must separately verify:
 
 ```text
-A. preserve admitted ECB €STR, New York Fed SOFR, MNB HUFONIA and Phase E NAV evidence exactly
+A. preserve the Phase F1 policies, released F2/F3A foundations, all admitted evidence, and the database exactly
 
-B. preserve the already approved Phase F1 methodology without altering it
+B. prove accumulation status or admit complete distribution cash flows for every real EUR share class
 
-C. verify synthetic fixtures and read-only rejection of unsuitable Phase E NAV
+C. admit the bounded supplementary NAV prefixes without changing the fixed decision-time boundary
 
-D. test the exact constant-drift/constant-diffusion irregular-interval volatility formula,
-   irregular gaps, equal-gap equivalence, zero variance, invalid wealth, deterministic Decimal
-   behavior and endpoint reconciliation
+D. establish trusted real-source lineage and a separately reviewed additive persistence boundary
 
-E. test simple and geometric returns, governed series metadata, drawdown, Sharpe/Sortino policy
-   blocks and fail-closed missing data
+E. preserve strict intersection, observed dates, fixed-unit 80/20 wealth and complete recomputation
 
-F. confirm Sharpe/Sortino/downside remain policy-blocked and VaR/CVaR unauthorized
+F. keep HUF blocked until authoritative HUFONIA day-count and applicability evidence is admitted
 
-G. make no schema migration, database installation, real construction, rebalancing, trading,
-   Milestones 12–13 or production cutover
+G. define a new real-portfolio ranking policy before any scoring, comparison or selection
 
-H. retain deterministic policy identity and canonical result serialization in every fixture
+H. make no real construction, ranking, selection, rebalancing, trading, Milestones 12–13,
+   or production cutover until every preceding boundary has a separately authorized checkpoint
 ```
 
-Phase F2 implements formula execution only. It does not activate Sharpe, Sortino, real evidence
-use, portfolio construction, ranking, selection, persistence, or production. Release and every
-later capability require separate authorization.
+Phase F3A implements synthetic wealth derivation only. Its completed status does not prove the
+real EUR cohort's distribution suitability or diversification, admit supplementary NAV, or activate
+real metrics, construction, ranking, selection, persistence, or production. Those later capabilities
+require separate evidence, policy decisions, and authorization.
 
 ---
 
