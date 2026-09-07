@@ -5,12 +5,23 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import date, timedelta
-from decimal import Decimal, localcontext
+from decimal import (
+    ROUND_DOWN,
+    Clamped,
+    Context,
+    Decimal,
+    Inexact,
+    Overflow,
+    Rounded,
+    localcontext,
+)
+from hashlib import sha256
 from pathlib import Path
 from typing import cast
 
 import pytest
 
+from portfolio_advisor.canonical import canonical_fingerprint
 from portfolio_advisor.metrics.governed import (
     MetricSuitabilityState,
     ObservationFingerprintScheme,
@@ -31,6 +42,7 @@ from portfolio_advisor.metrics.portfolio_wealth import (
     PhaseF3AValidationError,
     SyntheticConstituentSeries,
     SyntheticDistributionState,
+    SyntheticNavObservation,
     SyntheticPortfolioWealthLineage,
     SyntheticPortfolioWealthRequest,
     adapt_validated_synthetic_wealth_to_f2,
@@ -53,6 +65,7 @@ from portfolio_advisor.objectives.construction_policy import (
 ROOT = Path(__file__).resolve().parents[1]
 DECISION_AS_OF = "2026-09-04T12:24:23.000000Z"
 CUTOFF = "2026-08-31"
+PLAIN_THOUSAND = Decimal("1000")  # noqa: FURB157 - representation is under test.
 
 
 @pytest.fixture(scope="module")
@@ -132,6 +145,31 @@ def _build(
 
 def _assert_close(actual: Decimal, expected: Decimal, tolerance: Decimal = Decimal("1E-40")) -> None:
     assert abs(actual - expected) / abs(expected) <= tolerance
+
+
+def _decimal_context_state(context: Context) -> tuple[object, ...]:
+    return (
+        context.prec,
+        context.rounding,
+        context.Emin,
+        context.Emax,
+        context.capitals,
+        context.clamp,
+        tuple(sorted((signal.__name__, enabled) for signal, enabled in context.flags.items())),
+        tuple(sorted((signal.__name__, enabled) for signal, enabled in context.traps.items())),
+    )
+
+
+def _request_with_first_nav_representation(
+    nav: Decimal,
+) -> SyntheticPortfolioWealthRequest:
+    request = _request(_qualifying_dates())
+    first = create_synthetic_constituent_series(
+        constituent_identity=request.constituents[0].constituent_identity,
+        values=tuple((observation_date, nav) for observation_date in _qualifying_dates()),
+        evidence_available_at_utc=DECISION_AS_OF,
+    )
+    return replace(request, constituents=(first, *request.constituents[1:]))
 
 
 def test_hand_calculated_units_cash_wealth_and_weight_drift(
@@ -511,6 +549,286 @@ def test_input_correspondence_and_deterministic_serialization(
         )
 
 
+def test_valid_construction_ignores_ambient_inexact_and_rounded_traps(
+    metrics_policy: PhaseF1PortfolioMetricsPolicy,
+    construction_policy: CapitalDefensiveConstructionPolicy,
+) -> None:
+    request = _request(_qualifying_dates())
+    reference = _build(request, metrics_policy, construction_policy)
+
+    with localcontext() as ambient:
+        ambient.traps[Inexact] = True
+        ambient.traps[Rounded] = True
+        ambient.flags[Inexact] = True
+        before = _decimal_context_state(ambient)
+        actual = _build(request, metrics_policy, construction_policy)
+        after = _decimal_context_state(ambient)
+
+    assert actual.render_audit() == reference.render_audit()
+    assert after == before
+
+
+def test_valid_construction_ignores_restrictive_ambient_exponent_bounds(
+    metrics_policy: PhaseF1PortfolioMetricsPolicy,
+    construction_policy: CapitalDefensiveConstructionPolicy,
+) -> None:
+    request = _request(_qualifying_dates())
+    reference = _build(request, metrics_policy, construction_policy)
+
+    with localcontext() as ambient:
+        ambient.Emin = -1
+        ambient.Emax = 1
+        ambient.traps[Overflow] = True
+        before = _decimal_context_state(ambient)
+        actual = _build(request, metrics_policy, construction_policy)
+        after = _decimal_context_state(ambient)
+
+    assert actual.render_audit() == reference.render_audit()
+    assert after == before
+
+
+def test_construction_validation_adaptation_metrics_and_audit_ignore_ambient_context(
+    metrics_policy: PhaseF1PortfolioMetricsPolicy,
+    construction_policy: CapitalDefensiveConstructionPolicy,
+) -> None:
+    request = replace(
+        _request_with_first_nav_representation(Decimal("1E+3")),
+        initial_capital=Decimal("1E+30"),
+    )
+    reference_lineage = _build(request, metrics_policy, construction_policy)
+    reference_lineage_payload = reference_lineage.to_dict()
+    reference_lineage_audit = reference_lineage.render_audit()
+    reference_series = adapt_validated_synthetic_wealth_to_f2(
+        lineage=reference_lineage,
+        request=request,
+        metrics_policy=metrics_policy,
+        construction_policy=construction_policy,
+    )
+    reference_metrics = compute_phase_f3a_synthetic_metrics(
+        lineage=reference_lineage,
+        request=request,
+        requested_metrics=(
+            "TOTAL_RETURN",
+            "ANNUALIZED_RETURN",
+            "ANNUALIZED_VOLATILITY",
+            "MAXIMUM_DRAWDOWN",
+        ),
+        metrics_policy=metrics_policy,
+        construction_policy=construction_policy,
+    )
+    reference_audit = render_phase_f3a_wealth_foundation_audit(
+        build_phase_f3a_wealth_foundation_audit(
+            metrics_policy=metrics_policy,
+            construction_policy=construction_policy,
+        )
+    )
+
+    with localcontext() as ambient:
+        ambient.prec = 2
+        ambient.rounding = ROUND_DOWN
+        ambient.Emin = -1
+        ambient.Emax = 1
+        ambient.capitals = 0
+        ambient.clamp = 1
+        ambient.traps[Clamped] = True
+        ambient.traps[Inexact] = True
+        ambient.traps[Overflow] = True
+        ambient.traps[Rounded] = True
+        ambient.clear_flags()
+        ambient.flags[Rounded] = True
+        before = _decimal_context_state(ambient)
+        actual_request = replace(
+            _request_with_first_nav_representation(Decimal("1E+3")),
+            initial_capital=Decimal("1E+30"),
+        )
+        actual_lineage = _build(actual_request, metrics_policy, construction_policy)
+        actual_lineage_payload = actual_lineage.to_dict()
+        actual_lineage_audit = actual_lineage.render_audit()
+        validate_synthetic_eur_portfolio_wealth(
+            lineage=actual_lineage,
+            request=actual_request,
+            metrics_policy=metrics_policy,
+            construction_policy=construction_policy,
+        )
+        actual_series = adapt_validated_synthetic_wealth_to_f2(
+            lineage=actual_lineage,
+            request=actual_request,
+            metrics_policy=metrics_policy,
+            construction_policy=construction_policy,
+        )
+        actual_metrics = compute_phase_f3a_synthetic_metrics(
+            lineage=actual_lineage,
+            request=actual_request,
+            requested_metrics=(
+                "TOTAL_RETURN",
+                "ANNUALIZED_RETURN",
+                "ANNUALIZED_VOLATILITY",
+                "MAXIMUM_DRAWDOWN",
+            ),
+            metrics_policy=metrics_policy,
+            construction_policy=construction_policy,
+        )
+        actual_audit = render_phase_f3a_wealth_foundation_audit(
+            build_phase_f3a_wealth_foundation_audit(
+                metrics_policy=metrics_policy,
+                construction_policy=construction_policy,
+            )
+        )
+        after = _decimal_context_state(ambient)
+
+    assert actual_request == request
+    assert actual_lineage_payload == reference_lineage_payload
+    assert actual_lineage_audit == reference_lineage_audit
+    assert actual_series == reference_series
+    assert actual_metrics.to_dict() == reference_metrics.to_dict()
+    assert actual_audit == reference_audit
+    assert after == before
+
+
+def test_caller_decimal_context_is_preserved_when_validation_raises(
+    metrics_policy: PhaseF1PortfolioMetricsPolicy,
+    construction_policy: CapitalDefensiveConstructionPolicy,
+) -> None:
+    request = replace(_request(_qualifying_dates()), initial_capital=Decimal(0))
+    with localcontext() as ambient:
+        ambient.prec = 7
+        ambient.rounding = ROUND_DOWN
+        ambient.Emin = -7
+        ambient.Emax = 7
+        ambient.flags[Rounded] = True
+        before = _decimal_context_state(ambient)
+        with pytest.raises(PhaseF3AValidationError, match="initial capital must be positive"):
+            _build(request, metrics_policy, construction_policy)
+        after = _decimal_context_state(ambient)
+    assert after == before
+
+
+@pytest.mark.parametrize(
+    ("left", "right"),
+    (
+        (Decimal("1E+3"), PLAIN_THOUSAND),
+        (Decimal("1.0"), Decimal("1.00")),
+        (Decimal("-0"), Decimal(0)),
+    ),
+)
+def test_source_decimal_fingerprint_preserves_sign_digits_and_exponent(
+    left: Decimal,
+    right: Decimal,
+) -> None:
+    assert left == right
+    assert left.as_tuple() != right.as_tuple()
+    left_observation = SyntheticNavObservation.create(
+        constituent_identity="SYNTHETIC_DECIMAL_REPRESENTATION",
+        observation_date="2025-08-28",
+        nav=left,
+        evidence_reference="SYNTHETIC_FIXTURE:PHASE_F3A:DECIMAL:OBSERVATION",
+    )
+    right_observation = SyntheticNavObservation.create(
+        constituent_identity="SYNTHETIC_DECIMAL_REPRESENTATION",
+        observation_date="2025-08-28",
+        nav=right,
+        evidence_reference="SYNTHETIC_FIXTURE:PHASE_F3A:DECIMAL:OBSERVATION",
+    )
+    assert left_observation.payload("SYNTHETIC_DECIMAL_REPRESENTATION")["nav"] != (
+        right_observation.payload("SYNTHETIC_DECIMAL_REPRESENTATION")["nav"]
+    )
+    assert left_observation.observation_fingerprint != (
+        right_observation.observation_fingerprint
+    )
+
+
+@pytest.mark.parametrize(
+    ("left", "right"),
+    (
+        (Decimal("1E+3"), PLAIN_THOUSAND),
+        (Decimal("1.0"), Decimal("1.00")),
+    ),
+)
+def test_valid_source_decimal_representations_produce_distinct_lineage(
+    left: Decimal,
+    right: Decimal,
+    metrics_policy: PhaseF1PortfolioMetricsPolicy,
+    construction_policy: CapitalDefensiveConstructionPolicy,
+) -> None:
+    left_request = _request_with_first_nav_representation(left)
+    right_request = _request_with_first_nav_representation(right)
+    left_lineage = _build(left_request, metrics_policy, construction_policy)
+    right_lineage = _build(right_request, metrics_policy, construction_policy)
+
+    assert left_request.constituents[0].provenance_fingerprint != (
+        right_request.constituents[0].provenance_fingerprint
+    )
+    assert left_lineage.lineage_fingerprint != right_lineage.lineage_fingerprint
+
+
+def test_source_decimal_representation_change_requires_rebuilt_fingerprints_and_lineage(
+    metrics_policy: PhaseF1PortfolioMetricsPolicy,
+    construction_policy: CapitalDefensiveConstructionPolicy,
+) -> None:
+    original_request = _request_with_first_nav_representation(Decimal("1E+3"))
+    original_lineage = _build(original_request, metrics_policy, construction_policy)
+    original_series = original_request.constituents[0]
+    changed_observations = tuple(
+        replace(observation, nav=PLAIN_THOUSAND)
+        for observation in original_series.observations
+    )
+    unrefingerprinted_tamper = replace(original_series, observations=changed_observations)
+
+    with pytest.raises(
+        PhaseF3AValidationError, match="constituent provenance fingerprint mismatch"
+    ):
+        _build(
+            replace(
+                original_request,
+                constituents=(
+                    unrefingerprinted_tamper,
+                    *original_request.constituents[1:],
+                ),
+            ),
+            metrics_policy,
+            construction_policy,
+        )
+
+    rebuilt_request = _request_with_first_nav_representation(PLAIN_THOUSAND)
+    with pytest.raises(PhaseF3AValidationError, match="recomputed derivation"):
+        validate_synthetic_eur_portfolio_wealth(
+            lineage=original_lineage,
+            request=rebuilt_request,
+            metrics_policy=metrics_policy,
+            construction_policy=construction_policy,
+        )
+
+
+def test_obsolete_v1_source_fingerprint_is_not_accepted(
+    metrics_policy: PhaseF1PortfolioMetricsPolicy,
+    construction_policy: CapitalDefensiveConstructionPolicy,
+) -> None:
+    request = _request_with_first_nav_representation(Decimal("1E+3"))
+    series = request.constituents[0]
+    observation = series.observations[0]
+    obsolete_payload = observation.payload(series.constituent_identity)
+    obsolete_payload.update(
+        {
+            "fingerprint_scheme": "PHASE_F3A_SYNTHETIC_NAV_V1",
+            "nav": format(observation.nav, "f"),
+        }
+    )
+    obsolete_observation = replace(
+        observation,
+        observation_fingerprint=canonical_fingerprint(obsolete_payload),
+    )
+    obsolete_series = bind_synthetic_constituent_provenance(
+        replace(series, observations=(obsolete_observation, *series.observations[1:]))
+    )
+
+    with pytest.raises(PhaseF3AValidationError, match="observation fingerprint mismatch"):
+        _build(
+            replace(request, constituents=(obsolete_series, *request.constituents[1:])),
+            metrics_policy,
+            construction_policy,
+        )
+
+
 def test_validated_synthetic_output_integrates_with_unchanged_f2_interface(
     metrics_policy: PhaseF1PortfolioMetricsPolicy,
     construction_policy: CapitalDefensiveConstructionPolicy,
@@ -621,10 +939,21 @@ def test_f3a_audit_is_deterministic_and_never_claims_runtime_activation(
         metrics_policy=metrics_policy,
         construction_policy=construction_policy,
     )
-    assert render_phase_f3a_wealth_foundation_audit(first).encode("utf-8") == (
-        render_phase_f3a_wealth_foundation_audit(second).encode("utf-8")
+    rendered = render_phase_f3a_wealth_foundation_audit(first).encode("utf-8")
+    assert rendered == render_phase_f3a_wealth_foundation_audit(second).encode("utf-8")
+    assert sha256(rendered).hexdigest() == (
+        "af00676072ae8ba5f6a5e22aba0794059fbaf30c7d6b54b0eccedc8f57e08c0c"
     )
     assert first["audit_fingerprint"] == second["audit_fingerprint"]
+    assert first["audit_fingerprint"] == (
+        "b06f3517ec2edeaa88514d7744ddae0e1aff85a4bf5609f025b9981d8daedfeb"
+    )
+    numerical = first["numerical_conventions"]
+    assert isinstance(numerical, dict)
+    assert numerical["source_decimal_encoding"] == "DECIMAL_STR_SIGN_DIGITS_EXPONENT_V1"
+    assert numerical["synthetic_nav_fingerprint_scheme"] == (
+        "PHASE_F3A_SYNTHETIC_NAV_V2"
+    )
     boundaries = first["regression_boundaries"]
     assert isinstance(boundaries, dict)
     assert boundaries["admitted_evidence_execution"] == "BLOCKED_NOT_AUTHORIZED"

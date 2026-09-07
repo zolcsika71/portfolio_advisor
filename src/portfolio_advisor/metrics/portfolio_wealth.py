@@ -12,7 +12,22 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
-from decimal import ROUND_HALF_EVEN, Decimal, DecimalException, localcontext
+from decimal import (
+    ROUND_HALF_EVEN,
+    Clamped,
+    Context,
+    Decimal,
+    DecimalException,
+    DivisionByZero,
+    FloatOperation,
+    Inexact,
+    InvalidOperation,
+    Overflow,
+    Rounded,
+    Subnormal,
+    Underflow,
+    localcontext,
+)
 from enum import StrEnum
 from typing import Final
 
@@ -47,10 +62,30 @@ from portfolio_advisor.objectives.construction_policy import (
 PHASE_F3A_IMPLEMENTATION_ID: Final = (
     "PHASE_F3A_GOVERNED_EUR_PORTFOLIO_WEALTH_AND_TRUSTED_LINEAGE_FOUNDATION"
 )
-PHASE_F3A_IMPLEMENTATION_VERSION: Final = "1.0.0"
+PHASE_F3A_IMPLEMENTATION_VERSION: Final = "1.0.1"
 PHASE_F3A_ACTIVATION_STATE: Final = "SYNTHETIC_WEALTH_FOUNDATION_IMPLEMENTED"
+PHASE_F3A_SOURCE_DECIMAL_ENCODING: Final = "DECIMAL_STR_SIGN_DIGITS_EXPONENT_V1"
+PHASE_F3A_SYNTHETIC_NAV_FINGERPRINT_SCHEME: Final = "PHASE_F3A_SYNTHETIC_NAV_V2"
 
 _DECIMAL_PRECISION: Final = 50
+_DECIMAL_EMIN: Final = -999_999
+_DECIMAL_EMAX: Final = 999_999
+_DECIMAL_CAPITALS: Final = 1
+_DECIMAL_CLAMP: Final = 0
+_DECIMAL_SIGNALS: Final = (
+    Clamped,
+    DivisionByZero,
+    FloatOperation,
+    Inexact,
+    InvalidOperation,
+    Overflow,
+    Rounded,
+    Subnormal,
+    Underflow,
+)
+_DECIMAL_TRAPS: Final = frozenset(
+    (DivisionByZero, FloatOperation, InvalidOperation, Overflow)
+)
 _OUTPUT_QUANTUM: Final = Decimal("0.000000000000000001")
 _PERSISTED_HALF_QUANTUM_TOLERANCE: Final = Decimal("0.0000000000000000005")
 _SERIALIZED_NINE_WEIGHT_TOLERANCE: Final = Decimal("0.0000000000000000045")
@@ -60,7 +95,7 @@ _APPROVED_CONSTRUCTION_POLICY_FINGERPRINT: Final = (
 _SYNTHETIC_SOURCE_IDENTITY: Final = "PHASE_F3A_SYNTHETIC_CONSTITUENT_FIXTURE"
 _SYNTHETIC_SOURCE_GOVERNANCE: Final = "SYNTHETIC_FIXTURE_ONLY"
 _SYNTHETIC_REFERENCE_PREFIX: Final = "SYNTHETIC_FIXTURE:PHASE_F3A:"
-_SYNTHETIC_FINGERPRINT_SCHEME: Final = "PHASE_F3A_SYNTHETIC_NAV_V1"
+_SYNTHETIC_FINGERPRINT_SCHEME: Final = PHASE_F3A_SYNTHETIC_NAV_FINGERPRINT_SCHEME
 _SECURITY_COUNT: Final = 8
 _HASH_LENGTH: Final = 64
 
@@ -490,6 +525,23 @@ def build_synthetic_eur_portfolio_wealth(
     construction_policy: CapitalDefensiveConstructionPolicy,
 ) -> SyntheticPortfolioWealthLineage:
     """Build one deterministic synthetic EUR wealth lineage from complete histories."""
+    try:
+        with localcontext(_new_phase_f3a_decimal_context()):
+            return _build_synthetic_eur_portfolio_wealth(
+                request=request,
+                metrics_policy=metrics_policy,
+                construction_policy=construction_policy,
+            )
+    except DecimalException as error:
+        raise PhaseF3AValidationError("synthetic wealth arithmetic is invalid") from error
+
+
+def _build_synthetic_eur_portfolio_wealth(
+    *,
+    request: SyntheticPortfolioWealthRequest,
+    metrics_policy: PhaseF1PortfolioMetricsPolicy,
+    construction_policy: CapitalDefensiveConstructionPolicy,
+) -> SyntheticPortfolioWealthLineage:
     contract = _validate_contracts(metrics_policy, construction_policy)
     _validate_request(request, contract)
     validated = tuple(
@@ -502,33 +554,30 @@ def build_synthetic_eur_portfolio_wealth(
 
     security_weight = contract.security_weight
     cash_weight = contract.cash_weight
-    with localcontext() as context:
-        context.prec = _DECIMAL_PRECISION
-        context.rounding = ROUND_HALF_EVEN
-        initial_security_allocation = request.initial_capital * security_weight
-        nominal_cash = request.initial_capital * cash_weight
-        constituent_derivations = _derive_constituents(
-            validated,
-            window_dates[0],
-            initial_security_allocation,
-            contract.endpoint_relative_tolerance,
-        )
-        wealth_points = _derive_wealth_points(
-            validated,
-            constituent_derivations,
-            window_dates,
-            nominal_cash,
-            contract.weight_sum_tolerance,
-            contract.output_quantum,
-            contract.persisted_half_quantum_tolerance,
-            contract.serialized_nine_weight_tolerance,
-        )
-        _require_relative_reconciliation(
-            wealth_points[0].total_wealth,
-            request.initial_capital,
-            contract.endpoint_relative_tolerance,
-            "initial portfolio wealth",
-        )
+    initial_security_allocation = request.initial_capital * security_weight
+    nominal_cash = request.initial_capital * cash_weight
+    constituent_derivations = _derive_constituents(
+        validated,
+        window_dates[0],
+        initial_security_allocation,
+        contract.endpoint_relative_tolerance,
+    )
+    wealth_points = _derive_wealth_points(
+        validated,
+        constituent_derivations,
+        window_dates,
+        nominal_cash,
+        contract.weight_sum_tolerance,
+        contract.output_quantum,
+        contract.persisted_half_quantum_tolerance,
+        contract.serialized_nine_weight_tolerance,
+    )
+    _require_relative_reconciliation(
+        wealth_points[0].total_wealth,
+        request.initial_capital,
+        contract.endpoint_relative_tolerance,
+        "initial portfolio wealth",
+    )
 
     lineage = SyntheticPortfolioWealthLineage(
         implementation_id=PHASE_F3A_IMPLEMENTATION_ID,
@@ -588,6 +637,22 @@ def adapt_validated_synthetic_wealth_to_f2(
     construction_policy: CapitalDefensiveConstructionPolicy,
 ) -> GovernedMetricSeries:
     """Validate by recomputation, then adapt only to F2 ``SYNTHETIC_FIXTURE``."""
+    with localcontext(_new_phase_f3a_decimal_context()):
+        return _adapt_validated_synthetic_wealth_to_f2(
+            lineage=lineage,
+            request=request,
+            metrics_policy=metrics_policy,
+            construction_policy=construction_policy,
+        )
+
+
+def _adapt_validated_synthetic_wealth_to_f2(
+    *,
+    lineage: SyntheticPortfolioWealthLineage,
+    request: SyntheticPortfolioWealthRequest,
+    metrics_policy: PhaseF1PortfolioMetricsPolicy,
+    construction_policy: CapitalDefensiveConstructionPolicy,
+) -> GovernedMetricSeries:
     validate_synthetic_eur_portfolio_wealth(
         lineage=lineage,
         request=request,
@@ -646,17 +711,21 @@ def compute_phase_f3a_synthetic_metrics(
     construction_policy: CapitalDefensiveConstructionPolicy,
 ) -> GovernedMetricRun:
     """Recompute lineage and invoke the unchanged public F2 synthetic interface."""
-    series = adapt_validated_synthetic_wealth_to_f2(
-        lineage=lineage,
-        request=request,
-        metrics_policy=metrics_policy,
-        construction_policy=construction_policy,
-    )
-    return compute_governed_metrics(
-        series=series,
-        requested_metrics=requested_metrics,
-        policy=metrics_policy,
-    )
+    try:
+        with localcontext(_new_phase_f3a_decimal_context()):
+            series = adapt_validated_synthetic_wealth_to_f2(
+                lineage=lineage,
+                request=request,
+                metrics_policy=metrics_policy,
+                construction_policy=construction_policy,
+            )
+            return compute_governed_metrics(
+                series=series,
+                requested_metrics=requested_metrics,
+                policy=metrics_policy,
+            )
+    except DecimalException as error:
+        raise PhaseF3AValidationError("synthetic metric arithmetic is invalid") from error
 
 
 @dataclass(frozen=True, slots=True)
@@ -1125,9 +1194,7 @@ def _validate_canonical_outputs(
                 constituent.initial_reconciliation_relative_error,
             )
         )
-    with localcontext() as context:
-        context.prec = _DECIMAL_PRECISION
-        context.rounding = ROUND_HALF_EVEN
+    with localcontext(_new_phase_f3a_decimal_context()):
         for point in lineage.wealth_points:
             derived_values.extend(
                 (
@@ -1284,7 +1351,26 @@ def _is_hash(value: object) -> bool:
 def _source_decimal_text(value: Decimal) -> str:
     if not isinstance(value, Decimal) or not value.is_finite():
         raise PhaseF3AValidationError("source numeric value must be a finite Decimal")
-    return format(value, "f")
+    with localcontext(_new_phase_f3a_decimal_context()):
+        return str(value)
+
+
+def _new_phase_f3a_decimal_context() -> Context:
+    """Return the complete fresh Decimal50 context used by every F3A calculation."""
+    context = Context(
+        prec=_DECIMAL_PRECISION,
+        rounding=ROUND_HALF_EVEN,
+        Emin=_DECIMAL_EMIN,
+        Emax=_DECIMAL_EMAX,
+        capitals=_DECIMAL_CAPITALS,
+        clamp=_DECIMAL_CLAMP,
+        flags=[],
+        traps=[],
+    )
+    for signal in _DECIMAL_SIGNALS:
+        context.flags[signal] = False
+        context.traps[signal] = signal in _DECIMAL_TRAPS
+    return context
 
 
 def _quantized_output_decimal(
@@ -1295,16 +1381,14 @@ def _quantized_output_decimal(
     if not isinstance(value, Decimal) or not value.is_finite():
         raise PhaseF3AValidationError("calculated output must be a finite Decimal")
     try:
-        with localcontext() as context:
-            context.prec = _DECIMAL_PRECISION
-            context.rounding = ROUND_HALF_EVEN
+        with localcontext(_new_phase_f3a_decimal_context()):
             quantized = value.quantize(quantum)
             quantization_error = abs(value - quantized)
     except DecimalException as error:
         raise PhaseF3AValidationError("calculated output cannot be represented at Q18") from error
     if quantization_error > half_quantum_tolerance:
         raise PhaseF3AValidationError("calculated output exceeds the Q18 half-quantum tolerance")
-    return abs(quantized) if quantized == 0 else quantized
+    return quantized.copy_abs() if quantized.is_zero() else quantized
 
 
 def _canonical_output_text(value: Decimal) -> str:

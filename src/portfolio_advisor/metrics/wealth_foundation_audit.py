@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import Decimal, localcontext
 
 from portfolio_advisor.canonical import canonical_fingerprint, canonical_json
 from portfolio_advisor.metrics.governed import PHASE_F2_IMPLEMENTATION_ID
@@ -13,7 +13,10 @@ from portfolio_advisor.metrics.portfolio_wealth import (
     PHASE_F3A_ACTIVATION_STATE,
     PHASE_F3A_IMPLEMENTATION_ID,
     PHASE_F3A_IMPLEMENTATION_VERSION,
+    PHASE_F3A_SOURCE_DECIMAL_ENCODING,
+    PHASE_F3A_SYNTHETIC_NAV_FINGERPRINT_SCHEME,
     SyntheticPortfolioWealthRequest,
+    _new_phase_f3a_decimal_context,
     build_synthetic_eur_portfolio_wealth,
     compute_phase_f3a_synthetic_metrics,
     create_synthetic_constituent_series,
@@ -29,6 +32,18 @@ def build_phase_f3a_wealth_foundation_audit(
     construction_policy: CapitalDefensiveConstructionPolicy,
 ) -> dict[str, object]:
     """Build a timestamp-free audit from a deterministic 365-day fixture."""
+    with localcontext(_new_phase_f3a_decimal_context()):
+        return _build_phase_f3a_wealth_foundation_audit(
+            metrics_policy=metrics_policy,
+            construction_policy=construction_policy,
+        )
+
+
+def _build_phase_f3a_wealth_foundation_audit(
+    *,
+    metrics_policy: PhaseF1PortfolioMetricsPolicy,
+    construction_policy: CapitalDefensiveConstructionPolicy,
+) -> dict[str, object]:
     request = _reference_request()
     lineage = build_synthetic_eur_portfolio_wealth(
         request=request,
@@ -49,6 +64,7 @@ def build_phase_f3a_wealth_foundation_audit(
         metrics_policy=metrics_policy,
         construction_policy=construction_policy,
     )
+    decimal_context = _new_phase_f3a_decimal_context()
     payload: dict[str, object] = {
         "activation_state": PHASE_F3A_ACTIVATION_STATE,
         "database_mutation": "NOT_PERFORMED",
@@ -66,7 +82,24 @@ def build_phase_f3a_wealth_foundation_audit(
         "numerical_conventions": {
             "canonical_output_quantum": "0.000000000000000001",
             "canonical_scale_is_economic_accuracy_claim": False,
-            "decimal_context_precision": 50,
+            "decimal_context": {
+                "capitals": decimal_context.capitals,
+                "clamp": decimal_context.clamp,
+                "emax": decimal_context.Emax,
+                "emin": decimal_context.Emin,
+                "flags_on_entry": sorted(
+                    signal.__name__
+                    for signal, enabled in decimal_context.flags.items()
+                    if enabled
+                ),
+                "precision": decimal_context.prec,
+                "rounding": decimal_context.rounding,
+                "traps": sorted(
+                    signal.__name__
+                    for signal, enabled in decimal_context.traps.items()
+                    if enabled
+                ),
+            },
             "independently_serialized_nine_weight_tolerance": (
                 "0.0000000000000000045"
             ),
@@ -74,8 +107,10 @@ def build_phase_f3a_wealth_foundation_audit(
                 "0.0000000000000000000000000000000000000001"
             ),
             "persisted_numeric_half_quantum_tolerance": "0.0000000000000000005",
-            "rounding": "ROUND_HALF_EVEN",
-            "source_decimal_resolution": "PRESERVED",
+            "source_decimal_encoding": PHASE_F3A_SOURCE_DECIMAL_ENCODING,
+            "synthetic_nav_fingerprint_scheme": (
+                PHASE_F3A_SYNTHETIC_NAV_FINGERPRINT_SCHEME
+            ),
         },
         "lineage_reference_case": {
             "constituents": [item.to_dict() for item in lineage.constituents],
@@ -100,7 +135,7 @@ def build_phase_f3a_wealth_foundation_audit(
             "supplementary_nav_admission": "NOT_PERFORMED",
             "trading": "NOT_AUTHORIZED",
         },
-        "schema_version": 1,
+        "schema_version": 2,
         "supported_scope": {
             "currency": "EUR",
             "distribution_semantics": "SIMULATED_ACCUMULATING_SHARE_CLASS",
