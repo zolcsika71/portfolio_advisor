@@ -8,8 +8,12 @@ from pathlib import Path
 
 from portfolio_advisor.audit.milestone_4 import audit_workbooks
 from portfolio_advisor.database.migrations.model_portfolio_dry_run import (
+    ModelPortfolioMigrationError,
     dry_run_model_portfolio_to_v3,
+    validate_dry_run_destination,
 )
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -25,14 +29,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", type=Path, default=Path("data/audit/schema_v3_model_portfolio_migration_dry_run.json"))
     parser.add_argument("--rules", type=Path, default=Path("data/knowledge/validated_rules/capital_preservation_ranking.yaml"))
     arguments = parser.parse_args(argv)
-    dry_run_directory = Path("database/dry_runs").resolve()
-    if dry_run_directory not in arguments.destination.resolve().parents:
-        parser.error("--destination must be under database/dry_runs")
+    dry_run_directory = PROJECT_ROOT / "database/dry_runs"
+    try:
+        validate_dry_run_destination(
+            arguments.source,
+            arguments.destination,
+            required_destination_directory=dry_run_directory,
+        )
+    except ModelPortfolioMigrationError as error:
+        parser.error(str(error))
     result = dry_run_model_portfolio_to_v3(
         legacy_path=arguments.source,
         workbook_directory=arguments.workbooks,
         destination_path=arguments.destination,
         rules_path=arguments.rules,
+        required_destination_directory=dry_run_directory,
     )
     workbook_audit = audit_workbooks(arguments.workbooks)
     artifact = {

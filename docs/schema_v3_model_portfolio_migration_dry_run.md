@@ -15,7 +15,9 @@ poetry run python scripts/audit_schema_v3_model_portfolio_migration_dry_run.py \
 
 The command rejects an existing destination, `database/portfolio_advisor.sqlite`,
 and destinations under `database/` except the explicitly disposable
-`database/dry_runs/` subtree. It has no cutover entry point;
+`database/dry_runs/` subtree. Traversal outside that subtree and symlinked
+`database/` or `database/dry_runs/` roots are rejected before directories or
+files are created. It has no cutover entry point;
 `execute_model_portfolio_cutover` always raises `CutoverNotAuthorized`.
 
 ## Mapping and compatibility

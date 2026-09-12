@@ -19,6 +19,8 @@ count diagnostics without printing retained financial values.
 Disposable schema-v3 migration probes are kept separately under
 `database/dry_runs/`. They remain non-production artifacts and do not acquire
 schema authority or cutover status by residing below the database directory.
+The operator-facing dry-run command rejects traversal and symlinked database or
+dry-run roots before creating any output.
 
 ## Schema ownership
 

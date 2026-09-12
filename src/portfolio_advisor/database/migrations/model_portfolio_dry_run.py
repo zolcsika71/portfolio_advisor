@@ -129,34 +129,44 @@ def reconcile_legacy_to_workbook(
 
 
 def dry_run_model_portfolio_to_v3(
-    *, legacy_path: Path, workbook_directory: Path, destination_path: Path, rules_path: Path,
+    *,
+    legacy_path: Path,
+    workbook_directory: Path,
+    destination_path: Path,
+    rules_path: Path,
+    required_destination_directory: Path | None = None,
 ) -> DryRunResult:
     """Create and validate a disposable v3 database, never a retained database."""
-    _validate_destination(legacy_path, destination_path)
+    destination = validate_dry_run_destination(
+        legacy_path,
+        destination_path,
+        required_destination_directory=required_destination_directory,
+    )
+    destination.parent.mkdir(parents=True, exist_ok=True)
     source_fingerprints = _source_fingerprints(legacy_path, workbook_directory)
     rows = reconcile_legacy_to_workbook(legacy_path, workbook_directory)
-    connection = connect(destination_path)
+    connection = connect(destination)
     try:
         initialize_schema(connection)
         _populate(connection, rows)
         validate_integrity(connection)
     except BaseException:
         connection.close()
-        if destination_path.exists():
-            destination_path.unlink()
+        if destination.exists():
+            destination.unlink()
         raise
     connection.close()
     if source_fingerprints != _source_fingerprints(legacy_path, workbook_directory):
         raise ModelPortfolioMigrationError("retained source fingerprint changed during dry run")
 
-    adapter = SchemaV3ModelPortfolioRepository(destination_path)
+    adapter = SchemaV3ModelPortfolioRepository(destination)
     equivalence = equivalence_report(ModelPortfolioRepository(legacy_path), adapter, rules_path)
-    duplicate = _duplicate_occurrence_report(destination_path)
-    counts = _counts(destination_path)
+    duplicate = _duplicate_occurrence_report(destination)
+    counts = _counts(destination)
     blockers = ("IE00B7KFL990 duplicate semantics remain UNRESOLVED_DUPLICATE_SEMANTICS",)
     return DryRunResult(
         source_fingerprints=source_fingerprints,
-        destination_fingerprint=_destination_content_fingerprint(destination_path),
+        destination_fingerprint=_destination_content_fingerprint(destination),
         counts=counts,
         duplicate_occurrences=duplicate,
         equivalence_by_date=equivalence,
@@ -414,20 +424,43 @@ def _allocation_totals(rows: list[HoldingObservation]) -> dict[str, float]:
     return dict(sorted(totals.items()))
 
 
-def _validate_destination(legacy_path: Path, destination_path: Path) -> None:
+def validate_dry_run_destination(
+    legacy_path: Path,
+    destination_path: Path,
+    *,
+    required_destination_directory: Path | None = None,
+) -> Path:
+    """Return a safe resolved destination without creating files or directories."""
     source = legacy_path.resolve()
+    if destination_path.is_symlink():
+        raise ModelPortfolioMigrationError("dry-run destination must not be a symlink")
     destination = destination_path.resolve()
     if source == destination or destination.name == "portfolio_advisor.sqlite":
         raise ModelPortfolioMigrationError("destination is reserved for retained or production data")
     if destination.exists():
         raise ModelPortfolioMigrationError("dry-run destination must not already exist")
+    if required_destination_directory is not None:
+        database_directory = required_destination_directory.parent
+        if database_directory.is_symlink() or required_destination_directory.is_symlink():
+            raise ModelPortfolioMigrationError("database/dry_runs path must not contain symlinks")
+        allowed_directory = required_destination_directory.resolve()
+        try:
+            relative_destination = destination.relative_to(allowed_directory)
+        except ValueError as error:
+            raise ModelPortfolioMigrationError(
+                "dry-run destination must be under database/dry_runs"
+            ) from error
+        if relative_destination == Path("."):
+            raise ModelPortfolioMigrationError(
+                "dry-run destination must name a file under database/dry_runs"
+            )
     if source.parent.name == "database" and source.parent in destination.parents:
         dry_run_directory = source.parent / "dry_runs"
         if destination.parent != dry_run_directory and dry_run_directory not in destination.parents:
             raise ModelPortfolioMigrationError(
                 "destination under the retained database directory must be in database/dry_runs"
             )
-    destination.parent.mkdir(parents=True, exist_ok=True)
+    return destination
 
 
 def _source_fingerprints(legacy_path: Path, workbook_directory: Path) -> dict[str, str]:
