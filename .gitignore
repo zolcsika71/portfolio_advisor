@@ -187,12 +187,12 @@ cython_debug/
 /database/*.sqlite-shm
 /database/backups/
 /database/schema.sql
-
-# Root-level local identifier cache SQLite sidecars.
-identifier.sqlite
-identifier.sqlite-wal
-identifier.sqlite-shm
-identifier.sqlite-journal
+# Project-local database subdirectories, including supplied copies, disposable
+# dry runs, fixtures, and their SQLite sidecars.
+/database/**/*.sqlite
+/database/**/*.sqlite-journal
+/database/**/*.sqlite-wal
+/database/**/*.sqlite-shm
 
 # Local environment or credentials.
 .env.*

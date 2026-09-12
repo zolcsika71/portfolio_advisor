@@ -3,19 +3,20 @@
 This is a pre-Milestone 7 validation harness, not a migration or cutover.
 It opens `database/model_portfolio.sqlite` with SQLite `mode=ro`, reads the
 retained workbooks without mutation, and writes only a caller-selected new
-temporary database plus an ignored audit JSON artifact.
+disposable database under `database/dry_runs/` plus an ignored audit JSON
+artifact.
 
 Run:
 
 ```bash
 poetry run python scripts/audit_schema_v3_model_portfolio_migration_dry_run.py \
-  --destination tmp/schema_v3_model_portfolio_dry_run.sqlite
+  --destination database/dry_runs/schema_v3_model_portfolio_dry_run.sqlite
 ```
 
 The command rejects an existing destination, `database/portfolio_advisor.sqlite`,
-and destinations under the retained `database/` directory. It has no cutover
-entry point; `execute_model_portfolio_cutover` always raises
-`CutoverNotAuthorized`.
+and destinations under `database/` except the explicitly disposable
+`database/dry_runs/` subtree. It has no cutover entry point;
+`execute_model_portfolio_cutover` always raises `CutoverNotAuthorized`.
 
 ## Mapping and compatibility
 

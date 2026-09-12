@@ -16,10 +16,18 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, default=Path("database/model_portfolio.sqlite"))
     parser.add_argument("--workbooks", type=Path, default=Path("data/xls/processed"))
-    parser.add_argument("--destination", type=Path, required=True, help="new non-retained temporary SQLite file")
+    parser.add_argument(
+        "--destination",
+        type=Path,
+        required=True,
+        help="new disposable SQLite file under database/dry_runs",
+    )
     parser.add_argument("--output", type=Path, default=Path("data/audit/schema_v3_model_portfolio_migration_dry_run.json"))
     parser.add_argument("--rules", type=Path, default=Path("data/knowledge/validated_rules/capital_preservation_ranking.yaml"))
     arguments = parser.parse_args(argv)
+    dry_run_directory = Path("database/dry_runs").resolve()
+    if dry_run_directory not in arguments.destination.resolve().parents:
+        parser.error("--destination must be under database/dry_runs")
     result = dry_run_model_portfolio_to_v3(
         legacy_path=arguments.source,
         workbook_directory=arguments.workbooks,

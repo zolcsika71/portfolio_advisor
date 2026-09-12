@@ -26,6 +26,9 @@ from portfolio_advisor.database.migrations.model_portfolio_parallel import (
     validate_parallel_database,
 )
 from portfolio_advisor.database.repository import ModelPortfolioRepository
+from scripts.audit_schema_v3_model_portfolio_migration_dry_run import (
+    main as audit_dry_run_main,
+)
 
 
 def _legacy_database(path: Path) -> None:
@@ -104,8 +107,32 @@ def test_dry_run_rejects_retained_destination_and_cutover(tmp_path: Path) -> Non
     _legacy_database(legacy)
     with pytest.raises(ModelPortfolioMigrationError):
         dry_run_model_portfolio_to_v3(legacy_path=legacy, workbook_directory=tmp_path, destination_path=database / "portfolio_advisor.sqlite", rules_path=_rules_path())
+    with pytest.raises(ModelPortfolioMigrationError, match="database/dry_runs"):
+        migration._validate_destination(legacy, database / "other" / "candidate.sqlite")
     with pytest.raises(CutoverNotAuthorized):
         execute_model_portfolio_cutover()
+
+
+def test_dry_run_allows_distinct_database_dry_runs_subtree(tmp_path: Path) -> None:
+    database = tmp_path / "database"
+    database.mkdir()
+    legacy = database / "model_portfolio.sqlite"
+    _legacy_database(legacy)
+    destination = database / "dry_runs" / "candidate.sqlite"
+
+    migration._validate_destination(legacy, destination)
+
+    assert destination.parent.is_dir()
+    assert not destination.exists()
+
+
+def test_dry_run_cli_rejects_destination_outside_project_database_directory(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(SystemExit) as error:
+        audit_dry_run_main(["--destination", str(tmp_path / "outside.sqlite")])
+
+    assert error.value.code == 2
 
 
 def test_reconciliation_fails_closed_on_ambiguous_source_provenance(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

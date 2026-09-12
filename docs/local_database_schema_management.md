@@ -16,6 +16,10 @@ The auditor opens databases read-only, is restricted to `database/`, skips
 symlinks, and reports integrity, foreign-key, version, schema-object, and row
 count diagnostics without printing retained financial values.
 
+Disposable schema-v3 migration probes are kept separately under
+`database/dry_runs/`. They remain non-production artifacts and do not acquire
+schema authority or cutover status by residing below the database directory.
+
 ## Schema ownership
 
 | Database | Authoritative schema owner | Schema SQL file | Version model |

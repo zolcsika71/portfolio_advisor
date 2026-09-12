@@ -1,8 +1,9 @@
 """Read-only legacy model-portfolio to temporary schema-v3 dry-run support.
 
 This is deliberately not a cutover path.  It accepts only an explicit legacy
-source and a non-retained, absent destination, and leaves source databases and
-workbooks untouched.
+source and an absent disposable destination, and leaves source databases and
+workbooks untouched.  Project-local dry-run artifacts may live only in the
+distinct ``database/dry_runs`` subtree.
 """
 
 from __future__ import annotations
@@ -421,7 +422,11 @@ def _validate_destination(legacy_path: Path, destination_path: Path) -> None:
     if destination.exists():
         raise ModelPortfolioMigrationError("dry-run destination must not already exist")
     if source.parent.name == "database" and source.parent in destination.parents:
-        raise ModelPortfolioMigrationError("destination must not be under the retained database directory")
+        dry_run_directory = source.parent / "dry_runs"
+        if destination.parent != dry_run_directory and dry_run_directory not in destination.parents:
+            raise ModelPortfolioMigrationError(
+                "destination under the retained database directory must be in database/dry_runs"
+            )
     destination.parent.mkdir(parents=True, exist_ok=True)
 
 
