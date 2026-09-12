@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -38,8 +39,209 @@ class IdentityResolution:
     provenance: str
 
 
+@dataclass(frozen=True, slots=True)
+class ValidatedIdentityConfirmation:
+    """One approved exact-name mapping with validated retained provenance."""
+
+    normalized_source_name: str
+    isin: str
+    approved_currency: str
+    confirmed_by: str
+    confirmed_at: str
+    rule: str
+    source_support: str
+    store_fingerprint: str
+    registry_audit_fingerprint: str
+
+
+@dataclass(frozen=True, slots=True)
+class ValidatedIdentityConfirmationStore:
+    """Usable records plus aggregate fail-closed validation blockers."""
+
+    confirmations: Mapping[str, ValidatedIdentityConfirmation]
+    store_fingerprint: str | None
+    registry_audit_fingerprint: str | None
+    validation_blockers: tuple[str, ...]
+
+
 def normalize_name(value: str) -> str:
     return " ".join(re.sub(r"[^a-z0-9]+", " ", value.casefold()).split())
+
+
+def load_validated_identity_confirmations(
+    store_path: Path | None,
+    registry_audit_path: Path | None,
+) -> ValidatedIdentityConfirmationStore:
+    """Load only directly validated approvals; never alter either source.
+
+    Every admitted mapping must retain the Milestone 6 approval fields and
+    still resolve to one exact ISIN and currency in the canonical registry
+    audit used by the existing confirmation workflow. Invalid records are
+    rejected individually; invalid top-level contracts reject the whole store.
+    """
+    if store_path is None:
+        return ValidatedIdentityConfirmationStore({}, None, None, ())
+    if not store_path.is_file():
+        return ValidatedIdentityConfirmationStore(
+            {}, None, None, ("IDENTITY_CONFIRMATION_STORE_UNAVAILABLE",)
+        )
+    try:
+        raw_store = store_path.read_bytes()
+    except OSError:
+        return ValidatedIdentityConfirmationStore(
+            {}, None, None, ("IDENTITY_CONFIRMATION_STORE_UNREADABLE",)
+        )
+    fingerprint = hashlib.sha256(raw_store).hexdigest()
+    try:
+        payload = json.loads(raw_store)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return ValidatedIdentityConfirmationStore(
+            {}, fingerprint, None, ("IDENTITY_CONFIRMATION_STORE_INVALID_JSON",)
+        )
+    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+        return ValidatedIdentityConfirmationStore(
+            {}, fingerprint, None, ("IDENTITY_CONFIRMATION_STORE_SCHEMA_INVALID",)
+        )
+    mappings = payload.get("mappings")
+    records = payload.get("confirmation_records")
+    if not isinstance(mappings, dict) or not isinstance(records, dict):
+        return ValidatedIdentityConfirmationStore(
+            {}, fingerprint, None, ("IDENTITY_CONFIRMATION_STORE_SHAPE_INVALID",)
+        )
+    if set(mappings) != set(records):
+        return ValidatedIdentityConfirmationStore(
+            {}, fingerprint, None, ("IDENTITY_CONFIRMATION_RECORD_SET_MISMATCH",)
+        )
+    registry, registry_fingerprint, registry_blocker = _confirmation_registry(
+        registry_audit_path
+    )
+    if registry_blocker is not None:
+        return ValidatedIdentityConfirmationStore(
+            {}, fingerprint, registry_fingerprint, (registry_blocker,)
+        )
+    assert registry_fingerprint is not None
+
+    confirmations: dict[str, ValidatedIdentityConfirmation] = {}
+    blockers: list[str] = []
+    normalized_keys: set[str] = set()
+    for key, raw_isin in mappings.items():
+        if not isinstance(key, str) or normalize_name(key) != key or key in normalized_keys:
+            blockers.append("IDENTITY_CONFIRMATION_KEY_INVALID")
+            continue
+        normalized_keys.add(key)
+        if not isinstance(raw_isin, str) or not is_valid_isin(raw_isin):
+            blockers.append("IDENTITY_CONFIRMATION_ISIN_INVALID")
+            continue
+        isin = raw_isin.strip().upper()
+        record = records.get(key)
+        if not isinstance(record, dict):
+            blockers.append("IDENTITY_CONFIRMATION_RECORD_INVALID")
+            continue
+        record_blockers = _confirmation_record_blockers(key, isin, record)
+        if record_blockers:
+            blockers.extend(record_blockers)
+            continue
+        candidates = registry.get(key, ())
+        candidate_isins = {candidate_isin for candidate_isin, _ in candidates}
+        candidate_currencies = {
+            currency for _, currency in candidates if currency is not None
+        }
+        if candidate_isins != {isin}:
+            blockers.append("IDENTITY_CONFIRMATION_CANONICAL_IDENTITY_MISMATCH")
+            continue
+        if len(candidate_currencies) != 1:
+            blockers.append("IDENTITY_CONFIRMATION_CANONICAL_CURRENCY_NOT_UNIQUE")
+            continue
+        confirmations[key] = ValidatedIdentityConfirmation(
+            normalized_source_name=key,
+            isin=isin,
+            approved_currency=next(iter(candidate_currencies)),
+            confirmed_by=str(record["confirmed_by"]),
+            confirmed_at=str(record["confirmed_at"]),
+            rule=str(record["rule"]),
+            source_support=str(record["source_support"]),
+            store_fingerprint=fingerprint,
+            registry_audit_fingerprint=registry_fingerprint,
+        )
+    return ValidatedIdentityConfirmationStore(
+        confirmations,
+        fingerprint,
+        registry_fingerprint,
+        tuple(sorted(set(blockers))),
+    )
+
+
+def _confirmation_registry(
+    path: Path | None,
+) -> tuple[
+    dict[str, tuple[tuple[str, str | None], ...]],
+    str | None,
+    str | None,
+]:
+    if path is None or not path.is_file():
+        return {}, None, "IDENTITY_CONFIRMATION_REGISTRY_AUDIT_UNAVAILABLE"
+    try:
+        raw_registry = path.read_bytes()
+        fingerprint = hashlib.sha256(raw_registry).hexdigest()
+        payload = json.loads(raw_registry)
+        files = payload["xls_inventory"]["files"]
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError):
+        return {}, None, "IDENTITY_CONFIRMATION_REGISTRY_AUDIT_INVALID"
+    if not isinstance(files, list):
+        return {}, fingerprint, "IDENTITY_CONFIRMATION_REGISTRY_AUDIT_INVALID"
+    registry: dict[str, list[tuple[str, str | None]]] = defaultdict(list)
+    try:
+        for sheet in files:
+            if not isinstance(sheet, dict) or not isinstance(sheet["identity_records"], list):
+                return {}, fingerprint, "IDENTITY_CONFIRMATION_REGISTRY_AUDIT_INVALID"
+            for record in sheet["identity_records"]:
+                if not isinstance(record, dict):
+                    return {}, fingerprint, "IDENTITY_CONFIRMATION_REGISTRY_AUDIT_INVALID"
+                product = record.get("product_name")
+                isin = record.get("isin")
+                currency = record.get("currency")
+                if product and isin:
+                    registry[normalize_name(str(product))].append(
+                        (str(isin).strip().upper(), str(currency) if currency else None)
+                    )
+    except (KeyError, TypeError):
+        return {}, fingerprint, "IDENTITY_CONFIRMATION_REGISTRY_AUDIT_INVALID"
+    return {key: tuple(values) for key, values in registry.items()}, fingerprint, None
+
+
+def _confirmation_record_blockers(
+    key: str, isin: str, record: dict[str, Any]
+) -> tuple[str, ...]:
+    blockers: list[str] = []
+    if record.get("isin") != isin:
+        blockers.append("IDENTITY_CONFIRMATION_RECORD_ISIN_CONFLICT")
+    if record.get("confirmed_by") != "USER_APPROVED_MILESTONE_6_GATE":
+        blockers.append("IDENTITY_CONFIRMATION_APPROVAL_INVALID")
+    if record.get("rule") != "UNIQUE_EXACT_NORMALIZED_PROVIDER_NAME":
+        blockers.append("IDENTITY_CONFIRMATION_RULE_INVALID")
+    if record.get("candidate_count") != 1:
+        blockers.append("IDENTITY_CONFIRMATION_CANDIDATE_COUNT_INVALID")
+    if record.get("source_support") != "canonical_model_or_shortlist_registry":
+        blockers.append("IDENTITY_CONFIRMATION_PROVENANCE_INVALID")
+    if record.get("currency_checked") is not True:
+        blockers.append("IDENTITY_CONFIRMATION_CURRENCY_APPROVAL_MISSING")
+    if record.get("share_class_checked") is not True:
+        blockers.append("IDENTITY_CONFIRMATION_SHARE_CLASS_APPROVAL_MISSING")
+    if record.get("contradictory_product_evidence") is not False:
+        blockers.append("IDENTITY_CONFIRMATION_CONTRADICTION_NOT_CLEARED")
+    source_identity = record.get("source_identity")
+    if not isinstance(source_identity, str) or normalize_name(source_identity) != key:
+        blockers.append("IDENTITY_CONFIRMATION_SOURCE_PROVENANCE_MISMATCH")
+    confirmed_at = record.get("confirmed_at")
+    try:
+        timestamp = (
+            datetime.fromisoformat(confirmed_at) if isinstance(confirmed_at, str) else None
+        )
+    except ValueError:
+        timestamp = None
+    if timestamp is None or timestamp.tzinfo is None:
+        blockers.append("IDENTITY_CONFIRMATION_TIMESTAMP_INVALID")
+    return tuple(blockers)
 
 
 class IdentityResolver:

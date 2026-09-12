@@ -11,6 +11,13 @@ confirmation validation is dry-run by default. The user-approved completion
 gate writes only the ignored `data/tbsz/ltia_identity_confirmations.json`
 overlay atomically; it never rewrites retained TBSZ evidence. It records the
 confirmation actor, timestamp, exact-name rule and registry provenance.
+The descriptive single-account comparison consumes that overlay read-only only
+after validating each record, its approval fields, its exact canonical
+identity/currency support, and its applicability to the current source row.
+Raw SQLite identity remains alongside the effective identity and confirmation
+provenance in the report. Missing, invalid, currency-inapplicable, or
+source-conflicting confirmations remain blockers and are never copied into the
+source database.
 
 Every source snapshot is retained. Equal undated evidence may contribute to a
 derived current view only when deterministic evidence fingerprints prove

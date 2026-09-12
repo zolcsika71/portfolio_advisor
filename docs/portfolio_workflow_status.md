@@ -68,12 +68,65 @@ observations, or unavailable evidence must cause an explicit unavailable or
 blocked result under the reviewed methodology. They must not be repaired with
 nearest dates, interpolation, proxy series, zero returns, or invented history.
 
+## Read-only descriptive reference comparison
+
+The legacy `compare_tbsz_portfolio.py` entry point also has an explicit
+`--mode descriptive`. This is a narrower, currently implemented view: it
+compares exactly one LTIA account with one manually named model portfolio at
+the resolved latest model snapshot. It never selects the target automatically.
+The mode requires an independently recorded positive investment horizon of no
+more than 365 calendar days. Recording that horizon does not establish policy
+support, choose a metric lookback or NAV cutoff, activate metrics, or rescale
+the source-reported annual indicators.
+
+The only accepted descriptive strategy labels and their exact internal
+identity mappings are:
+
+| Descriptive label | Existing internal objective identity |
+| --- | --- |
+| `CAPITAL_PRESERVATION` | `capital_conservation` |
+| `DIVIDEND_MAXIMISATION` | `dividend_portfolio` |
+
+These labels are confined to descriptive mode. They do not change or alias the
+strict legacy `PortfolioObjective` parser. Capital-policy identity, version,
+and fingerprint are reported unchanged. The dividend identity remains
+`NO_VALIDATED_ACTIVE_POLICY`; manually selecting a model reference does not
+turn it into a dividend recommendation or make dividend ranking available.
+
+When identity, reconciliation, position-date, target-completeness, and common
+valuation requirements pass, the report shows source-supported current values
+and weights, source target weights, and signed monetary gaps. Its explicit
+denominator is the account's comparable security values. Recorded cash is
+listed by source currency and snapshot separately and is not declared
+spendable. Source target cash allocations are retained without dropping or
+renormalizing them; unsupported non-cash target rows block gap calculation.
+No FX conversion, freshness threshold, missing-value substitution, account
+consolidation, or cross-account funding is inferred.
+
+The report records the report timestamp, resolved model date and age, and the
+position/cash source snapshot dates and ages when known. It distinguishes
+descriptive-comparison availability from strategy-ranking, shortlist-selection,
+and trade-proposal availability. Rows contain no `BUY`, `SELL`, or `HOLD`
+classification, and the mode accepts no tolerance. Risk/loss limits, reserve,
+concentration, dividend treatment, fees/taxes, settlement evidence, and cash
+spendability remain explicit unresolved conditions where the source does not
+establish them.
+
+If the separate approved Milestone 6 LTIA confirmation overlay is present,
+descriptive mode validates and consumes applicable exact-name mappings without
+writing them to SQLite. Validation requires the matching approval record,
+actor/timestamp/rule provenance, unique canonical ISIN and currency evidence,
+share-class and currency checks, and no conflict with a source ISIN. The report
+retains raw identity beside effective identity and mapping provenance. File
+existence, fuzzy similarity, an invalid record, or a currency/source conflict
+does not establish identity.
+
 ## Objective availability
 
 | User-facing objective | Current status | Boundary |
 | --- | --- | --- |
-| `CAPITAL_CONSERVATION` | **Partially implemented; not a complete portfolio workflow.** | `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1 supports reviewed model/singleton-screening foundations. The `CAPITAL_DEFENSIVE` 80/20 construction foundation, Phase F1 methodology contract, released Phase F2 pure metric engine, and completed Phase F3A synthetic-only wealth foundation exist. Supplementary evidence admission, governed real portfolio wealth, real metric ranking, finalist comparison, and transition reporting remain unavailable. |
-| `DIVIDEND_MAXIMIZATION` | **Unavailable.** | The current code has the legacy compatibility objective identity `dividend_portfolio`/`DIVIDEND_PORTFOLIO`, but no validated active dividend policy, dividend evidence, eligibility, construction, ranking, or finalist-comparison contract. No dividend portfolio may be fabricated to populate an interface. |
+| `CAPITAL_CONSERVATION` | **Partially implemented; not a complete portfolio workflow.** | `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1 supports reviewed model/singleton-screening foundations. The `CAPITAL_DEFENSIVE` 80/20 construction foundation, Phase F1 methodology contract, released Phase F2 pure metric engine, and completed Phase F3A synthetic-only wealth foundation exist. The separate single-account descriptive reference comparison is available after manual target selection. Supplementary evidence admission, governed real portfolio wealth, real metric ranking, finalist comparison, and transition reporting remain unavailable. |
+| `DIVIDEND_MAXIMIZATION` | **Unavailable for governed selection or recommendation.** | The current code has the legacy compatibility objective identity `dividend_portfolio`/`DIVIDEND_PORTFOLIO`, but no validated active dividend policy, dividend evidence, eligibility, construction, ranking, or finalist-comparison contract. Descriptive mode may record the explicit `DIVIDEND_MAXIMISATION` mapping and compare a manually selected reference, while reporting the missing policy. No dividend portfolio may be fabricated or automatically selected to populate an interface. |
 
 `DIVIDEND_MAXIMIZATION` is the target user-facing label. It is not an alias
 accepted by the current objective parser; no code or data migration is implied
@@ -147,13 +200,15 @@ external_action: NOT_AUTHORIZED
 
 ## Present implementation boundary
 
-The current application can produce a deterministic, point-in-time ranking
-from reported model-portfolio indicators. Those indicators are not a
-portfolio return series. It cannot currently produce the target workflow's
-constructed-shortlist finalist, compatible portfolio-level metrics, Graphify
-retrieval/citations in an explanation, OpenAI explanation, current-versus-
-target calculation, buy/sell/cash proposal, rebalancing plan, order, or
-production recommendation.
+The current application can produce a deterministic, point-in-time capital
+ranking from reported model-portfolio indicators. Those indicators are not a
+portfolio return series. It can also produce the bounded, manually targeted,
+single-account descriptive allocation gaps defined above. That read-only mode
+is not the target workflow's strategy ranking, finalist comparison, or
+transition proposal. The application cannot currently produce a
+constructed-shortlist finalist, compatible real portfolio-level metrics,
+Graphify retrieval/citations in an explanation, OpenAI explanation,
+buy/sell/cash proposal, rebalancing plan, order, or production recommendation.
 
 Phase F1 approved the financial methodology, and released Phase F2 implements
 and tests the deterministic formula foundation. Phase F3A implements the
