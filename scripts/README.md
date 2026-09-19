@@ -5,6 +5,25 @@ Run scripts from the repository root with `poetry run python scripts/<name>.py
 must never be invoked by ranking, backtesting, label construction, tests, the
 prospective monitor, or the scheduler.
 
+## Public fund-list completeness audit
+
+`check_erste_fund_data_completeness.py` launches the installed Chrome browser
+through Playwright and performs a read-only audit of only the two reviewed
+Erste Market fund pages. It activates rendered pagination and currency-tab
+controls, never follows fund-detail links, and refuses out-of-scope top-level
+navigations. Output must be a new directory beneath the repository's resolved
+`data/audit/` directory; parent traversal, symlink escapes, and existing output
+paths are rejected before the browser is launched.
+
+```bash
+poetry run python scripts/check_erste_fund_data_completeness.py \
+  --output-dir data/audit/erste_fund_completeness_<run-id>
+```
+
+The directory contains `fund_records.json`, `completeness_issues.csv`, and
+`run_summary.json`. Completeness is relative only to fields and occurrences
+exposed by those two pages.
+
 ## Core validation
 
 | Script | Purpose |
