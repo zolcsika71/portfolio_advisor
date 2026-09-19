@@ -52,7 +52,7 @@ def load_admitted_phase_e_nav_series(
             index_path=phase_e_index_path,
             legacy_source=database_path,
         )
-    except (NavProvenanceError, OSError, ValueError) as error:
+    except (NavProvenanceError, OSError, ValueError, sqlite3.Error) as error:
         raise PhaseEReadError("Phase E validation failed before read-only adaptation") from error
     validation_fingerprint = canonical_fingerprint(phase_e_validation)
     database_uri = f"file:{database_path.resolve()}?mode=ro"

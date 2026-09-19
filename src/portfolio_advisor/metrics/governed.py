@@ -366,6 +366,8 @@ def compute_governed_metrics(
     policy: PhaseF1PortfolioMetricsPolicy,
 ) -> GovernedMetricRun:
     """Execute the one F1-bound F2 metric path without constructing portfolio wealth."""
+    if not isinstance(series, GovernedMetricSeries):
+        raise TypeError("governed metric series type required")
     ordered_metrics = _ordered_metric_ids(requested_metrics)
     policy_reason = _policy_rejection_reason(policy)
     validation_status: PhaseF2ComputationStatus | None = None
@@ -467,6 +469,8 @@ def build_observed_return_intervals(
 def _validate_series(
     series: GovernedMetricSeries,
 ) -> tuple[PhaseF2ComputationStatus | None, str | None, _ValidatedSeries | None]:
+    if not isinstance(series, GovernedMetricSeries):
+        return PhaseF2ComputationStatus.INPUT_REJECTED, "governed metric series type required", None
     text_fields = (
         series.series_identity,
         series.subject_identity,
