@@ -1,25 +1,29 @@
-# One-time LTIA current-standings database (legacy TBSZ compatibility)
+# Current LTIA projection (legacy TBSZ compatibility)
 
-`scripts/create_tbsz_current_portfolio_once.py` creates the isolated local
-read-model database `database/tbsz_current_portfolio.sqlite` from the retained,
-manually confirmed George PDFs in legacy compatibility path `data/tbsz/source/`.
+The former one-time `database/tbsz_current_portfolio.sqlite` read model and its
+builder are retired. `database/tbsz_portfolio.sqlite` remains the private LTIA
+evidence authority and is not rewritten to materialize current state.
 
-Run it once from the repository root:
+The supported read-only projection is provided by
+`portfolio_advisor.tbsz.repository.TbszPortfolioRepository` together with
+`portfolio_advisor.tbsz.service.current_account_state` and
+`current_portfolio_records`. For each LTIA account, positions and ordinary PDF
+cash evidence select their own latest dated source, with snapshot ID as the
+deterministic tie-break. A validated screenshot CASH correction is selected
+only by following its explicit same-account supersession chain from that PDF
+base. A subsequently selected dated PDF therefore replaces the old base and is
+not overridden by an undated correction. Competing successors, cycles, and
+cross-account/view links fail closed. Equivalent source snapshots remain
+retained in lineage but materialize once.
+
+Use the existing account-level reader from the repository root:
 
 ```bash
-poetry run python scripts/create_tbsz_current_portfolio_once.py
+poetry run python scripts/show_tbsz_current_portfolio.py --account "TBSZ 2024"
 ```
 
-The database records the observed current LTIA investments and cash balances,
-with source-document filename and SHA-256 provenance. It keeps position and cash
-rows normalized, and exposes their read-only union through `current_holdings`.
-It preserves the source EUR, USD, and HUF rows without FX conversion.
-
-It does not contain BUY or SELL recommendations, target allocations, executed
-trades, or a transaction ledger. Unsupported ISIN, quantity, unit price, ROI,
-and source-date fields remain `NULL`.
-
-Creation refuses to overwrite an existing output. `--force` is deliberate: it
-first writes and verifies an ignored SQLite backup under `database/backups/`,
-then replaces the read-model database. Source PDFs, confirmation data, the
-output database, and backups are all local-only and ignored by Git.
+Cash remains separate by account and currency without FX conversion. Missing
+cash remains absent rather than becoming zero, and an unknown source date
+remains `NULL`. The retained `data/tbsz/current_standings_confirmations.json`
+is historical input evidence for the retired read model; no active workflow
+uses it to recreate a database.

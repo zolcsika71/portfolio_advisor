@@ -51,6 +51,13 @@ class CurrentPortfolioRecordType(StrEnum):
     CASH = "CASH"
 
 
+class ScreenshotArtifactRole(StrEnum):
+    """Required roles in one screenshot-backed cash correction evidence set."""
+
+    PRIMARY_ACCOUNT_CONTEXT = "PRIMARY_ACCOUNT_CONTEXT"
+    SUPPORTING_CROP = "SUPPORTING_CROP"
+
+
 @dataclass(frozen=True, slots=True)
 class TbszAccount:
     account_id: int
@@ -154,6 +161,28 @@ class SourceCashInput:
     currency: str
     balance: Decimal
     data_quality_status: str = "SOURCE_SUPPORTED"
+
+
+@dataclass(frozen=True, slots=True)
+class ScreenshotArtifactInput:
+    role: ScreenshotArtifactRole
+    source_filename: str
+    retained_path: str
+    content_sha256: str
+    byte_count: int
+    media_type: str = "image/png"
+
+
+@dataclass(frozen=True, slots=True)
+class CashCorrectionInput:
+    correction_id: str
+    account_label: str
+    predecessor_snapshot_id: int
+    reason: str
+    source_date: date | None
+    evidence_status: str
+    cash: tuple[SourceCashInput, ...]
+    artifacts: tuple[ScreenshotArtifactInput, ...]
 
 
 @dataclass(frozen=True, slots=True)

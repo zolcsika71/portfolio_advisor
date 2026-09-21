@@ -18,7 +18,10 @@ from portfolio_advisor.tbsz.comparison import (
     compare_tbsz_to_recommended_portfolio,
     compare_tbsz_to_selected_portfolio_descriptively,
 )
-from portfolio_advisor.tbsz.ltia_reconciliation import normalize_name
+from portfolio_advisor.tbsz.ltia_reconciliation import (
+    audit_current_ltia_projection_read_only,
+    normalize_name,
+)
 from portfolio_advisor.tbsz.models import (
     ComparisonAction,
     CurrentPortfolioRecordType,
@@ -44,6 +47,7 @@ from portfolio_advisor.tbsz.source_import import (
     SOURCE_FIELD_REQUIRES_MANUAL_CONFIRMATION,
     import_george_pdf_directory,
 )
+from scripts.audit_milestone_6_ltia import main as milestone_6_audit_main
 from scripts.compare_tbsz_portfolio import main as comparison_main
 
 _RULES = Path("data/knowledge/validated_rules/capital_preservation_ranking.yaml")
@@ -240,9 +244,28 @@ def _identity_confirmation_evidence(
 
 
 def _downgrade_to_v1(path: Path) -> None:
-    """Create the recognized historical v1 shape from synthetic v2 evidence."""
+    """Create the recognized historical v1 shape from synthetic current evidence."""
     with sqlite3.connect(path) as connection:
         connection.execute("PRAGMA foreign_keys = OFF")
+        connection.execute("DROP TABLE source_snapshot_supersessions")
+        connection.execute("DROP TABLE screenshot_artifacts")
+        connection.execute(
+            """CREATE TABLE source_snapshots_v1 (
+                snapshot_id INTEGER PRIMARY KEY,
+                account_id INTEGER NOT NULL REFERENCES tbsz_accounts(account_id),
+                source_filename TEXT NOT NULL UNIQUE,
+                content_sha256 TEXT NOT NULL,
+                source_type TEXT NOT NULL CHECK(source_type = 'GEORGE_PDF'),
+                view_type TEXT NOT NULL CHECK(view_type IN ('POSITIONS', 'CASH')),
+                source_date TEXT NULL,
+                ingested_at TEXT NOT NULL,
+                evidence_status TEXT NOT NULL,
+                evidence_fingerprint TEXT NOT NULL
+            )"""
+        )
+        connection.execute("INSERT INTO source_snapshots_v1 SELECT * FROM source_snapshots")
+        connection.execute("DROP TABLE source_snapshots")
+        connection.execute("ALTER TABLE source_snapshots_v1 RENAME TO source_snapshots")
         connection.execute("ALTER TABLE position_snapshots RENAME TO position_snapshots_v2")
         connection.execute(
             """CREATE TABLE position_snapshots (
@@ -409,6 +432,70 @@ def test_unified_current_portfolio_does_not_invent_missing_cash_or_roi(tmp_path:
     assert records[0].record_type is CurrentPortfolioRecordType.ASSET
     assert records[0].roi is None
     assert not [item for item in records if item.record_type is CurrentPortfolioRecordType.CASH]
+
+
+def test_current_projection_audit_uses_repository_selection_and_equivalent_lineage(
+    tmp_path: Path,
+) -> None:
+    repository = _repository(tmp_path)
+    first_position, _ = repository.import_source_document(
+        _document(filename="positions-first.pdf", isin=None, content="first")
+    )
+    selected_position, _ = repository.import_source_document(
+        _document(filename="positions-second.pdf", isin=None, content="second")
+    )
+    first_cash, _ = repository.import_source_document(
+        _document(filename="cash-first.pdf", view_type="CASH", content="cash-first")
+    )
+    selected_cash, _ = repository.import_source_document(
+        _document(filename="cash-second.pdf", view_type="CASH", content="cash-second")
+    )
+
+    report = audit_current_ltia_projection_read_only(repository.path)
+
+    assert report["positions"] == 1
+    assert report["cash"] == 1
+    assert report["unresolved_isin_positions"] == 1
+    assert report["equivalent_representatives"] == [
+        selected_position.snapshot_id,
+        selected_cash.snapshot_id,
+    ]
+    assert report["equivalent_lineage"] == {
+        str(selected_position.snapshot_id): [
+            first_position.snapshot_id,
+            selected_position.snapshot_id,
+        ],
+        str(selected_cash.snapshot_id): [first_cash.snapshot_id, selected_cash.snapshot_id],
+    }
+    assert [item["snapshot_id"] for item in report["selected_snapshots"]] == [
+        selected_position.snapshot_id,
+        selected_cash.snapshot_id,
+    ]
+
+
+def test_milestone_6_audit_uses_primary_projection_without_derived_database(
+    tmp_path: Path,
+) -> None:
+    repository = _repository(tmp_path)
+    repository.import_source_document(_document())
+    output = tmp_path / "audit.json"
+
+    assert milestone_6_audit_main(
+        [
+            "--database",
+            str(repository.path),
+            "--identity-store",
+            str(tmp_path / "missing-identities.json"),
+            "--output",
+            str(output),
+        ]
+    ) == 0
+
+    report = json.loads(output.read_text(encoding="utf-8"))
+    assert report["current_projection"]["positions"] == 1
+    assert report["current_projection"]["cash"] == 0
+    assert report["projection_views"]["account_level_positions"] == 1
+    assert "derived_views" not in report
 
 
 @pytest.mark.parametrize("label", ("TBSZ Normal", "TBSZ Normál"))
@@ -694,7 +781,7 @@ def test_private_paths_are_explicitly_git_ignored_and_tests_use_temporary_databa
     assert repository.path.name != "tbsz_portfolio.sqlite"
 
 
-def test_v1_to_v2_migration_preserves_evidence_and_creates_verified_backup(tmp_path: Path) -> None:
+def test_v1_to_v3_migration_preserves_evidence_and_creates_verified_backup(tmp_path: Path) -> None:
     repository = _repository(tmp_path)
     snapshot, _ = repository.import_source_document(_document(source_date=date(2026, 1, 1)))
     instrument_id = repository.positions_for_snapshot(snapshot.snapshot_id)[0].instrument.instrument_id
@@ -716,7 +803,7 @@ def test_v1_to_v2_migration_preserves_evidence_and_creates_verified_backup(tmp_p
     assert backup is not None
     assert backup.parent == tmp_path / "backups"
     assert backup.is_file()
-    assert repository.schema_version() == CURRENT_SCHEMA_VERSION == 2
+    assert repository.schema_version() == CURRENT_SCHEMA_VERSION == 3
     assert repository.positions_for_snapshot(snapshot.snapshot_id)[0].observed_roi is None
     assert len(repository.source_snapshots()) == 1
     assert len(repository.transactions()) == 1
@@ -726,7 +813,7 @@ def test_v1_to_v2_migration_preserves_evidence_and_creates_verified_backup(tmp_p
         assert connection.execute("SELECT count(*) FROM transactions").fetchone()[0] == 1
 
 
-def test_v2_migration_is_idempotent_and_unknown_versions_fail_closed(tmp_path: Path) -> None:
+def test_current_migration_is_idempotent_and_unknown_versions_fail_closed(tmp_path: Path) -> None:
     repository = _repository(tmp_path)
     repository.import_source_document(_document())
     _downgrade_to_v1(repository.path)

@@ -14,6 +14,7 @@ from portfolio_advisor.tbsz.repository import (
     CURRENT_SCHEMA_VERSION,
     tbsz_schema_issues,
     tbsz_v1_schema_issues,
+    tbsz_v2_schema_issues,
 )
 
 _DATABASE_SUFFIXES: Final = frozenset({".sqlite", ".db"})
@@ -225,8 +226,14 @@ def _audit_database(path: Path, relative_path: str) -> DatabaseAuditResult:
         tbsz_violations: tuple[str, ...] = ()
         if path.name == "tbsz_portfolio.sqlite" or is_tbsz_backup:
             schema_issues = tbsz_schema_issues(connection)
-            legacy_backup_issues = tbsz_v1_schema_issues(connection) if is_tbsz_backup else ("not a backup",)
-            if is_tbsz_backup and not legacy_backup_issues and user_version in {0, 1}:
+            legacy_backup_issues = (
+                tbsz_v2_schema_issues(connection)
+                if is_tbsz_backup and user_version == 2
+                else tbsz_v1_schema_issues(connection)
+                if is_tbsz_backup
+                else ("not a backup",)
+            )
+            if is_tbsz_backup and not legacy_backup_issues and user_version in {0, 1, 2}:
                 schema_status = f"BACKUP_PRE_MIGRATION_SCHEMA_V{user_version}"
             elif schema_issues:
                 schema_status = "SCHEMA_DRIFT"
@@ -331,8 +338,9 @@ def _tbsz_invariant_violations(connection: sqlite3.Connection) -> tuple[str, ...
     )
     invalid_sources = sum(
         _SHA256.fullmatch(str(sha256)) is None
-        or str(source_type) != "GEORGE_PDF"
+        or str(source_type) not in {"GEORGE_PDF", "ERSTE_SCREENSHOT"}
         or str(view_type) not in {"POSITIONS", "CASH"}
+        or (str(source_type) == "ERSTE_SCREENSHOT" and str(view_type) != "CASH")
         for sha256, source_type, view_type in source_rows
     )
     _append_violation(violations, "invalid source snapshot fields", invalid_sources)
@@ -341,6 +349,48 @@ def _tbsz_invariant_violations(connection: sqlite3.Connection) -> tuple[str, ...
         connection,
         "duplicate source filenames",
         "SELECT COUNT(*) FROM (SELECT source_filename FROM source_snapshots GROUP BY source_filename HAVING COUNT(*) > 1)",
+    )
+    _append_query_violation(
+        violations,
+        connection,
+        "screenshot source artifact-set mismatch",
+        """SELECT COUNT(*) FROM source_snapshots AS source
+           WHERE source.source_type = 'ERSTE_SCREENSHOT'
+             AND (SELECT COUNT(*) FROM screenshot_artifacts AS artifact
+                  WHERE artifact.snapshot_id = source.snapshot_id) != 2""",
+    )
+    _append_query_violation(
+        violations,
+        connection,
+        "screenshot artifact source mismatch",
+        """SELECT COUNT(*) FROM screenshot_artifacts AS artifact
+           JOIN source_snapshots AS source ON source.snapshot_id = artifact.snapshot_id
+           WHERE source.source_type != 'ERSTE_SCREENSHOT' OR source.view_type != 'CASH'""",
+    )
+    _append_query_violation(
+        violations,
+        connection,
+        "cash supersession scope mismatch",
+        """SELECT COUNT(*) FROM source_snapshot_supersessions AS edge
+           JOIN source_snapshots AS predecessor
+             ON predecessor.snapshot_id = edge.predecessor_snapshot_id
+           JOIN source_snapshots AS successor
+             ON successor.snapshot_id = edge.successor_snapshot_id
+           WHERE edge.scope_view_type != 'CASH'
+              OR predecessor.account_id != edge.account_id
+              OR successor.account_id != edge.account_id
+              OR predecessor.view_type != 'CASH'
+              OR successor.view_type != 'CASH'
+              OR successor.source_type != 'ERSTE_SCREENSHOT'""",
+    )
+    _append_query_violation(
+        violations,
+        connection,
+        "screenshot source supersession mismatch",
+        """SELECT COUNT(*) FROM source_snapshots AS source
+           WHERE source.source_type = 'ERSTE_SCREENSHOT'
+             AND (SELECT COUNT(*) FROM source_snapshot_supersessions AS edge
+                  WHERE edge.successor_snapshot_id = source.snapshot_id) != 1""",
     )
     instrument_rows = connection.execute(
         "SELECT canonical_name, normalized_name, isin, identity_status FROM instruments"

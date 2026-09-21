@@ -40,7 +40,6 @@ DATABASE_FILENAMES: Final = (
     "official_historical_nav.sqlite",
     "prospective_portfolio_validation.sqlite",
     "tbsz_portfolio.sqlite",
-    "tbsz_current_portfolio.sqlite",
 )
 _WORKBOOK_SUFFIXES: Final = frozenset({".xls", ".xlsx", ".xlsm", ".xlsb"})
 _DATE_FROM_FILENAME: Final = re.compile(r"(?<!\d)(\d{8})(?!\d)")
@@ -73,11 +72,6 @@ _DATABASE_ROLES: Final = {
         "ownership": "APPLICATION_OWNED_PRIVATE_LEDGER",
         "provenance_role": "PRIVATE_LTIA_SOURCE_EVIDENCE_LEGACY_NAME",
         "schema_owner": "portfolio_advisor.tbsz.repository.TbszPortfolioRepository",
-    },
-    "tbsz_current_portfolio.sqlite": {
-        "ownership": "APPLICATION_OWNED_PRIVATE_READ_MODEL",
-        "provenance_role": "DERIVED_CURRENT_LTIA_PROJECTION_LEGACY_NAME",
-        "schema_owner": "portfolio_advisor.tbsz.current_standings",
     },
 }
 
@@ -135,8 +129,7 @@ def audit_milestone_4(
         },
         "duplicate_holding_adjudication": duplicate_adjudication,
         "ltia_reconciliation": audit_ltia_reconciliation(
-            database_directory / "tbsz_portfolio.sqlite",
-            database_directory / "tbsz_current_portfolio.sqlite",
+            database_directory / "tbsz_portfolio.sqlite"
         ),
     }
 
@@ -752,10 +745,10 @@ def _collect_numeric_differences(left: object, right: object, differences: list[
     return left == right
 
 
-def audit_ltia_reconciliation(tbsz_path: Path, current_path: Path) -> dict[str, Any]:
-    """Report LTIA identity and source-equivalence blockers without reading values."""
+def audit_ltia_reconciliation(tbsz_path: Path) -> dict[str, Any]:
+    """Report LTIA evidence and deterministic current-projection blockers."""
     source = _audit_tbsz_evidence(tbsz_path)
-    projection = _audit_current_projection(current_path)
+    projection = _audit_current_projection(tbsz_path)
     blockers = []
     if source.get("unresolved_position_count", 0):
         blockers.append("LTIA_SOURCE_POSITION_IDENTITIES_UNRESOLVED")
@@ -764,7 +757,7 @@ def audit_ltia_reconciliation(tbsz_path: Path, current_path: Path) -> dict[str, 
     return {
         "terminology": "LTIA (legacy TBSZ database names retained)",
         "source_evidence": source, "current_projection": projection,
-        "automatic_cross_database_reconciliation": "BLOCKED" if blockers else "ELIGIBLE_FOR_EXACT_ISIN_ONLY",
+        "automatic_current_projection_reconciliation": "BLOCKED" if blockers else "ELIGIBLE_FOR_EXACT_ISIN_ONLY",
         "blockers": blockers,
         "cash_rule": "CASH_REMAINS_SEPARATE_BY_ACCOUNT_AND_CURRENCY",
     }
@@ -804,18 +797,34 @@ def _audit_tbsz_evidence(path: Path) -> dict[str, Any]:
 def _audit_current_projection(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {"status": "MISSING"}
-    with sqlite3.connect(f"file:{path.resolve()}?mode=ro", uri=True) as connection:
-        position_count = int(connection.execute("SELECT COUNT(*) FROM position_snapshots").fetchone()[0])
-        unresolved = int(connection.execute(
-            "SELECT COUNT(*) FROM position_snapshots AS p JOIN instruments AS i ON i.instrument_id = p.instrument_id WHERE i.isin IS NULL"
-        ).fetchone()[0])
-        cash_by_currency = [
-            {"currency": str(row[0]), "current_balance_records": int(row[1])}
-            for row in connection.execute("SELECT currency, COUNT(*) FROM cash_snapshots GROUP BY currency ORDER BY currency")
-        ]
+    from portfolio_advisor.tbsz.repository import TbszPortfolioRepository
+
+    repository = TbszPortfolioRepository(path)
+    positions: list[Any] = []
+    cash: list[Any] = []
+    selected_snapshot_ids: list[int] = []
+    for account in repository.accounts():
+        position_snapshot = repository.current_position_snapshot(account.label)
+        cash_snapshot = repository.current_cash_snapshot(account.label)
+        if position_snapshot is not None:
+            selected_snapshot_ids.append(position_snapshot.snapshot_id)
+            positions.extend(
+                repository.positions_for_snapshot(position_snapshot.snapshot_id)
+            )
+        if cash_snapshot is not None:
+            selected_snapshot_ids.append(cash_snapshot.snapshot_id)
+            cash.extend(repository.cash_for_snapshot(cash_snapshot.snapshot_id))
+
+    currency_counts = Counter(item.currency for item in cash)
+    unresolved = sum(position.instrument.isin is None for position in positions)
+    cash_by_currency = [
+        {"currency": currency, "current_balance_records": count}
+        for currency, count in sorted(currency_counts.items())
+    ]
     return {
-        "status": "AUDITED", "position_count": position_count, "unresolved_position_count": unresolved,
+        "status": "AUDITED", "position_count": len(positions), "unresolved_position_count": unresolved,
         "cash_by_currency": cash_by_currency,
+        "selected_snapshot_ids": sorted(selected_snapshot_ids),
         "projection_status": "IDENTITY_BLOCKED" if unresolved else "EXACT_ISIN_RECONCILABLE",
     }
 

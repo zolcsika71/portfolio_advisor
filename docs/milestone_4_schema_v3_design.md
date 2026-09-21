@@ -38,13 +38,13 @@ and conflicting ISIN-to-currency/asset-class/sub-asset-class relationships.
 A non-empty but checksum-invalid ISIN is malformed and unresolved; it is never
 admitted to the registry seed.
 
-The database inventory is the source of truth for the five existing database
+The database inventory is the source of truth for the four active database
 roles. `model_portfolio.sqlite` is the legacy model compatibility source,
 `official_historical_nav.sqlite` is NAV evidence,
 `prospective_portfolio_validation.sqlite` is the append-only prospective
-ledger, `tbsz_portfolio.sqlite` is private LTIA evidence under its legacy name,
-and `tbsz_current_portfolio.sqlite` is a derived private current-state read
-model. The report includes tables, row counts, columns, primary-key positions,
+ledger, and `tbsz_portfolio.sqlite` is private LTIA evidence under its legacy
+name. Its repository provides the deterministic current-state projection. The
+report includes tables, row counts, columns, primary-key positions,
 foreign keys, all SQLite indexes (including constraint-created indexes), schema
 SQL, versions, and integrity diagnostics.
 
@@ -135,9 +135,10 @@ Consolidation, if requested later, groups securities only by confirmed ISIN and
 cash only by currency, while preserving account provenance. No FX conversion,
 netting, value inference, transaction replay, or double counting is allowed.
 
-`tbsz_current_portfolio.sqlite` is a derived compatibility read model, not a
-second authority. Schema-v3 must derive the new projection from LTIA evidence;
-it must not merge source records with its existing read-model rows.
+The former `tbsz_current_portfolio.sqlite` derived compatibility read model is
+retired. Schema-v3 must derive any new projection from `tbsz_portfolio.sqlite`
+evidence through the supported repository semantics; it must not use a copied
+read-model dataset as another authority.
 
 ## Schema-v3 central analytical ERD
 

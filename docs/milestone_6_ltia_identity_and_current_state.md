@@ -19,9 +19,9 @@ provenance in the report. Missing, invalid, currency-inapplicable, or
 source-conflicting confirmations remain blockers and are never copied into the
 source database.
 
-Every source snapshot is retained. Equal undated evidence may contribute to a
-derived current view only when deterministic evidence fingerprints prove
-equivalence; otherwise current-state precedence is unresolved. Account rows
+Every source snapshot is retained. Equal undated evidence may contribute to the
+repository's current projection only when deterministic evidence fingerprints
+prove equivalence; otherwise current-state precedence is unresolved. Account rows
 retain source-snapshot lineage. Consolidation groups confirmed ISINs only,
 never names; unresolved positions remain separate. Cash remains account and
 currency data, with no ISIN and no FX conversion.
@@ -43,6 +43,7 @@ poetry run python scripts/confirm_ltia_identity_mappings.py --apply
 poetry run python scripts/audit_milestone_6_ltia.py
 ```
 
-The two undated semantically equivalent groups use only their lowest stable
-snapshot IDs as derived-view representatives; both source IDs stay in lineage
-and no observation date is created.
+For each account and view, the repository selects the latest dated snapshot and
+then the highest snapshot ID. The two retained undated equivalent groups
+therefore select snapshot IDs 7 and 8 while preserving lineage to IDs 5/7 and
+6/8 respectively; no observation date is created.

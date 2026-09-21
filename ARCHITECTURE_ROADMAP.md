@@ -119,7 +119,6 @@ The current implementation still contains legacy identifiers such as:
 
 ```text
 tbsz_portfolio.sqlite
-tbsz_current_portfolio.sqlite
 
 src/portfolio_advisor/tbsz/
 
@@ -461,7 +460,6 @@ official_historical_nav.sqlite
 prospective_portfolio_validation.sqlite
 
 tbsz_portfolio.sqlite
-tbsz_current_portfolio.sqlite
 ```
 
 Legacy names must not be renamed until migration compatibility is proven.
@@ -712,11 +710,12 @@ Migrate only after:
 
 ---
 
-## 10.5 `tbsz_current_portfolio.sqlite`
+## 10.5 Current LTIA projection
 
-Current legacy current-state projection.
-
-Treat it as a derived read model rather than a second independent source of truth.
+The former `tbsz_current_portfolio.sqlite` compatibility read model is retired.
+`tbsz_portfolio.sqlite` remains the private LTIA evidence authority and its
+repository selects the current position and cash source independently for each
+account without copying those rows into a second database.
 
 Preferred architecture:
 
@@ -3205,7 +3204,6 @@ model_portfolio.sqlite
 official_historical_nav.sqlite
 prospective_portfolio_validation.sqlite
 tbsz_portfolio.sqlite
-tbsz_current_portfolio.sqlite
 
 historical XLS:
 modell portfóliók

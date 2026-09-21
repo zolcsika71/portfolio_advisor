@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import sqlite3
 from pathlib import Path
 
@@ -16,6 +17,8 @@ from portfolio_advisor.audit.milestone_4 import (
     audit_ltia_reconciliation,
     is_valid_isin,
 )
+from portfolio_advisor.tbsz.models import SourceDocumentInput, SourcePositionInput
+from portfolio_advisor.tbsz.repository import TbszPortfolioRepository
 
 
 def test_isin_validation_accepts_only_structurally_valid_luhn_isins() -> None:
@@ -151,29 +154,31 @@ def test_numeric_comparison_exposes_tiny_float_drift_without_calling_it_exact() 
 
 def test_ltia_audit_blocks_reconciliation_when_legacy_evidence_has_no_isin(tmp_path: Path) -> None:
     source = tmp_path / "tbsz_portfolio.sqlite"
-    current = tmp_path / "tbsz_current_portfolio.sqlite"
-    with sqlite3.connect(source) as connection:
-        connection.executescript(
-            "CREATE TABLE instruments (instrument_id INTEGER PRIMARY KEY, isin TEXT, identity_status TEXT);"
-            "CREATE TABLE position_snapshots (position_id INTEGER PRIMARY KEY, instrument_id INTEGER);"
-            "CREATE TABLE cash_snapshots (cash_id INTEGER PRIMARY KEY, currency TEXT);"
-            "CREATE TABLE source_snapshots (snapshot_id INTEGER PRIMARY KEY, account_id INTEGER, view_type TEXT, source_date TEXT, evidence_fingerprint TEXT);"
-            "INSERT INTO instruments VALUES (1, NULL, 'IDENTITY_UNRESOLVED');"
-            "INSERT INTO position_snapshots VALUES (1, 1);"
-            "INSERT INTO source_snapshots VALUES (1, 1, 'POSITIONS', NULL, 'same');"
-            "INSERT INTO source_snapshots VALUES (2, 1, 'POSITIONS', NULL, 'same');"
-        )
-    with sqlite3.connect(current) as connection:
-        connection.executescript(
-            "CREATE TABLE instruments (instrument_id INTEGER PRIMARY KEY, isin TEXT);"
-            "CREATE TABLE position_snapshots (position_id INTEGER PRIMARY KEY, instrument_id INTEGER);"
-            "CREATE TABLE cash_snapshots (cash_id INTEGER PRIMARY KEY, currency TEXT);"
-            "INSERT INTO instruments VALUES (1, NULL);"
-            "INSERT INTO position_snapshots VALUES (1, 1);"
+    repository = TbszPortfolioRepository(source)
+    repository.initialize()
+    for filename, content in (("first.pdf", b"first"), ("second.pdf", b"second")):
+        repository.import_source_document(
+            SourceDocumentInput(
+                source_filename=filename,
+                content_sha256=hashlib.sha256(content).hexdigest(),
+                account_label="TBSZ synthetic",
+                view_type="POSITIONS",
+                source_date=None,
+                evidence_status="SYNTHETIC",
+                positions=(
+                    SourcePositionInput(
+                        provider_name="Unresolved instrument",
+                        isin=None,
+                        market_value=None,
+                        market_currency=None,
+                    ),
+                ),
+            )
         )
 
-    report = audit_ltia_reconciliation(source, current)
+    report = audit_ltia_reconciliation(source)
 
-    assert report["automatic_cross_database_reconciliation"] == "BLOCKED"
+    assert report["automatic_current_projection_reconciliation"] == "BLOCKED"
     assert report["source_evidence"]["equivalent_source_snapshot_groups"][0]["source_count"] == 2
     assert report["current_projection"]["projection_status"] == "IDENTITY_BLOCKED"
+    assert report["current_projection"]["selected_snapshot_ids"] == [2]

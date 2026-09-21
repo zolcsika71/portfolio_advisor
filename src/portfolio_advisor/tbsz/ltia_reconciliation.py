@@ -392,3 +392,81 @@ def audit_ltia_read_only(path: Path) -> dict[str, Any]:
     summary = {"accounts": len(repository.accounts()), "source_snapshots": len(snapshots), "positions": len(positions), "cash": len(cash), "transactions": len(repository.transactions()), "identity_status_counts": dict(sorted(statuses.items())), "equivalent_groups": equivalent}
     summary["fingerprint"] = hashlib.sha256(json.dumps(summary, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
     return summary
+
+
+def audit_current_ltia_projection_read_only(path: Path) -> dict[str, Any]:
+    """Audit the repository's deterministic current projection without copying it."""
+    repository = TbszPortfolioRepository(path)
+    accounts = repository.accounts()
+    snapshots = repository.source_snapshots()
+    snapshot_groups: dict[tuple[int, str, str | None, str], list[Any]] = defaultdict(list)
+    for retained_snapshot in snapshots:
+        snapshot_groups[
+            (
+                retained_snapshot.account_id,
+                retained_snapshot.view_type,
+                retained_snapshot.source_date.isoformat()
+                if retained_snapshot.source_date
+                else None,
+                retained_snapshot.evidence_fingerprint,
+            )
+        ].append(retained_snapshot)
+
+    positions: list[Any] = []
+    cash: list[Any] = []
+    selected_snapshots: list[dict[str, Any]] = []
+    equivalent_lineage: dict[str, list[int]] = {}
+    for account in accounts:
+        for view_type, snapshot in (
+            ("POSITIONS", repository.current_position_snapshot(account.label)),
+            ("CASH", repository.current_cash_snapshot(account.label)),
+        ):
+            if snapshot is None:
+                continue
+            records = (
+                repository.positions_for_snapshot(snapshot.snapshot_id)
+                if view_type == "POSITIONS"
+                else repository.cash_for_snapshot(snapshot.snapshot_id)
+            )
+            if view_type == "POSITIONS":
+                positions.extend(records)
+            else:
+                cash.extend(records)
+            selected_snapshots.append(
+                {
+                    "account": account.label,
+                    "view_type": view_type,
+                    "snapshot_id": snapshot.snapshot_id,
+                    "source_filename": snapshot.source_filename,
+                    "source_date": snapshot.source_date.isoformat() if snapshot.source_date else None,
+                    "record_count": len(records),
+                }
+            )
+            group = snapshot_groups[
+                (
+                    snapshot.account_id,
+                    snapshot.view_type,
+                    snapshot.source_date.isoformat() if snapshot.source_date else None,
+                    snapshot.evidence_fingerprint,
+                )
+            ]
+            if len(group) > 1:
+                equivalent_lineage[str(snapshot.snapshot_id)] = sorted(
+                    item.snapshot_id for item in group
+                )
+
+    cash_by_currency: dict[str, int] = defaultdict(int)
+    for item in cash:
+        cash_by_currency[item.currency] += 1
+    return {
+        "accounts": len(accounts),
+        "positions": len(positions),
+        "cash": len(cash),
+        "unresolved_isin_positions": sum(
+            position.instrument.isin is None for position in positions
+        ),
+        "cash_by_currency": dict(sorted(cash_by_currency.items())),
+        "selected_snapshots": selected_snapshots,
+        "equivalent_representatives": sorted(int(key) for key in equivalent_lineage),
+        "equivalent_lineage": equivalent_lineage,
+    }

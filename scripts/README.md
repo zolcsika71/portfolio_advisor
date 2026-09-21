@@ -137,17 +137,21 @@ compatibility identifiers.
 | Script | Purpose |
 |---|---|
 | `initialize_tbsz_portfolio_from_pdfs.py` | Import only explicitly confirmed LTIA facts from legacy path `data/tbsz/source/`; `--write-template` creates a filename-only confirmation template when a screen cannot be reliably parsed. |
+| `admit_tbsz_cash_correction.py` | Retain an authorized full-account PNG and supporting crop by content hash, migrate the LTIA store if required, and append an idempotent CASH-only correction linked to its verified predecessor. The financial date remains unknown unless separately supplied by a future contract. |
 | `migrate_tbsz_portfolio.py` | Apply only the recognized local schema migration after creating and verifying an ignored backup; it does not import sources or compare portfolios. |
 | `show_tbsz_current_portfolio.py` | Show one read-only, unified LTIA current view for one account: explicit `ASSET` and `CASH` rows retain native source currencies and separate position/cash snapshot provenance. |
 | `update_tbsz_transaction.py` | Append one user-completed BUY or SELL to the manual transaction ledger. It is not a brokerage command. |
 | `confirm_tbsz_instrument_mapping.py` | Add a reviewed manual ISIN/alias mapping; fuzzy similarity is never promoted. |
 | `reconcile_tbsz_pdf_snapshots.py` | Compare two retained, dated position snapshots without rewriting history. |
 | `compare_tbsz_portfolio.py` | Read-only LTIA-vs-model target-allocation comparison with an explicit tolerance, identity/FX blockers, separate cash, and no provider or FX fetch. |
-| `create_tbsz_current_portfolio_once.py` | One-time isolated LTIA current-standings read model from retained, manually confirmed PDFs in legacy TBSZ paths. It contains current ASSET and CASH rows only; normal reruns refuse overwrite and `--force` first creates a verified ignored backup. |
+| `audit_milestone_6_ltia.py` | Audit retained LTIA evidence and the primary store's deterministic current projection without creating a second database. |
 
-Source PDFs, manual confirmations, and `database/tbsz_portfolio.sqlite` are
-local-only and ignored by Git. Initial observed positions are not fabricated as
-historical transactions; later PDF evidence is appended and reconciled.
+Source PDFs, screenshot bytes, manual confirmations, and
+`database/tbsz_portfolio.sqlite` are local-only and ignored by Git. Screenshot
+cash corrections require both a primary account-context image and its linked
+supporting crop. They never relabel PNGs as PDFs or rewrite their predecessor.
+Initial observed positions are not fabricated as historical transactions;
+later evidence is appended and reconciled.
 
 ## Graphify and utility wrappers
 

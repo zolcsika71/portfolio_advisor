@@ -14,11 +14,14 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from .models import (
+    CashCorrectionInput,
     CashSnapshot,
     IdentityStatus,
     Instrument,
     ManualTransaction,
     PositionSnapshot,
+    ScreenshotArtifactInput,
+    ScreenshotArtifactRole,
     SourceConflictError,
     SourceDocumentInput,
     SourcePositionInput,
@@ -30,7 +33,7 @@ from .models import (
 
 _ISIN = re.compile(r"^[A-Z]{2}[A-Z0-9]{9}[0-9]$")
 _CURRENCY = re.compile(r"^[A-Z]{3}$")
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 
 class TbszSchemaMigrationError(TbszError):
@@ -47,7 +50,7 @@ class TbszPortfolioRepository:
         """Create or migrate the local schema, returning any verified backup.
 
         This is deliberately separate from the read-only comparison path.  An
-        existing v1 ledger is backed up before any live migration is attempted.
+        existing older ledger is backed up before any live migration is attempted.
         """
         self.path.parent.mkdir(parents=True, exist_ok=True)
         backup_path = self._create_migration_backup_if_needed()
@@ -65,14 +68,21 @@ class TbszPortfolioRepository:
             if version == CURRENT_SCHEMA_VERSION:
                 _require_current_schema(connection)
                 return None
-            if version not in {0, 1}:
+            if version not in {0, 1, 2}:
                 raise TbszSchemaMigrationError(
-                    f"unsupported TBSZ schema version {version}; expected 0, 1, or {CURRENT_SCHEMA_VERSION}"
+                    f"unsupported TBSZ schema version {version}; expected 0, 1, 2, or {CURRENT_SCHEMA_VERSION}"
                 )
             if not existing_tables:
                 return None
-            _require_v1_schema(connection)
-        return _create_verified_backup(self.path, source_version=version)
+            if version == 2:
+                _require_v2_schema(connection)
+            else:
+                _require_v1_schema(connection)
+        return _create_verified_backup(
+            self.path,
+            source_version=version,
+            target_version=CURRENT_SCHEMA_VERSION,
+        )
 
     @contextmanager
     def _write_connection(self) -> Iterator[sqlite3.Connection]:
@@ -115,6 +125,132 @@ class TbszPortfolioRepository:
             validate_source_document(document)
         with self._write_connection() as connection:
             return tuple(self._import_source_document(connection, document) for document in documents)
+
+    def admit_cash_correction(
+        self,
+        correction: CashCorrectionInput,
+        *,
+        evidence_root: Path,
+    ) -> tuple[SourceSnapshot, bool]:
+        """Append one screenshot-backed cash correction atomically.
+
+        Ordinary PDF imports retain their undated-conflict rule.  This separate
+        path admits only an explicitly linked successor and verifies every
+        retained PNG before opening the database for writes.
+        """
+        artifacts = validate_cash_correction(correction, evidence_root=evidence_root)
+        fingerprint = _cash_correction_fingerprint(correction)
+        primary = artifacts[ScreenshotArtifactRole.PRIMARY_ACCOUNT_CONTEXT]
+        with self._write_connection() as connection:
+            existing = connection.execute(
+                "SELECT successor_snapshot_id FROM source_snapshot_supersessions WHERE correction_id = ?",
+                (correction.correction_id,),
+            ).fetchone()
+            if existing is not None:
+                successor = connection.execute(
+                    "SELECT * FROM source_snapshots WHERE snapshot_id = ?",
+                    (int(existing["successor_snapshot_id"]),),
+                ).fetchone()
+                assert successor is not None
+                if _stored_cash_correction_matches(
+                    connection,
+                    correction=correction,
+                    artifacts=artifacts,
+                    fingerprint=fingerprint,
+                    successor=successor,
+                ):
+                    return _source_snapshot(successor), False
+                raise SourceConflictError(
+                    "cash correction identity already exists with conflicting evidence or payload"
+                )
+
+            account_id = self._account_id(connection, correction.account_label, create=False)
+            predecessor = connection.execute(
+                "SELECT * FROM source_snapshots WHERE snapshot_id = ?",
+                (correction.predecessor_snapshot_id,),
+            ).fetchone()
+            if predecessor is None:
+                raise SourceConflictError("cash correction predecessor does not exist")
+            if int(predecessor["account_id"]) != account_id or predecessor["view_type"] != "CASH":
+                raise SourceConflictError(
+                    "cash correction predecessor must be CASH evidence for the same account"
+                )
+            selected = _current_cash_snapshot_row(connection, account_id)
+            if selected is None or int(selected["snapshot_id"]) != correction.predecessor_snapshot_id:
+                raise SourceConflictError(
+                    "cash correction predecessor is not the currently selected cash observation"
+                )
+            if connection.execute(
+                "SELECT 1 FROM source_snapshot_supersessions WHERE predecessor_snapshot_id = ?",
+                (correction.predecessor_snapshot_id,),
+            ).fetchone():
+                raise SourceConflictError("cash correction predecessor already has a successor")
+
+            timestamp = _now().isoformat()
+            cursor = connection.execute(
+                "INSERT INTO source_snapshots "
+                "(account_id, source_filename, content_sha256, source_type, view_type, source_date, ingested_at, evidence_status, evidence_fingerprint) "
+                "VALUES (?, ?, ?, 'ERSTE_SCREENSHOT', 'CASH', ?, ?, ?, ?)",
+                (
+                    account_id,
+                    primary.source_filename,
+                    primary.content_sha256,
+                    correction.source_date.isoformat() if correction.source_date else None,
+                    timestamp,
+                    correction.evidence_status,
+                    fingerprint,
+                ),
+            )
+            successor_id = _last_row_id(cursor)
+            for cash in correction.cash:
+                connection.execute(
+                    "INSERT INTO cash_snapshots "
+                    "(snapshot_id, account_id, currency, balance, data_quality_status) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (
+                        successor_id,
+                        account_id,
+                        cash.currency.upper(),
+                        _decimal_text(cash.balance),
+                        cash.data_quality_status,
+                    ),
+                )
+            for artifact in correction.artifacts:
+                connection.execute(
+                    "INSERT INTO screenshot_artifacts "
+                    "(snapshot_id, artifact_role, source_filename, retained_path, content_sha256, media_type, byte_count) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        successor_id,
+                        artifact.role.value,
+                        artifact.source_filename,
+                        artifact.retained_path,
+                        artifact.content_sha256,
+                        artifact.media_type,
+                        artifact.byte_count,
+                    ),
+                )
+            connection.execute(
+                "INSERT INTO source_snapshot_supersessions "
+                "(correction_id, account_id, scope_view_type, predecessor_snapshot_id, successor_snapshot_id, reason, recorded_at) "
+                "VALUES (?, ?, 'CASH', ?, ?, ?, ?)",
+                (
+                    correction.correction_id,
+                    account_id,
+                    correction.predecessor_snapshot_id,
+                    successor_id,
+                    correction.reason,
+                    timestamp,
+                ),
+            )
+            selected_after = _current_cash_snapshot_row(connection, account_id)
+            if selected_after is None or int(selected_after["snapshot_id"]) != successor_id:
+                raise SourceConflictError("cash correction did not become the deterministic selection")
+            successor = connection.execute(
+                "SELECT * FROM source_snapshots WHERE snapshot_id = ?", (successor_id,)
+            ).fetchone()
+            assert successor is not None
+            return _source_snapshot(successor), True
 
     def _import_source_document(
         self, connection: sqlite3.Connection, document: SourceDocumentInput
@@ -236,11 +372,7 @@ class TbszPortfolioRepository:
     def current_cash_snapshot(self, account_label: str) -> SourceSnapshot | None:
         account = self.account(account_label)
         with self._read_connection() as connection:
-            row = connection.execute(
-                "SELECT * FROM source_snapshots WHERE account_id = ? AND view_type = 'CASH' "
-                "ORDER BY source_date IS NULL, source_date DESC, snapshot_id DESC LIMIT 1",
-                (account.account_id,),
-            ).fetchone()
+            row = _current_cash_snapshot_row(connection, account.account_id)
         return _source_snapshot(row) if row is not None else None
 
     def confirm_instrument_mapping(self, instrument_id: int, isin: str, alias_name: str) -> Instrument:
@@ -432,6 +564,247 @@ def validate_source_document(document: SourceDocumentInput) -> None:
         _nullable_nonnegative(cash.balance, "cash balance")
 
 
+def validate_cash_correction(
+    correction: CashCorrectionInput,
+    *,
+    evidence_root: Path,
+) -> dict[ScreenshotArtifactRole, ScreenshotArtifactInput]:
+    """Validate a screenshot correction and its retained immutable bytes."""
+    _validate_tbsz_label(correction.account_label)
+    if not correction.correction_id.strip():
+        raise TbszError("cash correction identity is required")
+    if correction.predecessor_snapshot_id <= 0:
+        raise TbszError("cash correction predecessor must be a positive snapshot id")
+    if not correction.reason.strip():
+        raise TbszError("cash correction reason is required")
+    if not correction.evidence_status.strip():
+        raise TbszError("cash correction evidence status is required")
+    if not correction.cash:
+        raise TbszError("cash correction requires at least one cash row")
+    currencies: set[str] = set()
+    for cash in correction.cash:
+        currency = _validate_currency(cash.currency)
+        if currency in currencies:
+            raise TbszError("cash correction currencies must be unique")
+        currencies.add(currency)
+        _nullable_nonnegative(cash.balance, "cash correction balance")
+        if not cash.data_quality_status.strip():
+            raise TbszError("cash correction data quality status is required")
+
+    artifacts: dict[ScreenshotArtifactRole, ScreenshotArtifactInput] = {}
+    for artifact in correction.artifacts:
+        if artifact.role in artifacts:
+            raise TbszError("screenshot artifact roles must be unique")
+        if Path(artifact.source_filename).name != artifact.source_filename:
+            raise TbszError("screenshot source filename must be a plain filename")
+        if not artifact.source_filename.casefold().endswith(".png"):
+            raise TbszError("screenshot evidence must retain its PNG filename")
+        _validate_sha256(artifact.content_sha256, "screenshot content SHA-256")
+        if artifact.media_type != "image/png":
+            raise TbszError("screenshot media type must be image/png")
+        if artifact.byte_count <= 0:
+            raise TbszError("screenshot byte count must be positive")
+        _verify_retained_screenshot(artifact, evidence_root=evidence_root)
+        artifacts[artifact.role] = artifact
+    expected_roles = {
+        ScreenshotArtifactRole.PRIMARY_ACCOUNT_CONTEXT,
+        ScreenshotArtifactRole.SUPPORTING_CROP,
+    }
+    if set(artifacts) != expected_roles:
+        raise TbszError("cash correction requires primary account context and supporting crop artifacts")
+    if len({artifact.content_sha256 for artifact in artifacts.values()}) != 2:
+        raise TbszError("primary and supporting screenshots must be distinct bytes")
+    if len({artifact.retained_path for artifact in artifacts.values()}) != 2:
+        raise TbszError("primary and supporting screenshots must have distinct retained paths")
+    return artifacts
+
+
+def _verify_retained_screenshot(
+    artifact: ScreenshotArtifactInput,
+    *,
+    evidence_root: Path,
+) -> None:
+    if not evidence_root.is_dir() or evidence_root.is_symlink():
+        raise TbszError("screenshot evidence root must be an existing non-symlink directory")
+    relative_path = Path(artifact.retained_path)
+    if relative_path.is_absolute() or ".." in relative_path.parts:
+        raise TbszError("retained screenshot path must stay below the evidence root")
+    root = evidence_root.resolve(strict=True)
+    candidate = evidence_root / relative_path
+    if candidate.is_symlink() or not candidate.is_file():
+        raise TbszError("retained screenshot must be an existing non-symlink file")
+    resolved = candidate.resolve(strict=True)
+    try:
+        resolved.relative_to(root)
+    except ValueError as error:
+        raise TbszError("retained screenshot escapes the evidence root") from error
+    current = candidate.parent
+    while current != evidence_root:
+        if current.is_symlink():
+            raise TbszError("retained screenshot path contains a symlink")
+        current = current.parent
+    if candidate.stat().st_size != artifact.byte_count:
+        raise SourceConflictError("retained screenshot byte count differs from admission evidence")
+    if _sha256_file(candidate) != artifact.content_sha256:
+        raise SourceConflictError("retained screenshot hash differs from admission evidence")
+    with candidate.open("rb") as source:
+        if source.read(8) != b"\x89PNG\r\n\x1a\n":
+            raise TbszError("retained screenshot is not a PNG byte stream")
+
+
+def _current_cash_snapshot_row(
+    connection: sqlite3.Connection,
+    account_id: int,
+) -> sqlite3.Row | None:
+    """Select the base PDF observation, then follow its explicit correction chain."""
+    row = connection.execute(
+        "SELECT * FROM source_snapshots "
+        "WHERE account_id = ? AND view_type = 'CASH' AND source_type = 'GEORGE_PDF' "
+        "ORDER BY source_date IS NULL, source_date DESC, snapshot_id DESC LIMIT 1",
+        (account_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    seen = {int(row["snapshot_id"])}
+    while True:
+        successors = connection.execute(
+            "SELECT successor.*, edge.account_id AS supersession_account_id, "
+            "edge.scope_view_type AS supersession_scope_view_type "
+            "FROM source_snapshot_supersessions AS edge "
+            "JOIN source_snapshots AS successor ON successor.snapshot_id = edge.successor_snapshot_id "
+            "WHERE edge.predecessor_snapshot_id = ?",
+            (int(row["snapshot_id"]),),
+        ).fetchall()
+        if not successors:
+            return row
+        if len(successors) != 1:
+            raise TbszError("cash correction graph has ambiguous competing successors")
+        successor = successors[0]
+        successor_id = int(successor["snapshot_id"])
+        if successor_id in seen:
+            raise TbszError("cash correction graph contains a cycle")
+        if (
+            int(successor["supersession_account_id"]) != account_id
+            or successor["supersession_scope_view_type"] != "CASH"
+            or
+            int(successor["account_id"]) != account_id
+            or successor["view_type"] != "CASH"
+            or successor["source_type"] != "ERSTE_SCREENSHOT"
+        ):
+            raise TbszError("cash correction successor crosses its account or CASH scope")
+        seen.add(successor_id)
+        row = successor
+
+
+def _cash_correction_fingerprint(correction: CashCorrectionInput) -> str:
+    payload = {
+        "correction_id": correction.correction_id,
+        "account_label": correction.account_label,
+        "predecessor_snapshot_id": correction.predecessor_snapshot_id,
+        "reason": correction.reason,
+        "source_date": correction.source_date.isoformat() if correction.source_date else None,
+        "evidence_status": correction.evidence_status,
+        "cash": [
+            {
+                "currency": item.currency.upper(),
+                "balance": _decimal_text(item.balance),
+                "data_quality_status": item.data_quality_status,
+            }
+            for item in sorted(correction.cash, key=lambda item: item.currency.upper())
+        ],
+        "artifacts": [
+            {
+                "role": item.role.value,
+                "source_filename": item.source_filename,
+                "retained_path": item.retained_path,
+                "content_sha256": item.content_sha256,
+                "media_type": item.media_type,
+                "byte_count": item.byte_count,
+            }
+            for item in sorted(correction.artifacts, key=lambda item: item.role.value)
+        ],
+    }
+    return hashlib.sha256(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _stored_cash_correction_matches(
+    connection: sqlite3.Connection,
+    *,
+    correction: CashCorrectionInput,
+    artifacts: dict[ScreenshotArtifactRole, ScreenshotArtifactInput],
+    fingerprint: str,
+    successor: sqlite3.Row,
+) -> bool:
+    account = connection.execute(
+        "SELECT label FROM tbsz_accounts WHERE account_id = ?",
+        (int(successor["account_id"]),),
+    ).fetchone()
+    edge = connection.execute(
+        "SELECT * FROM source_snapshot_supersessions WHERE correction_id = ?",
+        (correction.correction_id,),
+    ).fetchone()
+    stored_cash = tuple(
+        (str(row["currency"]), str(row["balance"]), str(row["data_quality_status"]))
+        for row in connection.execute(
+            "SELECT currency, balance, data_quality_status FROM cash_snapshots "
+            "WHERE snapshot_id = ? ORDER BY currency",
+            (int(successor["snapshot_id"]),),
+        )
+    )
+    expected_cash = tuple(
+        (item.currency.upper(), _decimal_text(item.balance), item.data_quality_status)
+        for item in sorted(correction.cash, key=lambda item: item.currency.upper())
+    )
+    stored_artifacts = tuple(
+        (
+            str(row["artifact_role"]),
+            str(row["source_filename"]),
+            str(row["retained_path"]),
+            str(row["content_sha256"]),
+            str(row["media_type"]),
+            int(row["byte_count"]),
+        )
+        for row in connection.execute(
+            "SELECT artifact_role, source_filename, retained_path, content_sha256, media_type, byte_count "
+            "FROM screenshot_artifacts WHERE snapshot_id = ? ORDER BY artifact_role",
+            (int(successor["snapshot_id"]),),
+        )
+    )
+    expected_artifacts = tuple(
+        (
+            role.value,
+            artifact.source_filename,
+            artifact.retained_path,
+            artifact.content_sha256,
+            artifact.media_type,
+            artifact.byte_count,
+        )
+        for role, artifact in sorted(artifacts.items(), key=lambda item: item[0].value)
+    )
+    primary = artifacts[ScreenshotArtifactRole.PRIMARY_ACCOUNT_CONTEXT]
+    return bool(
+        account
+        and edge
+        and account["label"] == correction.account_label
+        and int(edge["account_id"]) == int(successor["account_id"])
+        and edge["scope_view_type"] == "CASH"
+        and int(edge["predecessor_snapshot_id"]) == correction.predecessor_snapshot_id
+        and edge["reason"] == correction.reason
+        and successor["source_filename"] == primary.source_filename
+        and successor["content_sha256"] == primary.content_sha256
+        and successor["source_type"] == "ERSTE_SCREENSHOT"
+        and successor["view_type"] == "CASH"
+        and successor["source_date"]
+        == (correction.source_date.isoformat() if correction.source_date else None)
+        and successor["evidence_status"] == correction.evidence_status
+        and successor["evidence_fingerprint"] == fingerprint
+        and stored_cash == expected_cash
+        and stored_artifacts == expected_artifacts
+    )
+
+
 def _validate_tbsz_label(label: str) -> None:
     if not label.startswith("TBSZ"):
         raise TbszError("only explicitly labelled TBSZ accounts are in scope")
@@ -444,6 +817,20 @@ def _validate_currency(value: str) -> str:
     if not _CURRENCY.fullmatch(value):
         raise TbszError("currency must be a three-letter uppercase code")
     return value
+
+
+def _validate_sha256(value: str, field: str) -> str:
+    if len(value) != 64 or any(char not in "0123456789abcdef" for char in value):
+        raise TbszError(f"{field} is malformed")
+    return value
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        while block := source.read(1024 * 1024):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def _validate_isin(value: str) -> str:
@@ -602,7 +989,7 @@ def _transaction(row: sqlite3.Row) -> ManualTransaction:
     )
 
 
-_SCHEMA = """
+_V2_SCHEMA = """
 CREATE TABLE IF NOT EXISTS tbsz_accounts (
     account_id INTEGER PRIMARY KEY,
     label TEXT NOT NULL UNIQUE,
@@ -678,12 +1065,43 @@ CREATE TABLE IF NOT EXISTS transactions (
 );
 """
 
-# Kept as a derived test/migration-recognition fixture, not a second schema
-# authority: v2 is the only schema emitted for a newly created database.
-_V1_SCHEMA = _SCHEMA.replace("    observed_roi TEXT NULL,\n", "")
+_SCREENSHOT_SCHEMA = """
+CREATE TABLE IF NOT EXISTS screenshot_artifacts (
+    artifact_id INTEGER PRIMARY KEY,
+    snapshot_id INTEGER NOT NULL REFERENCES source_snapshots(snapshot_id),
+    artifact_role TEXT NOT NULL CHECK(artifact_role IN ('PRIMARY_ACCOUNT_CONTEXT', 'SUPPORTING_CROP')),
+    source_filename TEXT NOT NULL,
+    retained_path TEXT NOT NULL UNIQUE,
+    content_sha256 TEXT NOT NULL UNIQUE,
+    media_type TEXT NOT NULL CHECK(media_type = 'image/png'),
+    byte_count INTEGER NOT NULL CHECK(byte_count > 0),
+    UNIQUE(snapshot_id, artifact_role)
+);
+CREATE TABLE IF NOT EXISTS source_snapshot_supersessions (
+    supersession_id INTEGER PRIMARY KEY,
+    correction_id TEXT NOT NULL UNIQUE,
+    account_id INTEGER NOT NULL REFERENCES tbsz_accounts(account_id),
+    scope_view_type TEXT NOT NULL CHECK(scope_view_type = 'CASH'),
+    predecessor_snapshot_id INTEGER NOT NULL REFERENCES source_snapshots(snapshot_id),
+    successor_snapshot_id INTEGER NOT NULL REFERENCES source_snapshots(snapshot_id),
+    reason TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    CHECK(predecessor_snapshot_id <> successor_snapshot_id),
+    UNIQUE(predecessor_snapshot_id),
+    UNIQUE(successor_snapshot_id)
+);
+"""
+
+_SCHEMA = _V2_SCHEMA.replace(
+    "CHECK(source_type = 'GEORGE_PDF')",
+    "CHECK(source_type IN ('GEORGE_PDF', 'ERSTE_SCREENSHOT'))",
+) + _SCREENSHOT_SCHEMA
+
+# Historical schemas are derived recognition fixtures, never parallel authorities.
+_V1_SCHEMA = _V2_SCHEMA.replace("    observed_roi TEXT NULL,\n", "")
 
 
-_EXPECTED_COLUMN_CONTRACT: dict[str, tuple[tuple[str, str, int, str | None, int], ...]] = {
+_EXPECTED_V2_COLUMN_CONTRACT: dict[str, tuple[tuple[str, str, int, str | None, int], ...]] = {
     "tbsz_accounts": (
         ("account_id", "INTEGER", 0, None, 1),
         ("label", "TEXT", 1, None, 0),
@@ -755,6 +1173,30 @@ _EXPECTED_COLUMN_CONTRACT: dict[str, tuple[tuple[str, str, int, str | None, int]
     ),
 }
 
+_EXPECTED_COLUMN_CONTRACT: dict[str, tuple[tuple[str, str, int, str | None, int], ...]] = {
+    **_EXPECTED_V2_COLUMN_CONTRACT,
+    "screenshot_artifacts": (
+        ("artifact_id", "INTEGER", 0, None, 1),
+        ("snapshot_id", "INTEGER", 1, None, 0),
+        ("artifact_role", "TEXT", 1, None, 0),
+        ("source_filename", "TEXT", 1, None, 0),
+        ("retained_path", "TEXT", 1, None, 0),
+        ("content_sha256", "TEXT", 1, None, 0),
+        ("media_type", "TEXT", 1, None, 0),
+        ("byte_count", "INTEGER", 1, None, 0),
+    ),
+    "source_snapshot_supersessions": (
+        ("supersession_id", "INTEGER", 0, None, 1),
+        ("correction_id", "TEXT", 1, None, 0),
+        ("account_id", "INTEGER", 1, None, 0),
+        ("scope_view_type", "TEXT", 1, None, 0),
+        ("predecessor_snapshot_id", "INTEGER", 1, None, 0),
+        ("successor_snapshot_id", "INTEGER", 1, None, 0),
+        ("reason", "TEXT", 1, None, 0),
+        ("recorded_at", "TEXT", 1, None, 0),
+    ),
+}
+
 _EXPECTED_FOREIGN_KEYS: dict[str, tuple[tuple[str, str, str], ...]] = {
     "tbsz_accounts": (),
     "source_snapshots": (("account_id", "tbsz_accounts", "account_id"),),
@@ -772,6 +1214,12 @@ _EXPECTED_FOREIGN_KEYS: dict[str, tuple[tuple[str, str, str], ...]] = {
         ("account_id", "tbsz_accounts", "account_id"),
         ("snapshot_id", "source_snapshots", "snapshot_id"),
     ),
+    "screenshot_artifacts": (("snapshot_id", "source_snapshots", "snapshot_id"),),
+    "source_snapshot_supersessions": (
+        ("account_id", "tbsz_accounts", "account_id"),
+        ("predecessor_snapshot_id", "source_snapshots", "snapshot_id"),
+        ("successor_snapshot_id", "source_snapshots", "snapshot_id"),
+    ),
     "transactions": (
         ("account_id", "tbsz_accounts", "account_id"),
         ("instrument_id", "instruments", "instrument_id"),
@@ -785,13 +1233,32 @@ _EXPECTED_UNIQUE_CONSTRAINTS: dict[str, tuple[tuple[str, ...], ...]] = {
     "instrument_aliases": (("instrument_id", "normalized_alias", "mapping_method", "source_snapshot_id"),),
     "position_snapshots": (("snapshot_id", "normalized_provider_name"),),
     "cash_snapshots": (("snapshot_id", "currency"),),
+    "screenshot_artifacts": (
+        ("content_sha256",),
+        ("retained_path",),
+        ("snapshot_id", "artifact_role"),
+    ),
+    "source_snapshot_supersessions": (
+        ("correction_id",),
+        ("predecessor_snapshot_id",),
+        ("successor_snapshot_id",),
+    ),
     "transactions": (("account_id", "client_reference"),),
 }
 
 _EXPECTED_CHECK_SNIPPETS: dict[str, tuple[str, ...]] = {
     "source_snapshots": (
-        "check(source_type='george_pdf')",
+        "check(source_typein('george_pdf','erste_screenshot'))",
         "check(view_typein('positions','cash'))",
+    ),
+    "screenshot_artifacts": (
+        "check(artifact_rolein('primary_account_context','supporting_crop'))",
+        "check(media_type='image/png')",
+        "check(byte_count>0)",
+    ),
+    "source_snapshot_supersessions": (
+        "check(scope_view_type='cash')",
+        "check(predecessor_snapshot_id<>successor_snapshot_id)",
     ),
     "instruments": (
         "check(identity_statusin('exact_isin','manual_confirmed','provider_name_exact_candidate','identity_unresolved'))",
@@ -803,12 +1270,24 @@ _EXPECTED_CHECK_SNIPPETS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+_EXPECTED_V2_CHECK_SNIPPETS: dict[str, tuple[str, ...]] = {
+    **{
+        table: snippets
+        for table, snippets in _EXPECTED_CHECK_SNIPPETS.items()
+        if table not in {"source_snapshots", "screenshot_artifacts", "source_snapshot_supersessions"}
+    },
+    "source_snapshots": (
+        "check(source_type='george_pdf')",
+        "check(view_typein('positions','cash'))",
+    ),
+}
+
 
 _EXPECTED_V1_COLUMN_CONTRACT: dict[str, tuple[tuple[str, str, int, str | None, int], ...]] = {
-    **_EXPECTED_COLUMN_CONTRACT,
+    **_EXPECTED_V2_COLUMN_CONTRACT,
     "position_snapshots": tuple(
         column
-        for column in _EXPECTED_COLUMN_CONTRACT["position_snapshots"]
+        for column in _EXPECTED_V2_COLUMN_CONTRACT["position_snapshots"]
         if column[0] != "observed_roi"
     ),
 }
@@ -816,17 +1295,23 @@ _EXPECTED_V1_COLUMN_CONTRACT: dict[str, tuple[tuple[str, str, int, str | None, i
 
 def tbsz_schema_issues(connection: sqlite3.Connection) -> tuple[str, ...]:
     """Return structural differences from the canonical current TBSZ schema."""
-    return _schema_issues(connection, _EXPECTED_COLUMN_CONTRACT)
+    return _schema_issues(connection, _EXPECTED_COLUMN_CONTRACT, _EXPECTED_CHECK_SNIPPETS)
+
+
+def tbsz_v2_schema_issues(connection: sqlite3.Connection) -> tuple[str, ...]:
+    """Recognize the exact screenshot-predecessor schema."""
+    return _schema_issues(connection, _EXPECTED_V2_COLUMN_CONTRACT, _EXPECTED_V2_CHECK_SNIPPETS)
 
 
 def tbsz_v1_schema_issues(connection: sqlite3.Connection) -> tuple[str, ...]:
     """Recognize the only supported migration source schema exactly."""
-    return _schema_issues(connection, _EXPECTED_V1_COLUMN_CONTRACT)
+    return _schema_issues(connection, _EXPECTED_V1_COLUMN_CONTRACT, _EXPECTED_V2_CHECK_SNIPPETS)
 
 
 def _schema_issues(
     connection: sqlite3.Connection,
     expected_columns: dict[str, tuple[tuple[str, str, int, str | None, int], ...]],
+    expected_checks: dict[str, tuple[str, ...]],
 ) -> tuple[str, ...]:
     actual_tables = _application_tables(connection)
     expected_tables = set(expected_columns)
@@ -866,40 +1351,89 @@ def _schema_issues(
             "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)
         ).fetchone()
         ddl = _normalized_sql(str(ddl_row[0])) if ddl_row and ddl_row[0] else ""
-        if any(check not in ddl for check in _EXPECTED_CHECK_SNIPPETS.get(table, ())):
+        if any(check not in ddl for check in expected_checks.get(table, ())):
             issues.append(f"check-constraint contract differs for {table}")
     return tuple(issues)
 
 
 def _initialize_schema(connection: sqlite3.Connection) -> None:
-    """Create v2 or apply the only supported data-preserving upgrade chain."""
+    """Create v3 or apply the supported data-preserving upgrade chain."""
     version = int(connection.execute("PRAGMA user_version").fetchone()[0])
     if version == CURRENT_SCHEMA_VERSION:
         _require_current_schema(connection)
         return
-    if version not in {0, 1}:
+    if version not in {0, 1, 2}:
         raise TbszSchemaMigrationError(
-            f"unsupported TBSZ schema version {version}; expected 0, 1, or {CURRENT_SCHEMA_VERSION}"
+            f"unsupported TBSZ schema version {version}; expected 0, 1, 2, or {CURRENT_SCHEMA_VERSION}"
         )
     existing_tables = _application_tables(connection)
     if existing_tables:
-        _require_v1_schema(connection)
+        if version == 2:
+            _require_v2_schema(connection)
+        else:
+            _require_v1_schema(connection)
 
-    connection.execute("BEGIN IMMEDIATE")
-    if not existing_tables:
-        for statement in _SCHEMA.split(";"):
-            if statement := statement.strip():
-                connection.execute(statement)
-    else:
-        if version == 0:
-            connection.execute("PRAGMA user_version = 1")
-        connection.execute("ALTER TABLE position_snapshots ADD COLUMN observed_roi TEXT NULL")
-    connection.execute(f"PRAGMA user_version = {CURRENT_SCHEMA_VERSION}")
-    _require_current_schema(connection)
+    connection.execute("PRAGMA foreign_keys = OFF")
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        if not existing_tables:
+            _execute_schema(connection, _SCHEMA)
+        else:
+            if version == 0:
+                connection.execute("PRAGMA user_version = 1")
+            if version in {0, 1}:
+                connection.execute(
+                    "ALTER TABLE position_snapshots ADD COLUMN observed_roi TEXT NULL"
+                )
+            _migrate_v2_to_v3(connection)
+        connection.execute(f"PRAGMA user_version = {CURRENT_SCHEMA_VERSION}")
+        _require_current_schema(connection)
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise
+    finally:
+        connection.execute("PRAGMA foreign_keys = ON")
+    if int(connection.execute("PRAGMA foreign_keys").fetchone()[0]) != 1:
+        raise TbszSchemaMigrationError("could not restore foreign-key enforcement after TBSZ migration")
+
+
+def _execute_schema(connection: sqlite3.Connection, schema: str) -> None:
+    for statement in schema.split(";"):
+        if statement := statement.strip():
+            connection.execute(statement)
+
+
+def _migrate_v2_to_v3(connection: sqlite3.Connection) -> None:
+    """Widen source provenance and add append-only screenshot correction lineage."""
+    connection.execute(
+        """CREATE TABLE source_snapshots_v3 (
+            snapshot_id INTEGER PRIMARY KEY,
+            account_id INTEGER NOT NULL REFERENCES tbsz_accounts(account_id),
+            source_filename TEXT NOT NULL UNIQUE,
+            content_sha256 TEXT NOT NULL,
+            source_type TEXT NOT NULL CHECK(source_type IN ('GEORGE_PDF', 'ERSTE_SCREENSHOT')),
+            view_type TEXT NOT NULL CHECK(view_type IN ('POSITIONS', 'CASH')),
+            source_date TEXT NULL,
+            ingested_at TEXT NOT NULL,
+            evidence_status TEXT NOT NULL,
+            evidence_fingerprint TEXT NOT NULL
+        )"""
+    )
+    connection.execute(
+        "INSERT INTO source_snapshots_v3 SELECT * FROM source_snapshots"
+    )
+    connection.execute("DROP TABLE source_snapshots")
+    connection.execute("ALTER TABLE source_snapshots_v3 RENAME TO source_snapshots")
+    _execute_schema(connection, _SCREENSHOT_SCHEMA)
 
 
 def _require_current_schema(connection: sqlite3.Connection) -> None:
     _require_schema(connection, tbsz_schema_issues)
+
+
+def _require_v2_schema(connection: sqlite3.Connection) -> None:
+    _require_schema(connection, tbsz_v2_schema_issues)
 
 
 def _require_v1_schema(connection: sqlite3.Connection) -> None:
@@ -931,12 +1465,20 @@ def _application_tables(connection: sqlite3.Connection) -> set[str]:
     }
 
 
-def _create_verified_backup(path: Path, *, source_version: int) -> Path:
+def _create_verified_backup(
+    path: Path,
+    *,
+    source_version: int,
+    target_version: int,
+) -> Path:
     """Create an SQLite-consistent, verified, non-overwriting migration backup."""
     backup_directory = path.parent / "backups"
     backup_directory.mkdir(parents=True, exist_ok=True)
     timestamp = _now().strftime("%Y%m%dT%H%M%S%fZ")
-    backup_path = backup_directory / f"{path.stem}-v{source_version}-before-v2-{timestamp}-{uuid.uuid4().hex}.sqlite"
+    backup_path = backup_directory / (
+        f"{path.stem}-v{source_version}-before-v{target_version}-"
+        f"{timestamp}-{uuid.uuid4().hex}.sqlite"
+    )
     temporary_path = backup_directory / f".{backup_path.name}.tmp"
     if backup_path.exists() or temporary_path.exists():
         raise TbszSchemaMigrationError("refusing to overwrite an existing TBSZ migration backup")
@@ -949,7 +1491,10 @@ def _create_verified_backup(path: Path, *, source_version: int) -> Path:
         with sqlite3.connect(f"file:{temporary_path.resolve()}?mode=ro", uri=True) as backup:
             if int(backup.execute("PRAGMA user_version").fetchone()[0]) != source_version:
                 raise TbszSchemaMigrationError("TBSZ migration backup version does not match the migration source")
-            _require_v1_schema(backup)
+            if source_version == 2:
+                _require_v2_schema(backup)
+            else:
+                _require_v1_schema(backup)
         temporary_path.rename(backup_path)
     except (OSError, sqlite3.Error) as error:
         raise TbszSchemaMigrationError("could not create and verify TBSZ migration backup") from error
