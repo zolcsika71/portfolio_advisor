@@ -75,6 +75,26 @@ is `NOT_AUTHORIZED`.
 - Prospective historical schema replays use `RESEARCH_BACKFILL`; only
   `PROSPECTIVE_LIVE_RECORD` entries count as live evidence.
 
+## Architecture decision records
+
+Codex must consult `docs/decisions/README.md` and the existing ADRs before work
+that makes an important project decision. Important decisions include changes
+to architecture, database or storage choices, data authority or provenance,
+public interfaces, dependencies with substantial impact, and security or
+deployment approaches. Routine fixes, formatting, and simple refactors do not
+require an ADR.
+
+When important decision-making is in scope, Codex must check for an existing
+relevant ADR before creating another and create or update the ADR as part of
+the same work. New ADRs use the next unused sequential, zero-padded number and
+must never overwrite or renumber an existing ADR. An unresolved choice remains
+`Proposed`; `Accepted` requires explicit approval or an established decision
+within the authorized task scope. A change to an accepted decision requires a
+new ADR linked to the old record, whose status becomes `Superseded by ADR-NNN`.
+Do not invent historical approval or backfill unrelated decisions. Keep ADRs
+in `docs/decisions/`, architecture documentation in `docs/architecture/`, and
+diagram artifacts in `docs/diagrams/`.
+
 ## Local data conventions
 
 `database/`, generated `data/audit/`, retained `data/raw/`, legacy compatibility
