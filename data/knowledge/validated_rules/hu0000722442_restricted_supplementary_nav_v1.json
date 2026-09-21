@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "policy_id": "HU0000722442_RESTRICTED_SUPPLEMENTARY_NAV",
+  "version": "1.0.0",
+  "recorded_at_utc": "2026-09-17T19:32:14Z",
+  "decision": "USER_APPROVED_RESTRICTED_EVIDENCE_ONLY_DIRECTION",
+  "approval_timestamp": null,
+  "authenticated_owner": null,
+  "execution_authorized": false,
+  "parent": {
+    "artifact": {
+      "path": "data/knowledge/validated_rules/capital_defensive_portfolio_metrics.yaml",
+      "sha256": "bb4d28b57ba8fd66435b9be0b71bb9a2b427d64f32868f98ba3741bfa74659ad"
+    },
+    "canonical_fingerprint": "b0c3540efb50e142dcc9dceee258ffd8054e24e9f986d0bf7a1c84114272b2c4"
+  },
+  "scope": {
+    "isin": "HU0000722442",
+    "share_class": "Erste Euro Ingatlan Alap T180",
+    "currency": "EUR",
+    "chart_identity": "11002",
+    "unit": "PER_UNIT",
+    "value_type": "NAV",
+    "precision_basis": "PUBLISHED_DECIMAL_TEXT",
+    "start": "2025-05-23",
+    "end": "2025-08-28",
+    "count": 68,
+    "first_locator": 1368,
+    "last_locator": 1435,
+    "discrepancy_count": 8,
+    "cutoff": "2026-09-04T12:24:23Z"
+  },
+  "chart": {
+    "path": "data/raw/nav/erste_market/quarantine/ca561ea1a125bda82de8f6bb184ec1fa6e866247143e3d8476b616048da8d153.response.bin",
+    "sha256": "ca561ea1a125bda82de8f6bb184ec1fa6e866247143e3d8476b616048da8d153"
+  },
+  "assessment": {
+    "path": "data/raw/distribution_evidence/erste_asset_management/HU0000722442/HU0000722442.nav-semantic-documentary-assessment-prefix-2025-05-23-to-2025-08-28-2026-09-17.json",
+    "sha256": "d28694097d4ff02cf987b85ae1731eef71a9fe38127eaedf48c6d8ee6f6a93be"
+  },
+  "restrictions": [
+    "NO_NUMERICAL_ENDORSEMENT",
+    "NO_COMPUTATION",
+    "NO_PHASE_E_PROJECTION",
+    "NO_CORRECTION_ADMISSION",
+    "NO_REVISION_LINEAGE_INFERENCE",
+    "NO_DISTRIBUTION_OR_SETTLEMENT_CONCLUSION",
+    "NO_PROMOTION_API"
+  ]
+}
