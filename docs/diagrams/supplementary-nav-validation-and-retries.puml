@@ -1,0 +1,165 @@
+@startuml
+' Status: Implemented
+' Verified against:
+' - src/portfolio_advisor/history/supplementary_nav.py
+' - tests/test_supplementary_nav.py::test_atomic_write_retry_exact_readback_and_no_projection
+' - tests/test_supplementary_nav.py::test_legacy_v1_admission_is_readable_but_not_retryable
+' - tests/test_supplementary_nav.py::test_exact_retry_rejects_wrong_or_post_write_hash_without_changes
+' - tests/test_supplementary_nav.py::test_target_changed_after_authorization_is_rejected_without_changes
+' - tests/test_supplementary_nav.py::test_target_baseline_stale_baseline_and_valid_plan_collision
+' - tests/test_supplementary_nav.py::test_wrong_authorization_bindings_preflight
+title Supplementary NAV validation, admission, inspection, and retries [Implemented]
+
+autonumber
+hide footbox
+skinparam responseMessageBelowArrow true
+skinparam sequenceMessageAlign center
+
+actor "Owner-controlled caller" as Owner
+
+box "Repository evidence boundary (cannot authorize execution)" #FFF2CC
+collections "Policy, F1 parent, assessment, chart,\ntransport receipt, notice, dependencies" as Evidence
+database "Phase E baseline snapshot bytes" as Baseline
+end box
+
+box "Restricted supplementary-NAV module" #DDEBF7
+participant "plan_supplementary_admission" as Planner
+participant "execute_supplementary_admission" as Executor
+participant "inspect_restricted_admission" as Inspector
+participant "_stored strict record validator" as Stored
+end box
+
+box "Operator-controlled target boundary" #E2F0D9
+participant "Target filesystem path" as Target
+database "Isolated restricted SQLite store\n(not a Phase E store)" as RestrictedStore
+end box
+
+note over Owner,Evidence
+ExecutionAuthorization is a trust input supplied by owner-controlled code.
+Policy/evidence files, previews, matching hashes, and directory discovery cannot grant authority.
+end note
+
+== Non-writing plan validation ==
+Owner -> Planner: repository root + policy Reference + baseline Reference
+Planner -> Evidence: read exact policy bytes and verify SHA-256
+Planner -> Planner: require exact schema/identity/version, UTC times, approved direction,\nfixed scope/restrictions, and non-authorizing policy fields
+Planner -> Evidence: verify F1 parent bytes + canonical fingerprint
+Planner -> Evidence: verify assessment, chart, source inventory, dependencies,\ntransport receipt URL/status/completeness/cutoff and all hashes
+Planner -> Planner: require one exact semantic identity group
+Planner -> Planner: parse exact positive decimal tokens; select locators 1368..1435;\nrequire 68 increasing unique dates and exact assessment occurrence matches
+Planner -> Evidence: verify all 8 July discrepancy links; require replacement_selected=false
+Planner -> Baseline: require safe path, no SQLite sidecars, exact hash,\ncomplete rollback-journal SQLite bytes
+Planner -> Planner: deserialize same bytes into :memory:; PRAGMA query_only=ON
+Planner -> Planner: require Phase E tables, one bound manifest, no prefix rows,\nand retained 249-row 2025-08-29..2026-08-31 baseline
+alt any path, hash, JSON, provenance, scope, occurrence, discrepancy, or baseline check fails
+    Planner --> Owner: SupplementaryError; no target write
+else all checks pass
+    Planner --> Owner: immutable AdmissionPlan + fingerprint\npreview says executed=false and cannot export for computation
+end
+
+== Explicit admission or retry ==
+Owner -> Executor: validated AdmissionPlan + absolute target + ExecutionAuthorization
+Executor -> Executor: require exact AdmissionPlan and Authorization types
+Executor -> Executor: bind authorization target, plan fingerprint, policy SHA-256,\nand non-empty authorization reference
+alt missing/wrong authorization binding
+    Executor --> Owner: SupplementaryError before target open
+else preflight authorization bindings match
+    Executor -> Planner: rerun every plan/provenance validation
+    Planner --> Executor: fresh plan
+    Executor -> Executor: require fresh plan == supplied plan; target != Phase E baseline;\nsafe absolute non-symlink path; no target WAL/SHM/journal
+    alt stale plan, tampered dependency, forbidden target, or sidecar
+        Executor --> Owner: SupplementaryError before target open
+    else target preflight passes
+        Executor -> Target: check existence; hash current bytes if present
+        alt target does not exist AND expected_initial_target_sha256 is non-null
+            Executor --> Owner: target baseline mismatch
+            note right of Target
+            Rejection occurs before sqlite3.connect(mode=rwc),
+            so invalid hash authorization creates no SQLite file.
+            end note
+        else target existence/hash shape is admissible for inspection
+            Executor -> RestrictedStore: sqlite3.connect(mode=rwc); foreign_keys=ON; BEGIN IMMEDIATE
+            note right of RestrictedStore
+            Connecting to a nonexistent admissible target may create the filesystem entry.
+            DDL and rows are governed by the following SQLite transaction.
+            end note
+            Executor -> RestrictedStore: read installed schema
+            alt non-empty schema differs from exact restricted schema
+                Executor -> RestrictedStore: rollback
+                Executor --> Owner: reject operational/foreign database
+            else exact restricted schema is installed
+                Executor -> Stored: validate admission, scope, plan, status, restrictions,\nall 68 observations, all 8 discrepancies, and foreign keys
+                alt stored record is legacy schema v1
+                    Stored --> Executor: readable record; initial_target_sha256=None; known=false
+                    Executor -> RestrictedStore: rollback retry transaction
+                    Executor --> Owner: reject retry because original target hash is unknown
+                else stored record is current schema v2
+                    Stored --> Executor: readable record; stored original target hash is known
+                    Executor -> Executor: require authorization_reference == stored reference\nand expected_initial_target_sha256 == stored original pre-write hash
+                    note right of Executor
+                    The original pre-write hash may legitimately differ from the current
+                    post-write store hash. Substituting the current hash is rejected.
+                    end note
+                    alt authorization reference, original hash, plan, or stored content differs
+                        Executor -> RestrictedStore: rollback
+                        Executor --> Owner: SupplementaryError; store unchanged
+                    else exact v2 retry
+                        Executor -> RestrictedStore: rollback read transaction; write nothing
+                        Executor --> Owner: original RestrictedAdmission and recorded time
+                    end
+                else exact schema contains no admission and no partial/orphan rows
+                    Stored --> Executor: no stored admission; continue new admission
+                end
+            else target has no schema
+                Executor -> Executor: continue new admission
+            end
+
+            opt no stored admission and schema is empty or exact
+                Executor -> Executor: require current pre-write file hash (or None)\n== authorization.expected_initial_target_sha256
+                alt baseline hash changed after authorization
+                    Executor -> RestrictedStore: rollback
+                    Executor --> Owner: target baseline mismatch; existing bytes unchanged
+                else original target baseline matches
+                    opt schema absent
+                        Executor -> RestrictedStore: create exact restricted tables + immutability triggers
+                    end
+                    Executor -> RestrictedStore: insert schema-v2 admission record\nincluding original pre-write target hash + authorization reference
+                    Executor -> RestrictedStore: insert 68 restricted observations
+                    Executor -> RestrictedStore: insert 8 unadmitted discrepancy comparisons
+                    Executor -> Stored: strict readback of complete admission
+                    alt insert/readback error
+                        Executor -> RestrictedStore: rollback transactional DDL and rows
+                        Executor --> Owner: error
+                    else complete strict readback
+                        Executor -> RestrictedStore: commit
+                        Executor --> Owner: RestrictedAdmission(schema_version=2,\ninitial target hash known, evidence-only status)
+                    end
+                end
+            end
+        end
+    end
+end
+
+== Read-only inspection (never grants retry authority) ==
+Owner -> Inspector: AdmissionPlan + content-hashed store Reference
+Inspector -> Planner: rerun full plan/provenance validation
+Inspector -> Target: require safe path, no sidecars, exact referenced hash,\ncomplete SQLite snapshot bytes
+Inspector -> Inspector: deserialize same bytes into :memory:; query_only=ON; require exact schema
+Inspector -> Stored: strict stored-content validation
+alt exact legacy v1 record
+    Stored --> Inspector: schema_version=1; initial_target_sha256=None; known=false
+    Inspector --> Owner: readable RestrictedAdmission
+else exact current v2 record
+    Stored --> Inspector: schema_version=2; original hash value/None; known=true
+    Inspector --> Owner: readable RestrictedAdmission
+else malformed, tampered, partial, ambiguous, or unsupported version
+    Stored --> Inspector: SupplementaryError
+    Inspector --> Owner: inspection fails closed
+end
+
+note over Inspector,RestrictedStore
+Readability never authorizes admission or replay. Restricted records cannot be exported
+for computation and are intentionally isolated from the ordinary Phase E projection.
+end note
+
+@enduml

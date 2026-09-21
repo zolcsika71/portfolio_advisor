@@ -1,0 +1,147 @@
+@startuml
+' Status: Implemented
+' Verified against:
+' - scripts/admit_tbsz_cash_correction.py
+' - src/portfolio_advisor/tbsz/screenshot_evidence.py
+' - src/portfolio_advisor/tbsz/repository.py::TbszPortfolioRepository.admit_cash_correction
+' - src/portfolio_advisor/tbsz/repository.py::_current_cash_snapshot_row
+' - tests/test_tbsz_cash_correction.py
+title LTIA screenshot-backed cash correction [Implemented]
+
+autonumber
+hide footbox
+skinparam responseMessageBelowArrow true
+skinparam sequenceMessageAlign center
+
+actor Operator
+
+box "Operator-authorized incoming evidence" #FFF2CC
+collections "Primary account screenshot\nand supporting crop" as Incoming
+end box
+
+box "Correction workflow" #DDEBF7
+participant "admit_tbsz_cash_correction.py" as CLI
+participant "retain_screenshot_artifact" as Retention
+participant "TbszPortfolioRepository" as Repository
+participant "_current_cash_snapshot_row" as Selector
+end box
+
+box "Retained evidence boundary" #FCE4D6
+collections "data/tbsz/source/screenshots/{sha256}.png" as EvidenceStore
+end box
+
+box "Local SQLite evidence-store boundary" #E2F0D9
+database "tbsz_portfolio.sqlite (schema v3)" as Database
+end box
+
+Operator -> CLI: invoke with two PNGs + authorized hashes,\ncorrection ID, account, predecessor, currency, balance, reason
+
+loop primary account context, then supporting crop
+    CLI -> Retention: retain_screenshot_artifact(path, role, expected_sha256)
+    Retention -> Retention: require existing non-symlink evidence root and source;\nplain .png filename; exact SHA-256; PNG signature
+    alt validation fails
+        Retention --> CLI: TbszError or SourceConflictError
+        CLI --> Operator: TBSZ_CASH_CORRECTION_FAILED, exit 2
+    else content-addressed target already exists
+        Retention -> EvidenceStore: verify non-symlink file, size, hash, PNG signature
+        EvidenceStore --> Retention: matching immutable artifact
+    else new content-addressed target
+        Retention -> EvidenceStore: create checked non-symlink directories below evidence root
+        Retention -> EvidenceStore: copy to temporary file; flush + fsync; verify
+        Retention -> EvidenceStore: hard-link temporary file to hash path\n(or verify a concurrent identical target)
+        Retention -> EvidenceStore: remove temporary file
+    end
+    Retention --> CLI: ScreenshotArtifactInput(role, filename, retained path, hash, size)
+end
+
+note over CLI,EvidenceStore
+Artifact retention happens before the SQLite correction transaction.
+A later failure does not roll back already retained evidence files.
+end note
+
+CLI -> CLI: construct CashCorrectionInput\nsource_date=None; ERSTE_SCREENSHOT evidence status; one requested cash row
+note right of CLI
+The screenshot capture or ingestion time is not used as a financial date.
+The persisted correction source_date remains NULL.
+end note
+
+CLI -> Repository: initialize()
+Repository -> Database: recognize/create/migrate schema v3; backup before supported migration
+alt initialization failure
+    Repository --> CLI: error (retained evidence remains)
+    CLI --> Operator: TBSZ_CASH_CORRECTION_FAILED, exit 2
+else schema ready
+    CLI -> Repository: admit_cash_correction(correction, evidence_root)
+    Repository -> Repository: validate TBSZ account label, correction ID, predecessor,\nreason/status, non-empty unique-currency cash rows
+    Repository -> EvidenceStore: re-verify both required roles, distinct paths/bytes,\nPNG media/size/hash, no symlink or root escape
+    alt correction or retained evidence invalid
+        Repository --> CLI: TbszError or SourceConflictError before DB write connection
+        CLI --> Operator: failure, exit 2 (retained evidence remains)
+    else preflight valid
+        Repository -> Repository: calculate deterministic correction fingerprint
+        Repository -> Database: open write connection; foreign_keys=ON
+        group One SQLite correction transaction
+            Repository -> Database: lookup source_snapshot_supersessions by correction_id
+            alt correction_id already exists (retry)
+                Repository -> Database: load stored successor, account, edge, cash rows, artifact rows
+                Repository -> Repository: compare every binding: account, predecessor, reason, NULL date,\nsource metadata/status/fingerprint, cash payload, both artifacts
+                alt exact replay
+                    Repository -> Database: commit/close transaction with no changes
+                    Repository --> CLI: existing SourceSnapshot, inserted=false\n(no duplicate records)
+                    CLI --> Operator: ALREADY_ADMITTED_IDENTICAL, exit 0
+                else any replay binding differs
+                    Repository -> Database: rollback
+                    Repository --> CLI: SourceConflictError (identity exists with conflict)
+                    CLI --> Operator: failure, exit 2
+                end
+            else new correction_id
+                Repository -> Database: require existing account and predecessor snapshot
+                Repository -> Repository: require predecessor is CASH evidence for same account
+                Repository -> Selector: select current cash snapshot for account
+                Selector -> Database: choose latest GEORGE_PDF CASH base by financial date/order;\nfollow explicit supersession edges
+                Selector -> Selector: reject competing successors, cycles, or account/CASH scope crossing
+                Selector --> Repository: selected snapshot
+                Repository -> Database: require selected snapshot == predecessor\nand predecessor has no existing successor
+                alt predecessor invalid, stale, already superseded, or graph invalid
+                    Repository -> Database: rollback
+                    Repository --> CLI: SourceConflictError or TbszError
+                    CLI --> Operator: failure, exit 2
+                else predecessor valid
+                    Repository -> Database: insert ERSTE_SCREENSHOT CASH source snapshot\nwith evidence fingerprint and source_date=NULL
+                    Repository -> Database: insert cash row(s)
+                    Repository -> Database: insert primary/supporting screenshot_artifacts
+                    Repository -> Database: insert CASH source_snapshot_supersessions edge\ncorrection_id: predecessor -> successor + reason
+                    Repository -> Selector: reselect current cash snapshot
+                    Selector --> Repository: successor or graph error
+                    alt successor is not deterministic selection
+                        Repository -> Database: rollback all correction rows
+                        Repository --> CLI: SourceConflictError
+                        CLI --> Operator: failure, exit 2
+                    else successor selected
+                        Repository -> Database: commit correction rows
+                        Repository --> CLI: successor SourceSnapshot, inserted=true
+                        CLI --> Operator: ADMITTED with snapshot ID, exit 0
+                    end
+                end
+            end
+        end
+    end
+end
+
+== Subsequent selection ==
+Operator -> Repository: current_cash_snapshot(account)
+Repository -> Selector: select base PDF and follow explicit correction chain
+alt a later valid GEORGE_PDF cash observation becomes the base
+    Selector --> Repository: later PDF snapshot (older correction does not override it)
+else corrected predecessor remains the selected base chain
+    Selector --> Repository: screenshot successor
+end
+Repository --> Operator: selected SourceSnapshot; cash rows read separately
+
+note over CLI,Database
+This correction path never overwrites the original PDF snapshot.
+It appends screenshot evidence and an explicit CASH-only supersession edge.
+Ordinary broker PDF imports retain their separate undated-conflict protection.
+end note
+
+@enduml

@@ -1,0 +1,157 @@
+@startuml
+' Status: Implemented
+' Verified against:
+' - scripts/initialize_tbsz_portfolio_from_pdfs.py
+' - src/portfolio_advisor/tbsz/source_import.py
+' - src/portfolio_advisor/tbsz/repository.py
+' - tests/test_tbsz_portfolio.py::test_source_import_is_idempotent_and_conflicting_evidence_fails_closed
+' - tests/test_tbsz_portfolio.py::test_source_directory_requires_confirmation_before_any_import
+' - tests/test_tbsz_portfolio.py::test_source_directory_import_uses_only_synthetic_confirmed_tbsz_evidence
+title Broker snapshot import [Implemented]
+
+autonumber
+hide footbox
+skinparam responseMessageBelowArrow true
+skinparam sequenceMessageAlign center
+
+actor Operator
+
+box "Operator-controlled local evidence" #FFF2CC
+collections "Direct-child George PDF files" as PDFs
+participant "manual_confirmations.json" as Confirmations
+end box
+
+box "Deterministic import code" #DDEBF7
+participant "initialize_tbsz_portfolio_from_pdfs.py" as CLI
+participant "tbsz.source_import" as Importer
+participant "TbszPortfolioRepository" as Repository
+end box
+
+box "Local evidence-store boundary" #E2F0D9
+database "tbsz_portfolio.sqlite" as Database
+end box
+
+note over PDFs,Confirmations
+PDFs may be image-only. The importer performs no OCR or fuzzy extraction.
+Financial fields enter the store only from explicit manual confirmations.
+end note
+
+Operator -> CLI: invoke with source directory, confirmation file, database
+
+alt --write-template
+    CLI -> Importer: write_manual_confirmation_template(source, destination)
+    Importer -> Confirmations: require destination does not exist
+    alt destination already exists
+        Importer --> CLI: TbszError (refuse overwrite)
+        CLI --> Operator: TBSZ_SOURCE_IMPORT_FAILED, exit 2
+    else new destination
+        Importer -> PDFs: discover sorted direct-child *.pdf files only
+        alt source path exists but is not a directory
+            Importer --> CLI: TbszError
+            CLI --> Operator: TBSZ_SOURCE_IMPORT_FAILED, exit 2
+        else valid/missing source directory
+            Importer -> Confirmations: write filename-only schema v1 template\nmanual_confirmed=false; no inferred values
+            Importer --> CLI: discovered filenames
+            CLI --> Operator: template written, exit 0
+        end
+    end
+else ordinary broker import
+    CLI -> Repository: initialize()
+    group Separate schema initialization or supported migration transaction
+        Repository -> Database: recognize/create current schema; backup before migration when required
+        alt unrecognized schema, backup, or migration failure
+            Database --> Repository: error / rollback
+            Repository --> CLI: TbszError or OSError
+            CLI --> Operator: TBSZ_SOURCE_IMPORT_FAILED, exit 2
+        end
+    end
+
+    CLI -> Importer: import_george_pdf_directory(repository, source, confirmations)
+    Importer -> PDFs: discover sorted direct-child *.pdf files only
+    alt source path exists but is not a directory
+        Importer --> CLI: TbszError
+        CLI --> Operator: TBSZ_SOURCE_IMPORT_FAILED, exit 2
+    else source missing or contains no PDFs
+        Importer --> CLI: NO_PDFS_FOUND
+        CLI --> Operator: status/counts, exit 0
+    else PDFs discovered
+        Importer -> Confirmations: load exact JSON schema v1
+        alt malformed JSON/schema, duplicate or unsafe filename, or confirmation names outside discovered set
+            Confirmations --> Importer: fail closed
+            Importer --> CLI: TbszError
+            CLI --> Operator: TBSZ_SOURCE_IMPORT_FAILED, exit 2
+        else any discovered PDF missing or manual_confirmed != true
+            Importer --> CLI: SOURCE_FIELD_REQUIRES_MANUAL_CONFIRMATION\n(no snapshot rows requested)
+            note right of CLI
+            The CLI initialized the database before this gate,
+            but no source snapshot batch is submitted.
+            end note
+            CLI --> Operator: confirmation_required count, exit 0
+        else every discovered PDF explicitly confirmed
+            loop each discovered PDF
+                Importer -> PDFs: read exact bytes and calculate SHA-256
+                Importer -> Confirmations: require account, POSITIONS/CASH view,\nISO date or null, evidence status, rows
+                Importer -> Importer: construct SourceDocumentInput
+            end
+            Importer -> Importer: validate every document before database mutation
+            note right of Importer
+            Enforces TBSZ-only account scope, PDF/hash shape, view/row separation,
+            unique position names/cash currencies, currencies, and numeric fields.
+            end note
+            alt any document invalid
+                Importer --> CLI: TbszError before batch write
+                CLI --> Operator: TBSZ_SOURCE_IMPORT_FAILED, exit 2
+            else all documents valid
+                Importer -> Repository: import_source_documents(all documents)
+                Repository -> Repository: validate every document again
+                Repository -> Database: open write connection; foreign_keys=ON
+                group One SQLite transaction for the entire source batch
+                    loop each document
+                        Repository -> Database: resolve/create TBSZ account; compute evidence fingerprint
+                        Repository -> Database: lookup source_filename
+                        alt filename exists with identical content hash and fingerprint
+                            Database --> Repository: existing snapshot, inserted=false
+                        else filename exists with different hash or fingerprint
+                            Repository -> Repository: raise SourceConflictError
+                        else new filename
+                            alt undated different fingerprint already exists for same account/view
+                                Repository -> Repository: raise SourceConflictError
+                            else admissible new GEORGE_PDF snapshot
+                                Repository -> Database: insert source_snapshots row\n(source_type=GEORGE_PDF; source_date retained as value or NULL)
+                                alt POSITIONS view
+                                    loop each position
+                                        Repository -> Database: resolve instrument by exact ISIN, then normalized provider name;\ncreate if absent; reject identity conflict; retain alias
+                                        Repository -> Database: insert position_snapshots row
+                                    end
+                                else CASH view
+                                    loop each cash row
+                                        Repository -> Database: insert cash_snapshots row
+                                    end
+                                end
+                                Database --> Repository: new snapshot, inserted=true
+                            end
+                        end
+                    end
+                    alt any exception in batch
+                        Repository -> Database: rollback all batch changes
+                        Repository --> Importer: error
+                        Importer --> CLI: error
+                        CLI --> Operator: TBSZ_SOURCE_IMPORT_FAILED, exit 2
+                    else all documents complete
+                        Repository -> Database: commit batch
+                        Repository --> Importer: ordered (snapshot, inserted) results
+                    end
+                end
+                Importer --> CLI: IMPORTED if any inserted;\notherwise ALREADY_IMPORTED_IDENTICAL
+                CLI --> Operator: status and discovered/imported/already counts, exit 0
+            end
+        end
+    end
+end
+
+note over Importer,Database
+This is the ordinary PDF-backed broker import path.
+Screenshot-backed cash corrections use a separate ERSTE_SCREENSHOT workflow.
+end note
+
+@enduml
