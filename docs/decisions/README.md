@@ -73,3 +73,4 @@ Describe benefits, trade-offs, limitations, and follow-up obligations.
 | ADR | Status | Decision |
 | --- | --- | --- |
 | [ADR-001](ADR-001-adopt-architecture-decision-records.md) | Accepted | Adopt a persistent ADR workflow for important project decisions. |
+| [ADR-002](ADR-002-adopt-plantuml-for-detailed-technical-diagrams.md) | Accepted | Use PlantUML selectively for detailed technical diagrams. |

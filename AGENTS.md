@@ -95,6 +95,20 @@ Do not invent historical approval or backfill unrelated decisions. Keep ADRs
 in `docs/decisions/`, architecture documentation in `docs/architecture/`, and
 diagram artifacts in `docs/diagrams/`.
 
+## Technical diagrams
+
+Codex must consult `docs/diagrams/README.md` when work creates or changes a
+technical diagram. Keep Markdown and Mermaid for straightforward explanations.
+Use PlantUML when detail makes Mermaid insufficient, including detailed
+sequences, complex state machines, component interfaces, error or retry paths,
+conditional processing, and security or trust boundaries.
+
+Every newly created `.puml` source must live under `docs/diagrams/` and follow
+the naming, indexing, and validation conventions documented there. Diagrams
+must reflect verified code or contracts and cite what was checked. Clearly
+label proposed behavior as `Proposed` and implemented behavior as `Implemented`;
+never present an unverified design as current system behavior.
+
 ## Local data conventions
 
 `database/`, generated `data/audit/`, retained `data/raw/`, legacy compatibility
