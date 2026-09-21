@@ -110,6 +110,6 @@ including model-portfolio and shortlist imports. The legacy-named local LTIA
 database contains the user's current holdings and cash evidence; it is not a
 target-allocation, order, or trading database. The three governed inputs and
 their future comparison contract are described in
-[Portfolio workflow and current availability](portfolio_workflow_status.md).
+[Portfolio workflow and current availability](architecture/portfolio_workflow_status.md).
 No schema currently persists a roadmap-complete constructed-shortlist finalist,
 portfolio-level metric result, user recommendation, or buy/sell/cash proposal.

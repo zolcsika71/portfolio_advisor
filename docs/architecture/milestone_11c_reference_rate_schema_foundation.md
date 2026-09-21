@@ -6,15 +6,15 @@ compounding, portfolio calculation, or runtime enablement.
 
 Phase B subsequently admitted one official ECB €STR history artifact, and Phase C admitted one
 official New York Fed SOFR history artifact under provenance v2 without another schema revision.
-See [Milestone 11C Phase B](milestone_11c_phase_b_ecb_estr_ingestion.md) and
-[Milestone 11C Phase C](milestone_11c_phase_c_sofr_ingestion.md). Production
+See [Milestone 11C Phase B](../milestone_11c_phase_b_ecb_estr_ingestion.md) and
+[Milestone 11C Phase C](../milestone_11c_phase_c_sofr_ingestion.md). Production
 remains `IMPLEMENTED_BLOCKED_BY_DATA` and `NOT_AUTHORIZED`.
 
 > **Forward correction:** this document records the historical revision-1
 > contract. Phase C0 proved that mandatory non-empty `publication_date`,
 > `provider_revision_id`, and `provider_dataset_version` fields were too
 > provider-specific. The installed schema is now provider-neutral revision 2;
-> see [Milestone 11C Phase C0](milestone_11c_phase_c0_reference_rate_provenance_contract.md).
+> see [Milestone 11C Phase C0](../milestone_11c_phase_c0_reference_rate_provenance_contract.md).
 > Revision-1 fingerprints below remain historical identities and are not
 > reinterpreted as revision 2.
 

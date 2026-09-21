@@ -26,7 +26,7 @@ The project must remain:
 * fail-closed when evidence is incomplete.
 
 The current user-facing workflow and implementation boundary are maintained in
-[Portfolio workflow and current availability](docs/portfolio_workflow_status.md).
+[Portfolio workflow and current availability](portfolio_workflow_status.md).
 This roadmap describes the target architecture; a listed target capability is
 not evidence that it is implemented or authorized.
 
@@ -273,7 +273,7 @@ proposal until the user makes an explicit decision. Graphify may supply
 retrieved citations for an explanation, and a separately approved OpenAI layer
 may explain the governed report; neither may calculate, rank, recommend, or
 select. The full placeholder contract and present availability are maintained
-in [Portfolio workflow and current availability](docs/portfolio_workflow_status.md).
+in [Portfolio workflow and current availability](portfolio_workflow_status.md).
 
 ---
 

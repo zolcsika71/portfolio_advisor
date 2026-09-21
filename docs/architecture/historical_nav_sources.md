@@ -40,7 +40,7 @@ exactly `text/html; charset=utf-8`; the original response remains transport-
 quarantined and a distinct immutable semantic receipt records admission. This
 exception does not weaken any other provider, host, endpoint, or media type.
 
-See [Milestone 11C Phase E](milestone_11c_phase_e_nav_provenance.md) for the
+See [Milestone 11C Phase E](../milestone_11c_phase_e_nav_provenance.md) for the
 admitted cohorts, hashes, schema lineage, and offline commands.
 
 ## Strict unresolved cases

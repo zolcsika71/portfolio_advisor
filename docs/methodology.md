@@ -98,12 +98,12 @@ selection may fill missing dates, history, benchmark observations, or prices.
 
 The complete target workflow, placeholder output contracts, current LTIA
 boundary, and implementation status are in
-[Portfolio workflow and current availability](portfolio_workflow_status.md).
+[Portfolio workflow and current availability](architecture/portfolio_workflow_status.md).
 The approved future calculation semantics, explicit model assumptions,
 precision contract and remaining evidence blockers are in
 [the Phase F1 methodology policy](milestone_11c_phase_f1_portfolio_metrics_policy.md).
 The implemented formula/failure-state boundary is documented in
-[the Phase F2 metric foundation](milestone_11c_phase_f2_metric_foundation.md).
+[the Phase F2 metric foundation](architecture/milestone_11c_phase_f2_metric_foundation.md).
 
 ## Official reference-rate boundary
 

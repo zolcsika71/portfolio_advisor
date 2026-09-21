@@ -4,7 +4,7 @@ This package imports dated model-portfolio Excel workbooks into SQLite.
 It owns the `modell portfóliók` model-portfolio worksheet only. The separate
 `shortlist` worksheet is governed by the schema-v3 shortlist import pipeline;
 current LTIA holdings and cash are separate local evidence. See
-[Portfolio workflow and current availability](../../../docs/portfolio_workflow_status.md)
+[Portfolio workflow and current availability](../../../docs/architecture/portfolio_workflow_status.md)
 for the three-input workflow and present availability boundary.
 
 ## Contract

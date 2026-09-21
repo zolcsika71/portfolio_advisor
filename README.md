@@ -8,7 +8,8 @@ comparison. Financial calculations, eligibility, and ranking are typed Python
 code; Graphify is limited to source-backed methodology, constraints, and
 explainability.
 
-See the [current workflow and availability contract](docs/portfolio_workflow_status.md)
+See the [architecture roadmap](docs/architecture/ARCHITECTURE_ROADMAP.md) and
+the [current workflow and availability contract](docs/architecture/portfolio_workflow_status.md)
 for the governed target workflow, the distinction between user horizon and
 historical evidence, and the parts not implemented today.
 
@@ -150,7 +151,7 @@ local under `database/` and `data/`; they are deliberately ignored because
 they may be large, provider-controlled, or machine-specific. The code and
 tests that reproduce their deterministic handling are versioned.
 
-See the [current workflow and availability contract](docs/portfolio_workflow_status.md), [methodology](docs/methodology.md), [Phase F1 methodology policy](docs/milestone_11c_phase_f1_portfolio_metrics_policy.md), [Phase F2 metric foundation](docs/milestone_11c_phase_f2_metric_foundation.md), [Phase E NAV evidence](docs/milestone_11c_phase_e_nav_provenance.md), [HUFONIA Phase D evidence](docs/milestone_11c_phase_d_hufonia_ingestion.md), [SOFR Phase C evidence](docs/milestone_11c_phase_c_sofr_ingestion.md), [provider-neutral Phase C0 provenance](docs/milestone_11c_phase_c0_reference_rate_provenance_contract.md), [ECB €STR Phase B evidence](docs/milestone_11c_phase_b_ecb_estr_ingestion.md), [historical source rules](docs/historical_nav_sources.md), [backtesting and prospective validation](docs/backtesting.md), [launchd operations](ops/launchd/README.md), and the [script catalog](scripts/README.md).
+See the [current workflow and availability contract](docs/architecture/portfolio_workflow_status.md), [methodology](docs/methodology.md), [Phase F1 methodology policy](docs/milestone_11c_phase_f1_portfolio_metrics_policy.md), [Phase F2 metric foundation](docs/architecture/milestone_11c_phase_f2_metric_foundation.md), [Phase E NAV evidence](docs/milestone_11c_phase_e_nav_provenance.md), [HUFONIA Phase D evidence](docs/milestone_11c_phase_d_hufonia_ingestion.md), [SOFR Phase C evidence](docs/milestone_11c_phase_c_sofr_ingestion.md), [provider-neutral Phase C0 provenance](docs/milestone_11c_phase_c0_reference_rate_provenance_contract.md), [ECB €STR Phase B evidence](docs/milestone_11c_phase_b_ecb_estr_ingestion.md), [historical source rules](docs/architecture/historical_nav_sources.md), [backtesting and prospective validation](docs/architecture/backtesting.md), [launchd operations](ops/launchd/README.md), and the [script catalog](scripts/README.md).
 
 ## Official reference-rate evidence operations
 

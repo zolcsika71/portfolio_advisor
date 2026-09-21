@@ -217,13 +217,13 @@ establishes construction eligibility nor connects to production evidence. Real
 evidence still cannot use F2: no trusted admitted
 portfolio-wealth lineage exists, EUR distribution treatment is unknown, and HUF
 benchmark convention evidence is incomplete. The policy is recorded in
-[the Phase F1 record](milestone_11c_phase_f1_portfolio_metrics_policy.md) and
+[the Phase F1 record](../milestone_11c_phase_f1_portfolio_metrics_policy.md) and
 the implementation boundary in
 [the Phase F2 record](milestone_11c_phase_f2_metric_foundation.md), and the
 synthetic wealth boundary in
 [the Phase F3A record](milestone_11c_phase_f3a_synthetic_portfolio_wealth.md); the
 installed evidence boundary remains in
-[the Phase E record](milestone_11c_phase_e_nav_provenance.md).
+[the Phase E record](../milestone_11c_phase_e_nav_provenance.md).
 
 ## Non-negotiable safety boundary
 

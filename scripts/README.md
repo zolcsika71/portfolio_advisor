@@ -164,7 +164,7 @@ Graphify is not a financial-data input, metric engine, ranker, or decision
 maker. No script implements retrieved Graphify citations in a portfolio
 explanation, an OpenAI explanation, a constructed-shortlist finalist, or a
 buy/sell/cash proposal. Those target responsibilities and current availability
-are defined in [Portfolio workflow and current availability](../docs/portfolio_workflow_status.md).
+are defined in [Portfolio workflow and current availability](../docs/architecture/portfolio_workflow_status.md).
 
 ## Safety
 
