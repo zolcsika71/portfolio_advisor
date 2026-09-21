@@ -16,6 +16,12 @@ conditional processing, or security and trust boundaries. Do not convert a
 clear existing Mermaid diagram merely for consistency, and do not create a
 diagram without a concrete documentation need.
 
+During relevant development or documentation work, assess that need as part of
+the task rather than waiting for a separate diagram request. Check the index
+and existing sources first; update a diagram that already covers the behavior
+instead of creating a duplicate. This assessment does not authorize work
+outside the task's scope or turn diagram creation into a background process.
+
 ## Location and naming
 
 - Store every new `.puml` file under `docs/diagrams/`.
@@ -26,6 +32,8 @@ diagram without a concrete documentation need.
 - Avoid spaces, ambiguous abbreviations, and generic names such as
   `diagram.puml`.
 - Add each maintained PlantUML source to the index below.
+- Link a diagram from the relevant maintained Markdown when it clarifies that
+  document's implementation or contract.
 
 ## Accuracy and lifecycle
 
