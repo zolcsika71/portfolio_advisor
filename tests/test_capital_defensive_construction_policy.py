@@ -31,6 +31,8 @@ from portfolio_advisor.objectives import (
 )
 from portfolio_advisor.workflows import build_capital_conservation_reference_workflow
 
+from .fixtures.policy_registry_fixture import create_policy_registry_repository
+
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT = ROOT / CAPITAL_DEFENSIVE_CONSTRUCTION_POLICY_ARTIFACT
 RANKING = ROOT / CAPITAL_POLICY_ARTIFACT
@@ -220,9 +222,12 @@ def test_duplicate_and_conflicting_construction_policy_versions_are_rejected() -
     ) is prospective
 
 
-def test_registry_fingerprints_are_deterministic_and_historical_v1_is_reproducible() -> None:
-    first = build_default_policy_registry(ROOT)
-    second = build_default_policy_registry(ROOT)
+def test_registry_fingerprints_are_deterministic_and_historical_v1_is_reproducible(
+    tmp_path: Path,
+) -> None:
+    policy_repository = create_policy_registry_repository(tmp_path, ROOT)
+    first = build_default_policy_registry(policy_repository)
+    second = build_default_policy_registry(policy_repository)
     assert first.registry_fingerprint() == second.registry_fingerprint()
     assert first.registry_fingerprint(schema_version=1) == HISTORICAL_REGISTRY_FINGERPRINT
     assert first.registry_fingerprint(schema_version=2) == MILESTONE_11A_REGISTRY_FINGERPRINT
@@ -231,8 +236,9 @@ def test_registry_fingerprints_are_deterministic_and_historical_v1_is_reproducib
     assert sha256(RANKING.read_bytes()).hexdigest() == RANKING_FINGERPRINT
 
 
-def test_capability_corrections_and_dividend_unavailability() -> None:
-    registry = build_default_policy_registry(ROOT)
+def test_capability_corrections_and_dividend_unavailability(tmp_path: Path) -> None:
+    policy_repository = create_policy_registry_repository(tmp_path, ROOT)
+    registry = build_default_policy_registry(policy_repository)
     capital = registry.resolve_active_policy(PortfolioObjective.CAPITAL_CONSERVATION)
     assert capital.capabilities.eligibility is PolicyCapabilityStatus.AVAILABLE_REVIEWED
     assert (
@@ -252,10 +258,13 @@ def test_capability_corrections_and_dividend_unavailability() -> None:
     assert set(dividend["capabilities"].values()) == {"NO_VALIDATED_ACTIVE_POLICY"}  # type: ignore[index,union-attr]
 
 
-def test_intermediate_apis_remain_import_compatible_but_are_not_capabilities() -> None:
+def test_intermediate_apis_remain_import_compatible_but_are_not_capabilities(
+    tmp_path: Path,
+) -> None:
     assert callable(construct_capital_conservation_shortlist)
     assert callable(build_capital_conservation_reference_workflow)
-    capital = build_default_policy_registry(ROOT).resolve_active_policy(
+    policy_repository = create_policy_registry_repository(tmp_path, ROOT)
+    capital = build_default_policy_registry(policy_repository).resolve_active_policy(
         PortfolioObjective.CAPITAL_CONSERVATION
     )
     assert (
@@ -265,10 +274,17 @@ def test_intermediate_apis_remain_import_compatible_but_are_not_capabilities() -
     assert capital.capabilities.finalist_comparison.value == "NOT_IMPLEMENTED"
 
 
-def test_policy_audit_is_byte_stable_and_explicitly_no_go() -> None:
+def test_policy_audit_is_byte_stable_and_explicitly_no_go(tmp_path: Path) -> None:
     policy = load_capital_defensive_construction_policy(ARTIFACT)
-    first = render_construction_policy_audit(policy, build_default_policy_registry(ROOT))
-    second = render_construction_policy_audit(policy, build_default_policy_registry(ROOT))
+    policy_repository = create_policy_registry_repository(tmp_path, ROOT)
+    first = render_construction_policy_audit(
+        policy,
+        build_default_policy_registry(policy_repository),
+    )
+    second = render_construction_policy_audit(
+        policy,
+        build_default_policy_registry(policy_repository),
+    )
     assert first == second
     payload = json.loads(first)
     assert payload["construction_output"] == {

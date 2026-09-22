@@ -28,6 +28,7 @@ from portfolio_advisor.objectives import (
 )
 
 from .constructed_portfolio_fixtures import build_fixture
+from .fixtures.policy_registry_fixture import create_policy_registry_repository
 
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = load_capital_defensive_construction_policy(
@@ -256,7 +257,8 @@ def test_foundation_audit_is_deterministic_and_policy_fingerprints_are_unchanged
         expected_policy_fingerprint=POLICY.fingerprint,
         expect_zero_constructed_rows=True,
     )
-    registry = build_default_policy_registry(ROOT)
+    policy_repository = create_policy_registry_repository(tmp_path, ROOT)
+    registry = build_default_policy_registry(policy_repository)
     first = foundation_audit_payload(
         validation=validation,
         production_attempt=result,
@@ -267,7 +269,7 @@ def test_foundation_audit_is_deterministic_and_policy_fingerprints_are_unchanged
         validation=validation,
         production_attempt=result,
         policy=POLICY,
-        registry=build_default_policy_registry(ROOT),
+        registry=build_default_policy_registry(policy_repository),
     )
     assert first == second
     assert POLICY.fingerprint == "a5dc75f07eac4e0ab615f1669a95f7eecdbb3f0e31e1c6bb174dd000097ccbbf"
