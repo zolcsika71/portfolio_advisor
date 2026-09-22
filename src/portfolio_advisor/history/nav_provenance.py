@@ -16,6 +16,10 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from portfolio_advisor.canonical import canonical_fingerprint
+from portfolio_advisor.database.migrations.shortlist_classification import (
+    ShortlistClassificationCorrectionError,
+    active_classification_correction,
+)
 from portfolio_advisor.database.schema.v3 import (
     NAV_PROVENANCE_CONTRACT_VERSION,
     NAV_PROVENANCE_FEATURE_FINGERPRINT,
@@ -467,15 +471,34 @@ def select_phase_e_cohorts(database_path: Path) -> dict[str, tuple[CohortMember,
         ).fetchone()[0]
         if snapshot is None:
             raise NavProvenanceError("no reviewed shortlist exists at the evidence cutoff")
+        try:
+            classification_correction = active_classification_correction(connection)
+        except ShortlistClassificationCorrectionError as error:
+            raise NavProvenanceError(
+                "shortlist classification correction state is invalid"
+            ) from error
+        if classification_correction is None:
+            classification_join = ""
+            asset_class = "o.observed_asset_class"
+            sub_asset_class = "o.observed_sub_asset_class"
+        else:
+            classification_join = (
+                "JOIN v_effective_shortlist_classification c "
+                "ON c.shortlist_entry_source_occurrence_id="
+                "o.shortlist_entry_source_occurrence_id"
+            )
+            asset_class = "c.effective_asset_class"
+            sub_asset_class = "c.effective_sub_asset_class"
         rows = connection.execute(
-            """SELECT i.instrument_id, i.isin, o.observed_product_name,
-                      o.observed_currency_code, o.observed_asset_class,
-                      o.observed_sub_asset_class, o.conflict_status
+            f"""SELECT i.instrument_id, i.isin, o.observed_product_name,
+                      o.observed_currency_code, {asset_class} AS asset_class,
+                      {sub_asset_class} AS sub_asset_class, o.conflict_status
                FROM shortlist_entry e
                JOIN instrument i ON i.instrument_id=e.instrument_id
                JOIN shortlist_entry_lineage l ON l.shortlist_entry_id=e.shortlist_entry_id
                JOIN shortlist_entry_source_occurrence o
                  ON o.shortlist_entry_source_occurrence_id=l.source_occurrence_id
+               {classification_join}
                WHERE e.shortlist_snapshot_id=?
                  AND o.observed_currency_code IN ('EUR','HUF')
                ORDER BY o.observed_currency_code, i.isin""",
@@ -494,8 +517,8 @@ def select_phase_e_cohorts(database_path: Path) -> dict[str, tuple[CohortMember,
         seen.add(key)
         values = (
             row["observed_product_name"],
-            row["observed_asset_class"],
-            row["observed_sub_asset_class"],
+            row["asset_class"],
+            row["sub_asset_class"],
         )
         if row["conflict_status"] != "SOURCE_REPORTED" or any(
             not isinstance(value, str) or not value.strip() for value in values
@@ -509,8 +532,8 @@ def select_phase_e_cohorts(database_path: Path) -> dict[str, tuple[CohortMember,
                 isin=isin,
                 share_class_name=str(row["observed_product_name"]).strip(),
                 currency=currency,
-                asset_class=str(row["observed_asset_class"]).strip(),
-                sub_asset_class=str(row["observed_sub_asset_class"]).strip(),
+                asset_class=str(row["asset_class"]).strip(),
+                sub_asset_class=str(row["sub_asset_class"]).strip(),
             )
         )
     result: dict[str, tuple[CohortMember, ...]] = {}

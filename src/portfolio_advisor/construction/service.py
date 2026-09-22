@@ -48,6 +48,27 @@ def construct_capital_defensive_portfolio(
     """Construct one normalized candidate or return an explicit governed state."""
     currency, _private_amount = validate_construction_cash_input(policy, cash_by_currency)
     _validate_policy_identity(policy)
+    screened = tuple(
+        item for item in screening.candidates if item.eligible and item.rank is not None
+    )
+    correction_bindings = {
+        (
+            item.classification_correction_id,
+            item.classification_correction_set_fingerprint,
+        )
+        for item in instruments
+    }
+    if len(correction_bindings) != 1 or any(
+        (correction_id is None) != (fingerprint is None)
+        for correction_id, fingerprint in correction_bindings
+    ):
+        return _empty_result(
+            ConstructionRuntimeStatus.REJECTED,
+            (ConstructionReasonCode.INVALID_CATEGORY_EVIDENCE,),
+            len(screened),
+            _admitted_nav_count(instruments),
+        )
+    correction_id, correction_fingerprint = next(iter(correction_bindings))
     provenance = ShortlistConstructionProvenance(
         shortlist_snapshot_id=screening.provenance.snapshot_id,
         snapshot_date=screening.provenance.snapshot_date,
@@ -55,9 +76,8 @@ def construct_capital_defensive_portfolio(
         source_sheet_name=screening.provenance.source_sheet_name,
         shortlist_manifest_fingerprint=screening.provenance.shortlist_manifest_fingerprint,
         shortlist_integration_version=screening.provenance.shortlist_integration_version,
-    )
-    screened = tuple(
-        item for item in screening.candidates if item.eligible and item.rank is not None
+        classification_correction_id=correction_id,
+        classification_correction_set_fingerprint=correction_fingerprint,
     )
     evidence_by_isin = {item.isin: item for item in instruments}
     if len(evidence_by_isin) != len(instruments) or set(evidence_by_isin) != {

@@ -5,12 +5,18 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 
 from portfolio_advisor.canonical import canonical_fingerprint, canonical_json
+from portfolio_advisor.database.migrations.shortlist_classification import (
+    ClassificationCorrectionBinding,
+    ShortlistClassificationCorrectionError,
+    active_classification_correction,
+    load_entry_classifications,
+)
 from portfolio_advisor.database.schema.v3 import connect, transaction, validate_schema
 from portfolio_advisor.objectives import CapitalDefensiveConstructionPolicy
 
@@ -237,6 +243,10 @@ def validate_persisted_snapshot(
         header["construction_policy_fingerprint"]
     ) != expected_policy_fingerprint:
         raise ConstructionPersistenceError("persisted policy fingerprint mismatch")
+    provenance = _validated_provenance(connection, header)
+    classification_binding = _classification_binding_from_provenance(
+        connection, provenance
+    )
     holdings = connection.execute(
         """SELECT ph.portfolio_holding_id, ph.instrument_id, ph.reported_weight,
                   ph.derivation_status, ph.calculation_version, i.isin,
@@ -276,21 +286,22 @@ def validate_persisted_snapshot(
             or str(row["calculation_version"]) != PERSISTENCE_VERSION
         ):
             raise ConstructionPersistenceError("constructed holding or membership contract failed")
-        occurrences = connection.execute(
-            """SELECT o.observed_asset_class, o.observed_sub_asset_class, o.conflict_status
-               FROM shortlist_entry_lineage sl
-               JOIN shortlist_entry_source_occurrence o
-                 ON o.shortlist_entry_source_occurrence_id=sl.source_occurrence_id
-               WHERE sl.shortlist_entry_id=? ORDER BY sl.source_occurrence_id""",
-            (int(row["shortlist_entry_id"]),),
-        ).fetchall()
+        occurrences = load_entry_classifications(
+            connection,
+            int(row["shortlist_entry_id"]),
+            apply_corrections=classification_binding is not None,
+        )
         category_groups = {
-            (str(item[0]).strip(), str(item[1]).strip()) for item in occurrences
+            (
+                (item.effective_asset_class or "").strip(),
+                (item.effective_sub_asset_class or "").strip(),
+            )
+            for item in occurrences
         }
         if (
             not occurrences
             or len(category_groups) != 1
-            or any(str(item[2]) != "SOURCE_REPORTED" for item in occurrences)
+            or any(item.conflict_status != "SOURCE_REPORTED" for item in occurrences)
             or any(not part for part in next(iter(category_groups)))
         ):
             raise ConstructionPersistenceError("constructed category lineage is incomplete")
@@ -326,7 +337,6 @@ def validate_persisted_snapshot(
     selected_fingerprint = canonical_fingerprint(sorted(str(row["isin"]) for row in holdings))
     if selected_fingerprint != str(header["selected_universe_fingerprint"]):
         raise ConstructionPersistenceError("selected-universe fingerprint mismatch")
-    provenance = _validated_provenance(connection, header)
     identity_fingerprint = canonical_fingerprint(
         {
             "currency": str(header["cash_currency"]),
@@ -371,6 +381,8 @@ def _validated_provenance(
         persisted = json.loads(str(header["deterministic_provenance_json"]))
     except json.JSONDecodeError as error:
         raise ConstructionPersistenceError("deterministic provenance is malformed") from error
+    if not isinstance(persisted, dict):
+        raise ConstructionPersistenceError("deterministic provenance is not an object")
     source = connection.execute(
         """SELECT ss.snapshot_date, sf.sha256, sh.sheet_name,
                   sm.dataset_fingerprint, sm.integration_version
@@ -390,11 +402,51 @@ def _validated_provenance(
         "source_file_sha256": str(source[1]),
         "source_sheet_name": str(source[2]),
     }
+    correction = persisted.get("classification_correction")
+    if correction is not None:
+        if not isinstance(correction, dict) or set(correction) != {
+            "correction_id",
+            "correction_set_fingerprint",
+        }:
+            raise ConstructionPersistenceError(
+                "classification correction provenance is malformed"
+            )
+        expected["classification_correction"] = {
+            "correction_id": str(correction["correction_id"]),
+            "correction_set_fingerprint": str(correction["correction_set_fingerprint"]),
+        }
     if persisted != expected or canonical_json(persisted) != str(
         header["deterministic_provenance_json"]
     ):
         raise ConstructionPersistenceError("deterministic provenance conflicts with source")
     return expected
+
+
+def _classification_binding_from_provenance(
+    connection: sqlite3.Connection, provenance: Mapping[str, object]
+) -> ClassificationCorrectionBinding | None:
+    value = provenance.get("classification_correction")
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise ConstructionPersistenceError(
+            "classification correction provenance is malformed"
+        )
+    expected = ClassificationCorrectionBinding(
+        correction_id=str(value.get("correction_id", "")),
+        correction_set_fingerprint=str(value.get("correction_set_fingerprint", "")),
+    )
+    try:
+        active = active_classification_correction(connection)
+    except ShortlistClassificationCorrectionError as error:
+        raise ConstructionPersistenceError(
+            "installed classification correction state is invalid"
+        ) from error
+    if active != expected:
+        raise ConstructionPersistenceError(
+            "persisted classification correction binding is stale"
+        )
+    return active
 
 
 def _lastrowid(cursor: sqlite3.Cursor) -> int:

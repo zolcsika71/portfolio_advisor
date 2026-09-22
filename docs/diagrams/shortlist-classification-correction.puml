@@ -1,0 +1,73 @@
+@startuml
+' Status: Implemented
+' Verified against: src/portfolio_advisor/database/migrations/shortlist_classification.py
+' Verified against: src/portfolio_advisor/database/migrations/shortlist_parallel.py
+' Verified against: src/portfolio_advisor/construction/evidence.py
+' Verified against: src/portfolio_advisor/construction/persistence.py
+' Verified by: tests/test_shortlist_classification_corrections.py
+title Shortlist classification correction [Implemented]
+
+actor Operator
+participant "Admission command" as CLI
+database "portfolio_advisor.sqlite" as DB
+participant "Correction validator" as Validator
+participant "Construction evidence resolver" as Resolver
+participant "Persistence validator" as Persistence
+participant "Copy-on-write importer" as Importer
+
+box "Explicit operator write boundary" #FFF2CC
+Operator -> CLI: database, new backup, correction identity,\ndataset fingerprint, original hash, authorization, reason, --apply
+CLI -> DB: SQLite backup API to separate path
+CLI -> DB: inspect correction identity
+alt Existing identity: retry
+  CLI -> Validator: validate DDL, admission, and stable evidence set
+  alt Every original binding matches
+    Validator --> CLI: exact replay; no records added
+  else Any binding differs
+    Validator --> CLI: reject without mutation
+  end
+else New identity
+  CLI -> CLI: verify database hash equals authorized pre-write hash
+  alt Hash mismatch
+    CLI --> Operator: reject before schema or data mutation
+  else Hash matches
+    CLI -> DB: BEGIN IMMEDIATE
+    CLI -> DB: install immutable admission/items and effective view
+    CLI -> Validator: bind workbook hash, sheet, row, snapshot,\nISIN, asset class, raw JSON, and exact original label
+    alt Evidence missing, changed, ambiguous, or out of scope
+      Validator -> DB: ROLLBACK
+      Validator --> Operator: reject with no partial admission
+    else Exact authorized set
+      Validator -> DB: verify integrity, foreign keys, and projection
+      CLI -> DB: COMMIT
+      CLI --> Operator: item count and correction-set fingerprint
+    end
+  end
+end
+end box
+
+Resolver -> DB: read original and effective classifications
+DB --> Resolver: exact typo maps to Fejlődő piacok;\nall other labels pass through
+Resolver -> Resolver: retain conflict status; group on effective asset/sub-asset
+
+Persistence -> DB: read stored candidate provenance
+alt Candidate binds the active correction set
+  Persistence -> Resolver: validate holdings with effective classifications
+else Historical candidate has no correction binding
+  Persistence -> DB: validate against original classifications
+end
+
+Importer -> DB: rebuild shortlist candidate from workbook evidence
+alt Stable evidence reproduces the admitted correction set
+  Importer -> Validator: validate both metric and classification corrections
+  Validator --> Importer: publish candidate
+else Dataset or source binding changed
+  Validator --> Importer: fail closed
+  Importer -> Importer: discard candidate; retain installed database
+end
+
+note over DB
+Original columns, raw JSON, conflict flags, and metric corrections are unchanged.
+Future datasets require explicit authorization.
+end note
+@enduml

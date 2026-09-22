@@ -210,6 +210,10 @@ class RankedConstructionInstrument:
     shortlist_entry_id: int
     source_occurrence_ids: tuple[int, ...]
     nav: NavReadinessEvidence
+    original_asset_class: str | None = None
+    original_sub_asset_class: str | None = None
+    classification_correction_id: str | None = None
+    classification_correction_set_fingerprint: str | None = None
 
     @property
     def group(self) -> tuple[str, str] | None:
@@ -224,7 +228,7 @@ class RankedConstructionInstrument:
         return (self.asset_class.strip(), self.sub_asset_class.strip())
 
     def fingerprint_payload(self) -> dict[str, object]:
-        return {
+        result: dict[str, object] = {
             "asset_class": self.asset_class,
             "currency": self.currency,
             "group": list(self.group) if self.group is not None else None,
@@ -234,6 +238,19 @@ class RankedConstructionInstrument:
             "screening_eligible": self.screening_eligible,
             "sub_asset_class": self.sub_asset_class,
         }
+        if (
+            self.classification_correction_id is not None
+            and self.classification_correction_set_fingerprint is not None
+        ):
+            result["classification_correction"] = {
+                "correction_id": self.classification_correction_id,
+                "correction_set_fingerprint": (
+                    self.classification_correction_set_fingerprint
+                ),
+                "original_asset_class": self.original_asset_class,
+                "original_sub_asset_class": self.original_sub_asset_class,
+            }
+        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -255,15 +272,28 @@ class ShortlistConstructionProvenance:
     source_sheet_name: str
     shortlist_manifest_fingerprint: str
     shortlist_integration_version: str
+    classification_correction_id: str | None = None
+    classification_correction_set_fingerprint: str | None = None
 
     def stable_payload(self) -> dict[str, object]:
-        return {
+        result: dict[str, object] = {
             "shortlist_integration_version": self.shortlist_integration_version,
             "shortlist_manifest_fingerprint": self.shortlist_manifest_fingerprint,
             "snapshot_date": self.snapshot_date.isoformat(),
             "source_file_sha256": self.source_file_sha256,
             "source_sheet_name": self.source_sheet_name,
         }
+        if (
+            self.classification_correction_id is not None
+            and self.classification_correction_set_fingerprint is not None
+        ):
+            result["classification_correction"] = {
+                "correction_id": self.classification_correction_id,
+                "correction_set_fingerprint": (
+                    self.classification_correction_set_fingerprint
+                ),
+            }
+        return result
 
 
 @dataclass(frozen=True, slots=True)

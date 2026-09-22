@@ -95,4 +95,9 @@ def _populate(path: Path, sheets: list[dict[str, Any]]) -> dict[str, Any]:
         )
 
         validate_corrections_if_present(connection)
+        from portfolio_advisor.database.migrations.shortlist_classification import (
+            validate_classification_corrections_if_present,
+        )
+
+        validate_classification_corrections_if_present(connection)
     return {"integration_version":INTEGRATION_VERSION,"supported_schema_signatures":[SUPPORTED_SIGNATURE],"source_sheets":len(sheets),"source_entries":sum(len([r for r in s['identity_records'] if r['isin']]) for s in sheets),"shortlist_entries":entries,"source_occurrences":occurrences,"canonical_instrument_additions":added,"aliases":aliases,"metric_observations":metrics,"unresolved":0,"blocked_sheets":blocked,"dataset_fingerprint":fingerprint,"completion_status":"COMPLETE"}

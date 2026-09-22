@@ -235,6 +235,16 @@ class SchemaV3ShortlistRepository:
             validate_corrections_if_present(connection)
         except RuntimeError as error:
             raise ShortlistEvidenceError("invalid shortlist correction state") from error
+        try:
+            from portfolio_advisor.database.migrations.shortlist_classification import (
+                validate_classification_corrections_if_present,
+            )
+
+            validate_classification_corrections_if_present(connection)
+        except RuntimeError as error:
+            raise ShortlistEvidenceError(
+                "invalid shortlist classification correction state"
+            ) from error
 
     @staticmethod
     def _manifest(connection: sqlite3.Connection) -> sqlite3.Row:

@@ -85,6 +85,9 @@ change tooling merely to validate documentation.
 - [Shortlist zero-to-NULL correction](shortlist-zero-null-correction.puml) —
   immutable evidence bindings, transactional admission, exact replay, effective
   selection, and copy-on-write re-import validation.
+- [Shortlist classification correction](shortlist-classification-correction.puml)
+  — immutable source labels, exact effective mapping, shared construction and
+  persistence resolution, replay, and copy-on-write re-import validation.
 
 ### Existing diagrams retained in place
 
