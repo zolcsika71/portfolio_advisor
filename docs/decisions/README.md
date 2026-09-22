@@ -74,3 +74,4 @@ Describe benefits, trade-offs, limitations, and follow-up obligations.
 | --- | --- | --- |
 | [ADR-001](ADR-001-adopt-architecture-decision-records.md) | Accepted | Adopt a persistent ADR workflow for important project decisions. |
 | [ADR-002](ADR-002-adopt-plantuml-for-detailed-technical-diagrams.md) | Accepted | Use PlantUML selectively for detailed technical diagrams. |
+| [ADR-003](ADR-003-preserve-shortlist-evidence-with-null-corrections.md) | Accepted | Preserve shortlist source evidence while exposing an authorized zero set as explicit NULLs. |

@@ -39,7 +39,7 @@ class MembershipEvidence:
     currency_risk: str | None
     occurrence_ids: tuple[int, ...]
     source_rows: tuple[int, ...]
-    metrics: tuple[tuple[str, float], ...]
+    metrics: tuple[tuple[str, float | None], ...]
 
 
 _REQUIRED_TABLE_COLUMNS = {
@@ -227,6 +227,14 @@ class SchemaV3ShortlistRepository:
             }
             if not required.issubset(columns):
                 raise ShortlistEvidenceError(f"incompatible shortlist schema: {table}")
+        try:
+            from portfolio_advisor.database.migrations.shortlist_zero_null import (
+                validate_corrections_if_present,
+            )
+
+            validate_corrections_if_present(connection)
+        except RuntimeError as error:
+            raise ShortlistEvidenceError("invalid shortlist correction state") from error
 
     @staticmethod
     def _manifest(connection: sqlite3.Connection) -> sqlite3.Row:
@@ -276,11 +284,21 @@ class SchemaV3ShortlistRepository:
         source_hash: str,
         sheet_name: str,
         source_row: int,
-    ) -> tuple[tuple[str, float], ...]:
+    ) -> tuple[tuple[str, float | None], ...]:
         prefix = f"SHORTLIST:{source_hash}:{sheet_name}:{source_row}:"
+        correction_view = connection.execute(
+            """SELECT 1 FROM sqlite_master
+               WHERE type='view' AND name='v_effective_shortlist_metric_observation'"""
+        ).fetchone()
+        if correction_view is None:
+            metric_source = "instrument_metric_observation"
+            value_column = "imo.value"
+        else:
+            metric_source = "v_effective_shortlist_metric_observation"
+            value_column = "imo.effective_value"
         rows = connection.execute(
-            """SELECT md.metric_code, imo.value, imo.source_reference
-               FROM instrument_metric_observation imo
+            f"""SELECT md.metric_code, {value_column} AS value, imo.source_reference
+               FROM {metric_source} imo
                JOIN metric_definition md ON md.metric_id=imo.metric_id
                WHERE imo.instrument_id=? AND imo.observation_date=?
                  AND imo.provenance_type='PROVIDER_REPORTED'
@@ -288,10 +306,11 @@ class SchemaV3ShortlistRepository:
                ORDER BY md.metric_code""",
             (instrument_id, observation_date.isoformat(), prefix + "%"),
         ).fetchall()
-        metrics: dict[str, float] = {}
+        metrics: dict[str, float | None] = {}
         for row in rows:
             code = str(row["metric_code"])
             if code in metrics:
                 raise ShortlistEvidenceError(f"duplicate metric evidence for {code}")
-            metrics[code] = float(row["value"])
+            value = row["value"]
+            metrics[code] = None if value is None else float(value)
         return tuple(sorted(metrics.items()))

@@ -82,6 +82,9 @@ change tooling merely to validate documentation.
 - [Supplementary NAV validation and retries](supplementary-nav-validation-and-retries.puml)
   — provenance planning, isolated admission, strict legacy inspection, and v2
   retry authorization.
+- [Shortlist zero-to-NULL correction](shortlist-zero-null-correction.puml) —
+  immutable evidence bindings, transactional admission, exact replay, effective
+  selection, and copy-on-write re-import validation.
 
 ### Existing diagrams retained in place
 

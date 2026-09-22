@@ -1,0 +1,65 @@
+@startuml
+' Status: Implemented
+' Verified against: src/portfolio_advisor/database/migrations/shortlist_zero_null.py
+' Verified against: src/portfolio_advisor/database/migrations/shortlist_parallel.py
+' Verified against: src/portfolio_advisor/construction/repository.py
+' Verified by: tests/test_shortlist_zero_null_corrections.py
+title Shortlist zero-to-NULL correction and replay [Implemented]
+
+actor Operator
+participant "Admission command" as CLI
+database "portfolio_advisor.sqlite" as DB
+participant "Correction validator" as Validator
+participant "Shortlist reader" as Reader
+participant "Copy-on-write importer" as Importer
+
+box "Operator-authorized write boundary" #FFF2CC
+Operator -> CLI: database, new backup path, correction identity,\ndataset fingerprint, original hash, authorization, reason, --apply
+CLI -> DB: SQLite backup API to separate path
+CLI -> DB: inspect correction identity
+alt Existing identity: retry
+  CLI -> Validator: validate installed feature and all evidence bindings
+  alt Every original admission binding matches
+    Validator --> CLI: exact replay; no records added
+  else Hash, authorization, reason, dataset, or evidence differs
+    Validator --> CLI: reject without mutation
+  end
+else New identity
+  CLI -> CLI: verify live file hash equals authorized pre-write hash
+  alt Hash mismatch
+    CLI --> Operator: reject before schema/data mutation
+  else Hash matches
+    CLI -> DB: BEGIN IMMEDIATE
+    CLI -> DB: install immutable correction schema and view
+    CLI -> Validator: bind raw payload, stable source reference,\nISIN, metric, date, expected original zero
+    alt Non-shortlist, nonzero, missing, ambiguous, or changed binding
+      Validator -> DB: ROLLBACK
+      Validator --> Operator: reject with no partial admission
+    else Exact authorized set
+      CLI -> DB: append admission and one item per original zero
+      Validator -> DB: verify integrity, foreign keys, bindings, effective zeros
+      CLI -> DB: COMMIT
+      CLI --> Operator: correction count and set fingerprint
+    end
+  end
+end
+end box
+
+Reader -> DB: read v_effective_shortlist_metric_observation
+DB --> Reader: original zero retained; effective_value = NULL
+Reader -> Reader: preserve None as unavailable (no zero coercion)
+
+Importer -> DB: rebuild candidate from workbook evidence
+alt Same dataset and stable provenance reproduces every correction
+  Importer -> Validator: revalidate correction set
+  Validator --> Importer: publish candidate
+else Dataset or provenance changed
+  Validator --> Importer: fail closed
+  Importer -> Importer: delete candidate; keep installed database
+end
+
+note over DB
+Raw JSON and original metric rows are never updated or deleted.
+Future datasets require explicit authorization.
+end note
+@enduml

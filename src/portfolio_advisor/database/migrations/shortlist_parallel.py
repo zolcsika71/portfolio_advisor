@@ -90,4 +90,9 @@ def _populate(path: Path, sheets: list[dict[str, Any]]) -> dict[str, Any]:
                         connection.execute("INSERT INTO instrument_metric_observation(instrument_id,metric_id,observation_date,value,provenance_type,source_file_id,source_reference) VALUES(?,?,?,?, 'PROVIDER_REPORTED',?,?)",(iid,metric_ids[code],sheet["snapshot_date"],float(value),source_file_id,ref)); metrics+=1
         fingerprint=hashlib.sha256(json.dumps(sheets,sort_keys=True,default=str).encode()).hexdigest(); counts=(len(sheets),entries,occurrences)
         connection.execute("INSERT OR REPLACE INTO shortlist_stage_manifest VALUES(1,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(INTEGRATION_VERSION,json.dumps({s['file']:s['file_sha256'] for s in sheets},sort_keys=True),SUPPORTED_SIGNATURE,occurrences,*counts,len(instrument_ids),aliases,metrics,1,2,fingerprint,"COMPLETE"))
+        from portfolio_advisor.database.migrations.shortlist_zero_null import (
+            validate_corrections_if_present,
+        )
+
+        validate_corrections_if_present(connection)
     return {"integration_version":INTEGRATION_VERSION,"supported_schema_signatures":[SUPPORTED_SIGNATURE],"source_sheets":len(sheets),"source_entries":sum(len([r for r in s['identity_records'] if r['isin']]) for s in sheets),"shortlist_entries":entries,"source_occurrences":occurrences,"canonical_instrument_additions":added,"aliases":aliases,"metric_observations":metrics,"unresolved":0,"blocked_sheets":blocked,"dataset_fingerprint":fingerprint,"completion_status":"COMPLETE"}
