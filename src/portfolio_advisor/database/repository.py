@@ -6,7 +6,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Final
+from typing import Final, Protocol, runtime_checkable
 
 TABLE_NAME: Final = "model_portfolios"
 REQUIRED_COLUMNS: Final = frozenset(
@@ -61,6 +61,17 @@ class HoldingObservation:
     downside_risk: float | None
     maximum_drawdown: float | None
     asset_class: str | None = None
+
+
+@runtime_checkable
+class ModelPortfolioReader(Protocol):
+    """Storage-neutral read boundary for model-portfolio snapshot consumers."""
+
+    def observation_dates(self) -> tuple[date, ...]: ...
+
+    def latest_observation_date(self) -> date: ...
+
+    def load_holdings(self, observation_date: date) -> list[HoldingObservation]: ...
 
 
 class ModelPortfolioRepository:

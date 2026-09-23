@@ -39,6 +39,7 @@ exposed by those two pages.
 | `validate_forward_rank_signal.py` | Assess an existing label store; never optimize policy weights. |
 | `admit_shortlist_zero_null_corrections.py` | Back up an explicit schema-v3 target and atomically admit the authorized, provenance-bound shortlist zero-to-NULL correction set. |
 | `admit_shortlist_classification_correction.py` | Back up an explicit schema-v3 target and atomically admit an authorized, provenance-bound shortlist classification correction, including ordered sub-asset replacements and reviewed asset/sub-asset pair manifests. |
+| `admit_model_portfolio_phase1.py` | Exercise the non-operational consolidation Phase 1 contracts on an existing database below the system temporary directory; it cannot target a retained project database or change application defaults. |
 
 The shortlist correction command is an explicit operator-only write. It
 requires all admission bindings and `--apply`; see
@@ -46,6 +47,11 @@ requires all admission bindings and `--apply`; see
 for the contract, recovery requirement, and read-only verification query.
 The separate classification mapping and ordered-composition contracts are documented in
 [`docs/shortlist_classification_corrections.md`](../docs/shortlist_classification_corrections.md).
+The Phase 1 model command accepts only an exact JSON contract for source
+occurrences already staged in a synthetic schema-v3 database. It does not read
+workbooks, migrate retained data, establish operational authority, or replace
+the existing importer. See the
+[consolidation plan](../docs/architecture/model-portfolio-consolidation-plan.md).
 
 ## Event-driven XLS import
 

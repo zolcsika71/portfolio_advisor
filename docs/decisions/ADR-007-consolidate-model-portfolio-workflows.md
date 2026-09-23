@@ -75,6 +75,12 @@ cutover authorization:
 This ADR is Proposed. It records a reviewable design, not approval to migrate,
 switch defaults, freeze the writer, or retire a database.
 
+Phase 1 now implements the proposal's additive contracts and explicit adapters
+for synthetic temporary databases. Every Phase 1 authority record is marked
+non-operational, the command refuses retained project paths, and the current
+legacy defaults and watcher remain unchanged. This implementation evidence
+does not accept this ADR or authorize any later phase.
+
 ## Consequences
 
 - Model source authority becomes explicit and portable instead of being
@@ -91,6 +97,10 @@ switch defaults, freeze the writer, or retire a database.
   retain their existing provenance and semantics.
 - Temporary parallel readers, recovery packages, and rollback rehearsals add
   implementation cost but make the authority change testable and recoverable.
+- The implemented Phase 1 surface deliberately stops before workbook
+  ingestion: it binds typed normalization to already staged synthetic source
+  occurrences. A real single writer, baseline migration, and operational
+  authority epoch remain later gated work.
 - The unresolved dual-sheet watcher policy, changed historical workbook
   contract, external consumers, compatibility lifetime, and MNB portable
   package layout must be decided before acceptance or cutover.

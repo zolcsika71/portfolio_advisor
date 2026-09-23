@@ -6,6 +6,11 @@ change, production cutover, or database retirement. The governing proposal is
 the proposed operational flow is shown in the
 [cutover diagram](../diagrams/model-portfolio-consolidation-cutover.puml).
 
+Phase 1 is now **implemented as non-operational scaffolding**. The additive
+schema, immutable rehearsal contracts, synthetic-only command, and explicit
+read adapters do not change the Proposed status of the consolidation or make
+the analytical database an operational authority.
+
 ## Scope and verified baseline
 
 The scope is only the model-portfolio and MNB OTC workflows currently backed
@@ -230,18 +235,42 @@ validated stages. Consolidation does not reinterpret prior artifacts.
 
 ### Phase 1 — contracts and adapters, no retained-data writes
 
-- Define a read protocol, analytical adapter, normalized representations for
-  the eight raw-only parsed fields, the dedicated MNB OTC extension, authority
-  epochs, and import receipts.
-- Add deterministic synthetic fixtures for all readers and remove tests'
-  dependency on ignored live databases. Retain explicit legacy-vs-analytical
-  migration tests using controlled fixtures.
-- Implement a temporary-database-only admission command and validator. Keep
-  every default and the installed watcher on the legacy path.
+**Implementation status: Implemented, non-operational.**
+
+- `ModelPortfolioReader` defines the storage-neutral snapshot boundary.
+  `AnalyticalModelPortfolioRepository` is explicit opt-in and requires a
+  validated Phase 1 authority-epoch binding; no default selects it.
+- `model_source_occurrence_typed_extension` retains the translated nullable
+  Sustainability attribute. YTD, 3/5-year return, 3/5-year Sharpe, 3-year
+  volatility, and information ratio are nullable provider-reported
+  `instrument_metric_observation` records with stable source references.
+  Numeric zero follows the legacy parser's zero-to-NULL rule. Raw text such as
+  `"0"` remains in `source_payload_json`; the typed API rejects raw strings
+  rather than guessing their parsed meaning.
+- `model_source_authority_epoch`, `model_workbook_admission`, its stable item
+  bindings, and ordered `model_import_batch` receipts are append-only. Every
+  Phase 1 epoch is explicitly `PHASE1_NON_OPERATIONAL`; it cannot represent a
+  production cutover authorization.
+- The dedicated `model_mnb_otc_evidence_source` and
+  `model_mnb_otc_evidence_observation` tables preserve exact Decimal text,
+  reporting periods, source hashes, portable roles, and non-NAV semantics.
+- `admit_model_portfolio_phase1.py` accepts only an existing database beneath
+  the system temporary directory. It normalizes source occurrences already
+  staged by a synthetic fixture; it does not parse or insert a workbook,
+  migrate retained data, or move files.
+- Contract validation rechecks stable source bindings, ordered receipt
+  fingerprints, metric provenance, exact MNB evidence, SQLite integrity and
+  foreign keys, and every installed shortlist correction layer. The existing
+  `migration_build_manifest` and its legacy path/hash validator are unchanged.
+- Deterministic synthetic fixtures preserve duplicate occurrences and compare
+  the legacy and analytical adapters through the real metric and ranking
+  functions. No test requires retained workbooks, ignored audits, financial
+  databases, provider access, or machine-specific paths.
 
 **Gate:** schemas and contracts are versioned; exact replay and conflicting
-date/hash cases are tested; no production default changes. This is the
-recommended first implementation phase.
+date/hash cases are tested; no production default changes. This gate covers
+only the implemented scaffolding. Real-data rehearsal remains Phase 2 and is
+not authorized by this implementation.
 
 ### Phase 2 — baseline migration rehearsal
 

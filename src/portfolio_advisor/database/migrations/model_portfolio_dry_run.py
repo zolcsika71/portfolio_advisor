@@ -21,6 +21,7 @@ from portfolio_advisor.audit.milestone_4 import audit_workbooks
 from portfolio_advisor.database.migrations.validation import validate_integrity
 from portfolio_advisor.database.repository import (
     HoldingObservation,
+    ModelPortfolioReader,
     ModelPortfolioRepository,
     RepositoryError,
 )
@@ -279,8 +280,21 @@ class SchemaV3ModelPortfolioRepository:
 
     def observation_dates(self) -> tuple[date, ...]:
         with self._connection() as connection:
-            values = connection.execute("SELECT DISTINCT snapshot_date FROM portfolio_snapshot ORDER BY snapshot_date").fetchall()
+            values = connection.execute(
+                """SELECT DISTINCT snapshot.snapshot_date
+                   FROM portfolio_snapshot AS snapshot
+                   JOIN portfolio AS portfolio
+                     ON portfolio.portfolio_id=snapshot.portfolio_id
+                   WHERE portfolio.portfolio_type='MODEL'
+                   ORDER BY snapshot.snapshot_date"""
+            ).fetchall()
         return tuple(date.fromisoformat(str(row[0])) for row in values)
+
+    def latest_observation_date(self) -> date:
+        dates = self.observation_dates()
+        if not dates:
+            raise ModelPortfolioMigrationError("no schema-v3 observation dates are available")
+        return dates[-1]
 
     def load_holdings(self, observation_date: date) -> list[HoldingObservation]:
         with self._connection() as connection:
@@ -291,7 +305,7 @@ class SchemaV3ModelPortfolioRepository:
                     JOIN portfolio_snapshot s ON s.portfolio_snapshot_id=o.portfolio_snapshot_id
                     JOIN portfolio p ON p.portfolio_id=s.portfolio_id
                     JOIN instrument i ON i.instrument_id=o.instrument_id
-                    WHERE s.snapshot_date=?
+                    WHERE s.snapshot_date=? AND p.portfolio_type='MODEL'
                     ORDER BY p.portfolio_name, i.isin, o.observed_product_name, o.portfolio_holding_source_occurrence_id""",
                 (observation_date.isoformat(),),
             ).fetchall()
@@ -327,7 +341,7 @@ class SchemaV3ModelPortfolioRepository:
 
 
 def equivalence_report(
-    legacy: ModelPortfolioRepository, v3: SchemaV3ModelPortfolioRepository, rules_path: Path,
+    legacy: ModelPortfolioReader, v3: ModelPortfolioReader, rules_path: Path,
 ) -> dict[str, dict[str, Any]]:
     """Compare existing calculation and ranking services without reimplementing them."""
     rules = load_ranking_rules(rules_path)
