@@ -290,6 +290,7 @@ def validate_persisted_snapshot(
             connection,
             int(row["shortlist_entry_id"]),
             apply_corrections=classification_binding is not None,
+            correction_binding=classification_binding,
         )
         category_groups = {
             (
@@ -438,15 +439,35 @@ def _classification_binding_from_provenance(
     )
     try:
         active = active_classification_correction(connection)
+        if active is not None and (
+            active.correction_id != expected.correction_id
+            or active.correction_set_fingerprint
+            != expected.correction_set_fingerprint
+        ):
+            from portfolio_advisor.database.migrations.shortlist_classification_composition import (
+                resolve_classification_binding_order,
+            )
+
+            order = resolve_classification_binding_order(
+                connection, expected, validated_state=active
+            )
+            expected = ClassificationCorrectionBinding(
+                correction_id=expected.correction_id,
+                correction_set_fingerprint=expected.correction_set_fingerprint,
+                application_order=order,
+                validated_data_version=active.validated_data_version,
+            )
+        elif active is not None:
+            expected = active
     except ShortlistClassificationCorrectionError as error:
         raise ConstructionPersistenceError(
             "installed classification correction state is invalid"
         ) from error
-    if active != expected:
+    if active is None:
         raise ConstructionPersistenceError(
             "persisted classification correction binding is stale"
         )
-    return active
+    return expected
 
 
 def _lastrowid(cursor: sqlite3.Cursor) -> int:

@@ -58,12 +58,40 @@ class ClassificationCorrectionResult:
 class ClassificationCorrectionBinding:
     correction_id: str
     correction_set_fingerprint: str
+    application_order: int = 1
+    validated_data_version: int | None = None
 
     def to_dict(self) -> dict[str, str]:
         return {
             "correction_id": self.correction_id,
             "correction_set_fingerprint": self.correction_set_fingerprint,
         }
+
+
+def _composition_extension_present(connection: sqlite3.Connection) -> bool:
+    return (
+        connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='shortlist_classification_composition_admission'"
+        ).fetchone()
+        is not None
+    )
+
+
+def ensure_classification_binding_current(
+    connection: sqlite3.Connection,
+    binding: ClassificationCorrectionBinding,
+) -> None:
+    """Reject use of a validated binding after another connection commits."""
+    if binding.validated_data_version is None:
+        raise ShortlistClassificationCorrectionError(
+            "classification correction binding lacks a validation version"
+        )
+    current = int(connection.execute("PRAGMA data_version").fetchone()[0])
+    if current != binding.validated_data_version:
+        raise ShortlistClassificationCorrectionError(
+            "classification correction binding became stale"
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -253,6 +281,13 @@ def admit_classification_correction(
 
 def validate_classification_corrections(connection: sqlite3.Connection) -> None:
     """Validate installed DDL, immutable evidence bindings, and projection."""
+    if _composition_extension_present(connection):
+        from .shortlist_classification_composition import (
+            validate_composed_classification_corrections,
+        )
+
+        validate_composed_classification_corrections(connection)
+        return
     _validate_sqlite_health(connection)
     names = {
         str(row[0])
@@ -363,22 +398,41 @@ def active_classification_correction(
     connection: sqlite3.Connection,
 ) -> ClassificationCorrectionBinding | None:
     """Return the validated active mapping identity, if installed."""
+    before_version = int(connection.execute("PRAGMA data_version").fetchone()[0])
     validate_classification_corrections_if_present(connection)
-    table = connection.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' "
-        "AND name='shortlist_classification_correction_admission'"
-    ).fetchone()
-    if table is None:
-        return None
-    row = connection.execute(
-        "SELECT correction_id, correction_set_fingerprint "
-        "FROM shortlist_classification_correction_admission"
-    ).fetchone()
-    if row is None:
-        raise ShortlistClassificationCorrectionError(
-            "classification correction admission is missing"
+    if _composition_extension_present(connection):
+        from .shortlist_classification_composition import (
+            active_composed_classification_correction,
         )
-    return ClassificationCorrectionBinding(str(row[0]), str(row[1]))
+
+        binding = active_composed_classification_correction(connection)
+    else:
+        table = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='shortlist_classification_correction_admission'"
+        ).fetchone()
+        if table is None:
+            return None
+        row = connection.execute(
+            "SELECT correction_id, correction_set_fingerprint "
+            "FROM shortlist_classification_correction_admission"
+        ).fetchone()
+        if row is None:
+            raise ShortlistClassificationCorrectionError(
+                "classification correction admission is missing"
+            )
+        binding = ClassificationCorrectionBinding(str(row[0]), str(row[1]))
+    after_version = int(connection.execute("PRAGMA data_version").fetchone()[0])
+    if before_version != after_version:
+        raise ShortlistClassificationCorrectionError(
+            "classification correction state changed during validation"
+        )
+    return ClassificationCorrectionBinding(
+        correction_id=binding.correction_id,
+        correction_set_fingerprint=binding.correction_set_fingerprint,
+        application_order=binding.application_order,
+        validated_data_version=after_version,
+    )
 
 
 def load_entry_classifications(
@@ -386,10 +440,44 @@ def load_entry_classifications(
     shortlist_entry_id: int,
     *,
     apply_corrections: bool,
+    correction_binding: ClassificationCorrectionBinding | None = None,
 ) -> tuple[SourceClassification, ...]:
     """Load original and explicitly selected classifications for one membership."""
+    if correction_binding is not None:
+        ensure_classification_binding_current(connection, correction_binding)
     if apply_corrections:
-        source = "v_effective_shortlist_classification"
+        parameters: tuple[object, ...]
+        if _composition_extension_present(connection):
+            if correction_binding is None:
+                raise ShortlistClassificationCorrectionError(
+                    "composed classification reads require a validated binding"
+                )
+            application_order = correction_binding.application_order
+            maximum_order = int(
+                connection.execute(
+                    "SELECT max(application_order) "
+                    "FROM shortlist_classification_composition_admission"
+                ).fetchone()[0]
+            )
+            if application_order == maximum_order:
+                source = "v_effective_shortlist_classification"
+                parameters = (shortlist_entry_id,)
+            else:
+                source = """(
+                    SELECT stage.*
+                    FROM v_shortlist_classification_correction_stage AS stage
+                    WHERE stage.application_order=(
+                        SELECT max(candidate.application_order)
+                        FROM v_shortlist_classification_correction_stage AS candidate
+                        WHERE candidate.shortlist_entry_source_occurrence_id=
+                              stage.shortlist_entry_source_occurrence_id
+                          AND candidate.application_order<=?
+                    )
+                )"""
+                parameters = (application_order, shortlist_entry_id)
+        else:
+            source = "v_effective_shortlist_classification"
+            parameters = (shortlist_entry_id,)
         asset = "classification.effective_asset_class"
         sub_asset = "classification.effective_sub_asset_class"
         correction = "classification.correction_id"
@@ -398,6 +486,7 @@ def load_entry_classifications(
         asset = "classification.observed_asset_class"
         sub_asset = "classification.observed_sub_asset_class"
         correction = "NULL"
+        parameters = (shortlist_entry_id,)
     rows = connection.execute(
         f"""SELECT classification.shortlist_entry_source_occurrence_id,
                    classification.observed_currency_code,
@@ -409,9 +498,9 @@ def load_entry_classifications(
               ON classification.shortlist_entry_source_occurrence_id=lineage.source_occurrence_id
             WHERE lineage.shortlist_entry_id=?
             ORDER BY classification.shortlist_entry_source_occurrence_id""",
-        (shortlist_entry_id,),
+        parameters,
     ).fetchall()
-    return tuple(
+    result = tuple(
         SourceClassification(
             source_occurrence_id=int(row[0]),
             currency=_optional_text(row[1]),
@@ -424,6 +513,9 @@ def load_entry_classifications(
         )
         for row in rows
     )
+    if correction_binding is not None:
+        ensure_classification_binding_current(connection, correction_binding)
+    return result
 
 
 def _discover_items(

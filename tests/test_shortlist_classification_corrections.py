@@ -30,6 +30,9 @@ from portfolio_advisor.construction.persistence import (
     persist_constructed_candidate,
     validate_persisted_snapshot,
 )
+from portfolio_advisor.database.migrations import (
+    shortlist_classification_composition as composition,
+)
 from portfolio_advisor.database.migrations import shortlist_parallel as stage
 from portfolio_advisor.database.migrations.shortlist_classification import (
     EFFECTIVE_SUB_ASSET_CLASS,
@@ -40,6 +43,10 @@ from portfolio_advisor.database.migrations.shortlist_classification import (
     admit_classification_correction,
     load_entry_classifications,
     validate_classification_corrections,
+)
+from portfolio_advisor.database.migrations.shortlist_classification_composition import (
+    ClassificationCompositionRequest,
+    admit_composed_classification_correction,
 )
 from portfolio_advisor.database.migrations.shortlist_zero_null import (
     CorrectionRequest,
@@ -131,6 +138,24 @@ def _request(target: Path, dataset_fingerprint: str) -> ClassificationCorrection
             "Correct the exact shortlist sub-asset label Fejl?d? piacok to "
             "Fejlődő piacok without changing source evidence."
         ),
+    )
+
+
+def _composition_request(
+    target: Path,
+    dataset_fingerprint: str,
+    *label_counts: tuple[str, int],
+) -> ClassificationCompositionRequest:
+    return ClassificationCompositionRequest(
+        correction_id="SHORTLIST_CLASSIFICATION_QUESTION_MARK_2026_09_23",
+        dataset_fingerprint=dataset_fingerprint,
+        initial_target_sha256=sha256(target.read_bytes()).hexdigest(),
+        authorization_reference="USER_REQUEST_2026_09_23",
+        reason=(
+            "Replace each literal question mark with ő in the authorized current "
+            "effective shortlist sub-asset labels."
+        ),
+        expected_prior_label_counts=label_counts,
     )
 
 
@@ -325,6 +350,287 @@ def test_exact_replay_and_changed_bindings_are_nonmutating(
         assert sha256(target.read_bytes()).hexdigest() == admitted_sha256
 
 
+def test_additional_admission_composes_effective_labels_and_groups(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    affected = "Fejl?d? piacok-Vállalatok"
+    corrected = "Fejlődő piacok-Vállalatok"
+    target, integration, _audit = _target(
+        tmp_path,
+        monkeypatch,
+        sheet=_sheet(
+            rows=[
+                _row(2, "US0378331005", ORIGINAL_SUB_ASSET_CLASS),
+                _row(3, "US5949181045", affected),
+                _row(4, "US0231351067", corrected),
+            ]
+        ),
+    )
+    dataset = str(integration["dataset_fingerprint"])
+    admit_classification_correction(target, _request(target, dataset))
+    request = _composition_request(target, dataset, (affected, 1))
+
+    result = admit_composed_classification_correction(target, request)
+
+    assert result.item_count == 1
+    with sqlite3.connect(target) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            """SELECT original_sub_asset_class, effective_sub_asset_class,
+                      correction_id
+               FROM v_effective_shortlist_classification
+               ORDER BY source_row_number"""
+        ).fetchall()
+        assert [tuple(row) for row in rows] == [
+            (
+                ORIGINAL_SUB_ASSET_CLASS,
+                EFFECTIVE_SUB_ASSET_CLASS,
+                "SHORTLIST_CLASSIFICATION_2026_09_22",
+            ),
+            (affected, corrected, request.correction_id),
+            (corrected, corrected, None),
+        ]
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM shortlist_entry_source_occurrence "
+                "WHERE observed_sub_asset_class=?",
+                (affected,),
+            ).fetchone()[0]
+            == 1
+        )
+        validate_classification_corrections(connection)
+
+    evidence = load_construction_instrument_evidence(
+        target, _screening(target, dataset)
+    )
+    assert evidence[1].group == evidence[2].group == ("Equity", corrected)
+
+
+def test_construction_batch_validates_composed_contract_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    affected = "Fejl?d? piacok-Vállalatok"
+    corrected = "Fejlődő piacok-Vállalatok"
+    target, integration, _audit = _target(
+        tmp_path,
+        monkeypatch,
+        sheet=_sheet(
+            rows=[
+                _row(2, "US0378331005", ORIGINAL_SUB_ASSET_CLASS),
+                _row(3, "US5949181045", affected),
+                _row(4, "US0231351067", corrected),
+            ]
+        ),
+    )
+    dataset = str(integration["dataset_fingerprint"])
+    admit_classification_correction(target, _request(target, dataset))
+    admit_composed_classification_correction(
+        target, _composition_request(target, dataset, (affected, 1))
+    )
+    validation_calls = 0
+    validate = composition.validate_composed_classification_corrections
+
+    def counted_validate(connection: sqlite3.Connection) -> None:
+        nonlocal validation_calls
+        validation_calls += 1
+        validate(connection)
+
+    monkeypatch.setattr(
+        composition, "validate_composed_classification_corrections", counted_validate
+    )
+
+    evidence = load_construction_instrument_evidence(
+        target, _screening(target, dataset)
+    )
+
+    assert validation_calls == 1
+    assert len(evidence) == 3
+    assert evidence[1].group == evidence[2].group == ("Equity", corrected)
+
+
+def test_validated_batch_binding_rejects_changed_database_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    affected = "Fejl?d? piacok-Vállalatok"
+    target, integration, _audit = _target(
+        tmp_path,
+        monkeypatch,
+        sheet=_sheet(
+            rows=[
+                _row(2, "US0378331005", ORIGINAL_SUB_ASSET_CLASS),
+                _row(3, "US5949181045", affected),
+            ]
+        ),
+    )
+    dataset = str(integration["dataset_fingerprint"])
+    admit_classification_correction(target, _request(target, dataset))
+    admit_composed_classification_correction(
+        target, _composition_request(target, dataset, (affected, 1))
+    )
+
+    with sqlite3.connect(target) as reader:
+        reader.row_factory = sqlite3.Row
+        binding = active_classification_correction(reader)
+        assert binding is not None
+        entry_id = int(
+            reader.execute(
+                "SELECT min(shortlist_entry_id) FROM shortlist_entry"
+            ).fetchone()[0]
+        )
+        with sqlite3.connect(target) as writer:
+            writer.execute(
+                "UPDATE source_file SET filename=filename || '.changed' "
+                "WHERE source_file_id=(SELECT min(source_file_id) FROM source_file)"
+            )
+
+        with pytest.raises(
+            ShortlistClassificationCorrectionError, match="became stale"
+        ):
+            load_entry_classifications(
+                reader,
+                entry_id,
+                apply_corrections=True,
+                correction_binding=binding,
+            )
+
+
+def test_composed_replay_and_mismatch_rejection_are_nonmutating(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    affected = "Fejl?d? piaci vállalatok"
+    target, integration, _audit = _target(
+        tmp_path,
+        monkeypatch,
+        sheet=_sheet(
+            rows=[
+                _row(2, "US0378331005", ORIGINAL_SUB_ASSET_CLASS),
+                _row(3, "US5949181045", affected),
+            ]
+        ),
+    )
+    dataset = str(integration["dataset_fingerprint"])
+    admit_classification_correction(target, _request(target, dataset))
+    request = _composition_request(target, dataset, (affected, 1))
+    admit_composed_classification_correction(target, request)
+    admitted_sha256 = sha256(target.read_bytes()).hexdigest()
+
+    replay = admit_composed_classification_correction(target, request)
+    assert replay.replayed is True
+    assert sha256(target.read_bytes()).hexdigest() == admitted_sha256
+
+    for changed in (
+        replace(request, initial_target_sha256="b" * 64),
+        replace(request, authorization_reference="OTHER_AUTHORIZATION"),
+        replace(request, expected_prior_label_counts=((affected, 2),)),
+        replace(request, reason="Different reason"),
+    ):
+        with pytest.raises(ShortlistClassificationCorrectionError, match="bindings"):
+            admit_composed_classification_correction(target, changed)
+        assert sha256(target.read_bytes()).hexdigest() == admitted_sha256
+
+
+def test_composed_admission_rejects_changed_evidence_without_partial_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    affected = "Fejl?d? piaci állampapír"
+    target, integration, _audit = _target(
+        tmp_path,
+        monkeypatch,
+        sheet=_sheet(
+            rows=[
+                _row(2, "US0378331005", ORIGINAL_SUB_ASSET_CLASS),
+                _row(3, "US5949181045", affected),
+            ]
+        ),
+    )
+    dataset = str(integration["dataset_fingerprint"])
+    admit_classification_correction(target, _request(target, dataset))
+    with sqlite3.connect(target) as connection:
+        payload = json.loads(
+            connection.execute(
+                "SELECT source_payload_json FROM shortlist_entry_source_occurrence "
+                "WHERE source_row_number=3"
+            ).fetchone()[0]
+        )
+        payload["Aleszközosztály"] = "Changed source"
+        connection.execute(
+            "UPDATE shortlist_entry_source_occurrence SET source_payload_json=? "
+            "WHERE source_row_number=3",
+            (json.dumps(payload, ensure_ascii=False, sort_keys=True),),
+        )
+    request = _composition_request(target, dataset, (affected, 1))
+    before = sha256(target.read_bytes()).hexdigest()
+
+    with pytest.raises(
+        ShortlistClassificationCorrectionError, match="raw source evidence"
+    ):
+        admit_composed_classification_correction(target, request)
+
+    assert sha256(target.read_bytes()).hexdigest() == before
+    with sqlite3.connect(target) as connection:
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM sqlite_master "
+                "WHERE name='shortlist_classification_composition_admission'"
+            ).fetchone()[0]
+            == 0
+        )
+
+
+def test_composed_same_dataset_reimport_preserves_and_changed_dataset_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    affected = "Fejl?d? piacok-Vállalatok"
+    sheet = _sheet(
+        rows=[
+            _row(2, "US0378331005", ORIGINAL_SUB_ASSET_CLASS),
+            _row(3, "US5949181045", affected),
+        ]
+    )
+    target, integration, _audit = _target(tmp_path, monkeypatch, sheet=sheet)
+    dataset = str(integration["dataset_fingerprint"])
+    admit_classification_correction(target, _request(target, dataset))
+    admit_composed_classification_correction(
+        target, _composition_request(target, dataset, (affected, 1))
+    )
+
+    same = stage.integrate_shortlist(
+        workbook_directory=tmp_path, target=target, apply=True
+    )
+    assert same["dataset_fingerprint"] == dataset
+    with sqlite3.connect(target) as connection:
+        connection.row_factory = sqlite3.Row
+        validate_classification_corrections(connection)
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM v_effective_shortlist_classification "
+                "WHERE instr(effective_sub_asset_class, '?') > 0"
+            ).fetchone()[0]
+            == 0
+        )
+
+    before = sha256(target.read_bytes()).hexdigest()
+    monkeypatch.setattr(
+        stage,
+        "audit_workbooks",
+        lambda _path: {
+            "files": [
+                _sheet(
+                    digest="b" * 64,
+                    rows=cast(list[dict[str, object]], sheet["identity_records"]),
+                )
+            ]
+        },
+    )
+    with pytest.raises(
+        ShortlistClassificationCorrectionError, match="binding|dataset|evidence"
+    ):
+        stage.integrate_shortlist(
+            workbook_directory=tmp_path, target=target, apply=True
+        )
+    assert sha256(target.read_bytes()).hexdigest() == before
+
+
 def test_mismatched_raw_evidence_rejects_without_partial_admission(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -430,9 +736,10 @@ def test_metric_corrections_remain_valid_when_classification_is_admitted(
 def test_persistence_uses_effective_mapping_and_historical_provenance_stays_original(
     tmp_path: Path,
 ) -> None:
+    later_corrected_label = "Fejl?d? piacok-Vállalatok"
     groups = (
         ("Equity", ORIGINAL_SUB_ASSET_CLASS),
-        ("Equity", EFFECTIVE_SUB_ASSET_CLASS),
+        ("Equity", later_corrected_label),
         ("Bond", "Government"),
         ("Bond", "Government"),
         ("Bond", "Government"),
@@ -491,6 +798,16 @@ def test_persistence_uses_effective_mapping_and_historical_provenance_stays_orig
             "WHERE shortlist_entry_source_occurrence_id=1",
             (json.dumps(payload, ensure_ascii=False, sort_keys=True),),
         )
+        later_payload = {
+            "Aleszközosztály": later_corrected_label,
+            "Eszközosztály": "Equity",
+            "ISIN": corrected_fixture.instruments[1].isin,
+        }
+        connection.execute(
+            "UPDATE shortlist_entry_source_occurrence SET source_payload_json=? "
+            "WHERE shortlist_entry_source_occurrence_id=2",
+            (json.dumps(later_payload, ensure_ascii=False, sort_keys=True),),
+        )
     request = _request(corrected_fixture.database_path, "b" * 64)
     admitted = admit_classification_correction(corrected_fixture.database_path, request)
     with sqlite3.connect(corrected_fixture.database_path) as connection:
@@ -538,3 +855,15 @@ def test_persistence_uses_effective_mapping_and_historical_provenance_stays_orig
             ).fetchone()[0]
             == admitted.item_count
         )
+
+    composition_request = _composition_request(
+        corrected_fixture.database_path,
+        "b" * 64,
+        (later_corrected_label, 1),
+    )
+    admit_composed_classification_correction(
+        corrected_fixture.database_path, composition_request
+    )
+    with sqlite3.connect(corrected_fixture.database_path) as connection:
+        connection.row_factory = sqlite3.Row
+        validate_persisted_snapshot(connection, corrected_result.portfolio_snapshot_id)

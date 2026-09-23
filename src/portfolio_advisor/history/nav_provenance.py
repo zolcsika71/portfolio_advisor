@@ -19,6 +19,7 @@ from portfolio_advisor.canonical import canonical_fingerprint
 from portfolio_advisor.database.migrations.shortlist_classification import (
     ShortlistClassificationCorrectionError,
     active_classification_correction,
+    ensure_classification_binding_current,
 )
 from portfolio_advisor.database.schema.v3 import (
     NAV_PROVENANCE_CONTRACT_VERSION,
@@ -504,6 +505,15 @@ def select_phase_e_cohorts(database_path: Path) -> dict[str, tuple[CohortMember,
                ORDER BY o.observed_currency_code, i.isin""",
             (snapshot,),
         ).fetchall()
+        if classification_correction is not None:
+            try:
+                ensure_classification_binding_current(
+                    connection, classification_correction
+                )
+            except ShortlistClassificationCorrectionError as error:
+                raise NavProvenanceError(
+                    "shortlist classification correction changed during selection"
+                ) from error
     grouped: dict[str, list[CohortMember]] = {currency: [] for currency in PHASE_E_CURRENCIES}
     seen: set[tuple[str, str]] = set()
     for row in rows:

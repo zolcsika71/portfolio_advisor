@@ -83,6 +83,7 @@ def _load_one(
         connection,
         ranked.lineage.shortlist_entry_id,
         apply_corrections=classification_correction is not None,
+        correction_binding=classification_correction,
     )
     if not classifications:
         raise ConstructionEvidenceError("ranked instrument has no source classification")

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by ADR-005
 
 ## Context
 
@@ -48,3 +48,6 @@ their membership or cardinality; it does not prove any existing selection was
 wrong. Future datasets do not inherit the correction silently, and restoring
 the local corrected state requires the database backup in addition to the
 Git-tracked implementation.
+
+The single-admission limitation of this contract is superseded by
+[ADR-005](ADR-005-compose-authorized-shortlist-classification-corrections.md).

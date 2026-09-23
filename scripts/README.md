@@ -38,13 +38,13 @@ exposed by those two pages.
 | `build_official_forward_label_store.py` | Materialize official results or explicit unavailable labels. |
 | `validate_forward_rank_signal.py` | Assess an existing label store; never optimize policy weights. |
 | `admit_shortlist_zero_null_corrections.py` | Back up an explicit schema-v3 target and atomically admit the authorized, provenance-bound shortlist zero-to-NULL correction set. |
-| `admit_shortlist_classification_correction.py` | Back up an explicit schema-v3 target and atomically admit the authorized, provenance-bound shortlist sub-asset classification correction. |
+| `admit_shortlist_classification_correction.py` | Back up an explicit schema-v3 target and atomically admit an authorized, provenance-bound shortlist sub-asset classification correction, including explicit ordered composition. |
 
 The shortlist correction command is an explicit operator-only write. It
 requires all admission bindings and `--apply`; see
 [`docs/shortlist_zero_null_corrections.md`](../docs/shortlist_zero_null_corrections.md)
 for the contract, recovery requirement, and read-only verification query.
-The separate exact-label classification mapping is documented in
+The separate classification mapping and ordered-composition contracts are documented in
 [`docs/shortlist_classification_corrections.md`](../docs/shortlist_classification_corrections.md).
 
 ## Event-driven XLS import

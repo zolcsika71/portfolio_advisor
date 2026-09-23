@@ -12,6 +12,10 @@ from portfolio_advisor.database.migrations.shortlist_classification import (
     ShortlistClassificationCorrectionError,
     admit_classification_correction,
 )
+from portfolio_advisor.database.migrations.shortlist_classification_composition import (
+    ClassificationCompositionRequest,
+    admit_composed_classification_correction,
+)
 from portfolio_advisor.database.migrations.shortlist_zero_null import (
     ShortlistCorrectionError,
     backup_database,
@@ -27,22 +31,58 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--initial-target-sha256", required=True)
     parser.add_argument("--authorization-reference", required=True)
     parser.add_argument("--reason", required=True)
+    parser.add_argument(
+        "--question-mark-to-o-double-acute",
+        action="store_true",
+        help=(
+            "append the authorized effective-sub-asset replacement '?' -> 'ő'; "
+            "requires --expected-prior-label-count"
+        ),
+    )
+    parser.add_argument(
+        "--expected-prior-label-count",
+        action="append",
+        default=[],
+        metavar="LABEL=COUNT",
+        help="exact prior effective label and authorized row count (repeatable)",
+    )
     parser.add_argument("--apply", action="store_true")
     arguments = parser.parse_args(argv)
     if not arguments.apply:
         parser.error("live admission requires explicit --apply")
     try:
         backup_sha256 = backup_database(arguments.database, arguments.backup)
-        result = admit_classification_correction(
-            arguments.database,
-            ClassificationCorrectionRequest(
-                correction_id=arguments.correction_id,
-                dataset_fingerprint=arguments.dataset_fingerprint,
-                initial_target_sha256=arguments.initial_target_sha256,
-                authorization_reference=arguments.authorization_reference,
-                reason=arguments.reason,
-            ),
-        )
+        if arguments.question_mark_to_o_double_acute:
+            expected_counts = _parse_expected_counts(
+                arguments.expected_prior_label_count
+            )
+            result = admit_composed_classification_correction(
+                arguments.database,
+                ClassificationCompositionRequest(
+                    correction_id=arguments.correction_id,
+                    dataset_fingerprint=arguments.dataset_fingerprint,
+                    initial_target_sha256=arguments.initial_target_sha256,
+                    authorization_reference=arguments.authorization_reference,
+                    reason=arguments.reason,
+                    expected_prior_label_counts=expected_counts,
+                ),
+            )
+        else:
+            if arguments.expected_prior_label_count:
+                parser.error(
+                    "--expected-prior-label-count requires "
+                    "--question-mark-to-o-double-acute"
+                )
+            result = admit_classification_correction(
+                arguments.database,
+                ClassificationCorrectionRequest(
+                    correction_id=arguments.correction_id,
+                    dataset_fingerprint=arguments.dataset_fingerprint,
+                    initial_target_sha256=arguments.initial_target_sha256,
+                    authorization_reference=arguments.authorization_reference,
+                    reason=arguments.reason,
+                ),
+            )
     except (
         OSError,
         ShortlistCorrectionError,
@@ -70,6 +110,21 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
     return 0
+
+
+def _parse_expected_counts(values: list[str]) -> tuple[tuple[str, int], ...]:
+    if not values:
+        raise ValueError("at least one expected prior label count is required")
+    result: list[tuple[str, int]] = []
+    for value in values:
+        label, separator, count_text = value.rpartition("=")
+        if not separator or not label:
+            raise ValueError(
+                "expected prior label counts must use the form LABEL=COUNT"
+            )
+        count = int(count_text)
+        result.append((label, count))
+    return tuple(result)
 
 
 if __name__ == "__main__":

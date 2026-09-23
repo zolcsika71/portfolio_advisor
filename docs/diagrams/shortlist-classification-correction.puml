@@ -1,11 +1,12 @@
 @startuml
 ' Status: Implemented
 ' Verified against: src/portfolio_advisor/database/migrations/shortlist_classification.py
+' Verified against: src/portfolio_advisor/database/migrations/shortlist_classification_composition.py
 ' Verified against: src/portfolio_advisor/database/migrations/shortlist_parallel.py
 ' Verified against: src/portfolio_advisor/construction/evidence.py
 ' Verified against: src/portfolio_advisor/construction/persistence.py
 ' Verified by: tests/test_shortlist_classification_corrections.py
-title Shortlist classification correction [Implemented]
+title Shortlist classification correction composition [Implemented]
 
 actor Operator
 participant "Admission command" as CLI
@@ -16,12 +17,12 @@ participant "Persistence validator" as Persistence
 participant "Copy-on-write importer" as Importer
 
 box "Explicit operator write boundary" #FFF2CC
-Operator -> CLI: database, new backup, correction identity,\ndataset fingerprint, original hash, authorization, reason, --apply
+Operator -> CLI: database, new backup, correction identity,\ndataset fingerprint, original hash, authorization, reason,\nexact prior-label counts, --apply
 CLI -> DB: SQLite backup API to separate path
 CLI -> DB: inspect correction identity
 alt Existing identity: retry
-  CLI -> Validator: validate DDL, admission, and stable evidence set
-  alt Every original binding matches
+  CLI -> Validator: validate DDL, ordered admissions,\nand stable evidence sets
+  alt Every admission binding matches
     Validator --> CLI: exact replay; no records added
   else Any binding differs
     Validator --> CLI: reject without mutation
@@ -31,14 +32,15 @@ else New identity
   alt Hash mismatch
     CLI --> Operator: reject before schema or data mutation
   else Hash matches
+    CLI -> Validator: inventory current effective labels containing ?\nand match every authorized label/count
     CLI -> DB: BEGIN IMMEDIATE
-    CLI -> DB: install immutable admission/items and effective view
-    CLI -> Validator: bind workbook hash, sheet, row, snapshot,\nISIN, asset class, raw JSON, and exact original label
+    CLI -> DB: install immutable ordered admission/items\nand composed effective/stage views
+    CLI -> Validator: bind workbook hash, sheet, row, snapshot,\nISIN, asset class, raw JSON, original label,\nexpected prior effective label, and replacement result
     alt Evidence missing, changed, ambiguous, or out of scope
       Validator -> DB: ROLLBACK
       Validator --> Operator: reject with no partial admission
     else Exact authorized set
-      Validator -> DB: verify integrity, foreign keys, and projection
+      Validator -> DB: verify ordered composition, integrity,\nforeign keys, and projection
       CLI -> DB: COMMIT
       CLI --> Operator: item count and correction-set fingerprint
     end
@@ -46,20 +48,30 @@ else New identity
 end
 end box
 
-Resolver -> DB: read original and effective classifications
-DB --> Resolver: exact typo maps to Fejlődő piacok;\nall other labels pass through
+Resolver -> Validator: validate the complete installed correction contract once\nand bind the current SQLite data version
+loop Each shortlist entry in the batch
+  Resolver -> DB: verify bound data version, then read original\nand selected composed classification stage
+  DB --> Resolver: v1 exact mapping followed by explicitly\nadmitted ordered replacements; other labels pass through
+end
+Resolver -> DB: verify bound data version after the batch
+alt Database changed after validation
+  Resolver --> Resolver: reject stale binding; do not reuse validation
+end
 Resolver -> Resolver: retain conflict status; group on effective asset/sub-asset
 
 Persistence -> DB: read stored candidate provenance
-alt Candidate binds the active correction set
-  Persistence -> Resolver: validate holdings with effective classifications
+alt Candidate binds active aggregate correction set
+  Persistence -> Resolver: validate with latest effective classifications
+else Candidate binds a validated historical correction stage
+  Persistence -> DB: resolve its exact ordered stage
+  Persistence -> Resolver: validate with that stage's classifications
 else Historical candidate has no correction binding
   Persistence -> DB: validate against original classifications
 end
 
 Importer -> DB: rebuild shortlist candidate from workbook evidence
-alt Stable evidence reproduces the admitted correction set
-  Importer -> Validator: validate both metric and classification corrections
+alt Stable evidence reproduces every admitted set
+  Importer -> Validator: validate metric, legacy classification,\nand composed classification corrections
   Validator --> Importer: publish candidate
 else Dataset or source binding changed
   Validator --> Importer: fail closed
@@ -67,7 +79,9 @@ else Dataset or source binding changed
 end
 
 note over DB
-Original columns, raw JSON, conflict flags, and metric corrections are unchanged.
-Future datasets require explicit authorization.
+Original columns, raw JSON, conflict flags, the 1,278 v1 items,
+and metric corrections are unchanged.
+The current ? -> ő rule is an explicit dataset-bound admission;
+future datasets and later corrections require separate authorization.
 end note
 @enduml

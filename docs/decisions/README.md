@@ -75,4 +75,5 @@ Describe benefits, trade-offs, limitations, and follow-up obligations.
 | [ADR-001](ADR-001-adopt-architecture-decision-records.md) | Accepted | Adopt a persistent ADR workflow for important project decisions. |
 | [ADR-002](ADR-002-adopt-plantuml-for-detailed-technical-diagrams.md) | Accepted | Use PlantUML selectively for detailed technical diagrams. |
 | [ADR-003](ADR-003-preserve-shortlist-evidence-with-null-corrections.md) | Accepted | Preserve shortlist source evidence while exposing an authorized zero set as explicit NULLs. |
-| [ADR-004](ADR-004-preserve-shortlist-classification-evidence-with-effective-mapping.md) | Accepted | Preserve shortlist classification evidence while applying an authorized effective mapping. |
+| [ADR-004](ADR-004-preserve-shortlist-classification-evidence-with-effective-mapping.md) | Superseded by ADR-005 | Preserve shortlist classification evidence while applying an authorized effective mapping. |
+| [ADR-005](ADR-005-compose-authorized-shortlist-classification-corrections.md) | Accepted | Compose separately authorized shortlist classification corrections without rewriting earlier admissions. |
