@@ -78,3 +78,4 @@ Describe benefits, trade-offs, limitations, and follow-up obligations.
 | [ADR-004](ADR-004-preserve-shortlist-classification-evidence-with-effective-mapping.md) | Superseded by ADR-005 | Preserve shortlist classification evidence while applying an authorized effective mapping. |
 | [ADR-005](ADR-005-compose-authorized-shortlist-classification-corrections.md) | Superseded by ADR-006 | Compose separately authorized shortlist classification corrections without rewriting earlier admissions. |
 | [ADR-006](ADR-006-standardize-effective-shortlist-classifications-in-english.md) | Accepted | Standardize effective shortlist classifications through an authorized English asset/sub-asset pair mapping. |
+| [ADR-007](ADR-007-consolidate-model-portfolio-workflows.md) | Proposed | Consolidate model-portfolio workflows into the analytical store after explicit evidence, cutover, and recovery gates. |

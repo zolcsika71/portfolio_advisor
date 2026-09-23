@@ -89,6 +89,9 @@ change tooling merely to validate documentation.
   — immutable source labels, ordered sub-asset and asset/sub-asset pair
   mappings, historical-stage resolution, replay, and copy-on-write re-import
   validation.
+- [Model-portfolio consolidation and cutover](model-portfolio-consolidation-cutover.puml)
+  — proposed single-writer admission, validation, cutover, and post-cutover
+  recovery boundaries.
 
 ### Existing diagrams retained in place
 

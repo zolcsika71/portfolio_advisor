@@ -14,6 +14,7 @@ decisions, and evidence-ingestion reports remain in `docs/`.
 
 - [Schema v3 design](milestone_4_schema_v3_design.md)
 - [Schema v3 scaffolding](milestone_5_schema_v3_scaffolding.md)
+- [Proposed model-portfolio workflow consolidation](model-portfolio-consolidation-plan.md)
 - [LTIA identity and current-state model](milestone_6_ltia_identity_and_current_state.md)
 - [Historical NAV source architecture](historical_nav_sources.md)
 - [Reference-rate schema foundation](milestone_11c_reference_rate_schema_foundation.md)

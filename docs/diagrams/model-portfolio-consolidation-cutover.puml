@@ -1,0 +1,107 @@
+@startuml
+' Status: Proposed
+' Verified current behavior against:
+' - src/portfolio_advisor/main.py
+' - src/portfolio_advisor/DB_creation/database_create.py
+' - src/portfolio_advisor/operations/xls_import_watch.py
+' - src/portfolio_advisor/database/migrations/model_portfolio_dry_run.py
+' - src/portfolio_advisor/database/migrations/model_portfolio_parallel.py
+' - src/portfolio_advisor/database/migrations/shortlist_parallel.py
+' - src/portfolio_advisor/database/migrations/shortlist_zero_null.py
+' - src/portfolio_advisor/database/migrations/shortlist_classification_pair_mapping.py
+' - tests/test_schema_v3_model_portfolio_migration.py
+' - tests/test_xls_import_watch.py
+' Proposed contract: docs/architecture/model-portfolio-consolidation-plan.md
+' Governing proposal: docs/decisions/ADR-007-consolidate-model-portfolio-workflows.md
+title Model-portfolio consolidation and cutover [Proposed]
+
+hide footbox
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 120
+
+actor Operator
+participant "WatchPaths wrapper\n(or manual CLI)" as Trigger
+collections "Retained workbook\nand MNB PDF evidence" as Evidence
+participant "Single model admission\ncommand" as Writer
+database "portfolio_advisor.sqlite\nproposed operational authority" as Analytical
+participant "Model + provenance +\ncorrection validators" as Validators
+database "SQLite-API\nrecovery backup" as Backup
+database "model_portfolio.sqlite\nfrozen legacy after cutover" as Legacy
+
+box "Operator-controlled input boundary" #E8F4FF
+Operator -> Trigger: supply stable workbook
+Trigger -> Writer: request admission under watcher lock
+end box
+
+Writer -> Evidence: read bytes, sheet inventory, and SHA-256
+Evidence --> Writer: immutable source identity and parsed rows
+Writer -> Writer: validate headers, categories, date, identifiers,\nstable row identities, and prior admission
+
+alt exact workbook and all bindings already admitted
+    Writer -> Analytical: read matching immutable receipt
+    Analytical --> Writer: exact replay confirmed
+    Writer --> Trigger: NO-OP (no rows added)
+else same date with changed bytes or bindings
+    Writer --> Trigger: REJECT before mutation
+else new valid model evidence
+    Writer -> Backup: create and verify consistent recovery snapshot
+    Backup --> Writer: recovery manifest and checksum
+    Writer -> Analytical: BEGIN IMMEDIATE
+    activate Analytical
+    Writer -> Analytical: append source, sheet, snapshot, occurrences,\ntyped fields, metrics, lineage, and import receipt
+    Writer -> Validators: validate candidate transaction state
+    activate Validators
+    Validators -> Analytical: integrity + foreign keys + installed schema
+    Validators -> Analytical: stable lineage and all-date model projection
+    Validators -> Analytical: all installed shortlist correction contracts
+
+    alt model projection or provenance mismatch
+        Validators --> Writer: FAIL CLOSED
+        Writer -> Analytical: ROLLBACK
+        Writer --> Trigger: rejection; workbook remains pending
+    else shortlist evidence would change bound dataset
+        Validators --> Writer: FAIL CLOSED pending separate authorization
+        Writer -> Analytical: ROLLBACK
+        Writer --> Trigger: no automatic correction inheritance
+    else every gate passes
+        Validators --> Writer: validated
+        Writer -> Analytical: COMMIT
+        Writer --> Trigger: database admission complete
+        Trigger -> Evidence: move workbook after commit
+        note right of Trigger
+          The database transaction does not claim
+          atomicity for this later filesystem move.
+          A failed move is resumed by exact replay.
+        end note
+    end
+    deactivate Validators
+    deactivate Analytical
+end
+
+== Separately authorized cutover ==
+
+Operator -> Trigger: quiesce watcher and verify no pending input
+Operator -> Backup: create full cutover recovery package
+Operator -> Analytical: apply approved authority epoch and shared default
+Operator -> Legacy: freeze; do not delete or resume writes
+note over Analytical, Legacy
+  Current state remains legacy-authoritative until this
+  separately approved transition completes all release gates.
+end note
+
+== Post-cutover recovery ==
+
+alt software rollback after newer imports
+    Operator -> Analytical: retain consolidated authority and receipts
+    Analytical --> Operator: generate temporary validated flat compatibility export
+    note over Operator, Legacy
+      Never point old code at a stale frozen legacy file.
+    end note
+else damaged analytical store
+    Operator -> Backup: restore latest verified analytical snapshot elsewhere
+    Operator -> Evidence: replay later immutable admissions in order
+    Evidence --> Operator: current state reconstructed and revalidated
+end
+
+@enduml
