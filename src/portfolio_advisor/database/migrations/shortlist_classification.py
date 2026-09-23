@@ -453,12 +453,11 @@ def load_entry_classifications(
                     "composed classification reads require a validated binding"
                 )
             application_order = correction_binding.application_order
-            maximum_order = int(
-                connection.execute(
-                    "SELECT max(application_order) "
-                    "FROM shortlist_classification_composition_admission"
-                ).fetchone()[0]
+            from .shortlist_classification_composition import (
+                maximum_application_order,
             )
+
+            maximum_order = maximum_application_order(connection)
             if application_order == maximum_order:
                 source = "v_effective_shortlist_classification"
                 parameters = (shortlist_entry_id,)
@@ -466,13 +465,7 @@ def load_entry_classifications(
                 source = """(
                     SELECT stage.*
                     FROM v_shortlist_classification_correction_stage AS stage
-                    WHERE stage.application_order=(
-                        SELECT max(candidate.application_order)
-                        FROM v_shortlist_classification_correction_stage AS candidate
-                        WHERE candidate.shortlist_entry_source_occurrence_id=
-                              stage.shortlist_entry_source_occurrence_id
-                          AND candidate.application_order<=?
-                    )
+                    WHERE stage.application_order=?
                 )"""
                 parameters = (application_order, shortlist_entry_id)
         else:

@@ -34,6 +34,16 @@ FEATURE_FINGERPRINT = canonical_fingerprint(
 )
 
 
+def _pair_mapping_extension_present(connection: sqlite3.Connection) -> bool:
+    return (
+        connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='shortlist_classification_pair_mapping_admission'"
+        ).fetchone()
+        is not None
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class ClassificationCompositionRequest:
     correction_id: str
@@ -326,6 +336,13 @@ def validate_composed_classification_corrections(
     connection: sqlite3.Connection,
 ) -> None:
     """Validate legacy evidence plus every ordered composition admission."""
+    if _pair_mapping_extension_present(connection):
+        from .shortlist_classification_pair_mapping import (
+            validate_pair_mapping_corrections,
+        )
+
+        validate_pair_mapping_corrections(connection)
+        return
     legacy._validate_sqlite_health(connection)
     _validate_schema(connection)
     manifest = legacy._manifest(connection)
@@ -665,21 +682,38 @@ def _existing_admission(
     return rows[0] if rows else None
 
 
-def _maximum_application_order(connection: sqlite3.Connection) -> int:
+def maximum_application_order(connection: sqlite3.Connection) -> int:
+    """Return the latest installed classification correction stage."""
+    orders = [1]
     if (
         connection.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' "
             "AND name='shortlist_classification_composition_admission'"
         ).fetchone()
-        is None
+        is not None
     ):
-        return 1
-    return int(
-        connection.execute(
-            "SELECT coalesce(max(application_order), 1) "
-            "FROM shortlist_classification_composition_admission"
-        ).fetchone()[0]
-    )
+        orders.append(
+            int(
+                connection.execute(
+                    "SELECT coalesce(max(application_order), 1) "
+                    "FROM shortlist_classification_composition_admission"
+                ).fetchone()[0]
+            )
+        )
+    if _pair_mapping_extension_present(connection):
+        orders.append(
+            int(
+                connection.execute(
+                    "SELECT coalesce(max(application_order), 1) "
+                    "FROM shortlist_classification_pair_mapping_admission"
+                ).fetchone()[0]
+            )
+        )
+    return max(orders)
+
+
+def _maximum_application_order(connection: sqlite3.Connection) -> int:
+    return maximum_application_order(connection)
 
 
 def _individual_bindings(connection: sqlite3.Connection) -> tuple[tuple[str, str], ...]:
@@ -707,6 +741,15 @@ def _individual_bindings(connection: sqlite3.Connection) -> tuple[tuple[str, str
                 "ORDER BY application_order"
             )
         )
+    if _pair_mapping_extension_present(connection):
+        result.extend(
+            (str(row[0]), str(row[1]))
+            for row in connection.execute(
+                "SELECT correction_id, correction_set_fingerprint "
+                "FROM shortlist_classification_pair_mapping_admission "
+                "ORDER BY application_order"
+            )
+        )
     return tuple(result)
 
 
@@ -714,15 +757,33 @@ def _prefix_bindings(
     connection: sqlite3.Connection,
 ) -> tuple[legacy.ClassificationCorrectionBinding, ...]:
     individual = _individual_bindings(connection)
+    first_pair_order = (
+        int(
+            connection.execute(
+                "SELECT min(application_order) "
+                "FROM shortlist_classification_pair_mapping_admission"
+            ).fetchone()[0]
+        )
+        if _pair_mapping_extension_present(connection)
+        else None
+    )
     result: list[legacy.ClassificationCorrectionBinding] = []
     for length in range(1, len(individual) + 1):
         prefix = individual[:length]
+        if length == 1:
+            fingerprint = prefix[0][1]
+        elif first_pair_order is None or length < first_pair_order:
+            fingerprint = _composed_fingerprint(prefix)
+        else:
+            from .shortlist_classification_pair_mapping import (
+                composed_pair_mapping_fingerprint,
+            )
+
+            fingerprint = composed_pair_mapping_fingerprint(prefix)
         result.append(
             legacy.ClassificationCorrectionBinding(
                 correction_id="+".join(item[0] for item in prefix),
-                correction_set_fingerprint=(
-                    prefix[0][1] if length == 1 else _composed_fingerprint(prefix)
-                ),
+                correction_set_fingerprint=fingerprint,
                 application_order=length,
             )
         )

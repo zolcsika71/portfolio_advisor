@@ -7,11 +7,13 @@ authorized effective interpretations for one verified dataset. Contract v1
 maps the exact source label `Fejl?d? piacok` to `Fejlődő piacok`. Contract v2
 composes later admissions in order; the authorized 2026-09-23 admission
 replaces each literal `?` with `ő` in its explicitly inventoried prior
-effective sub-asset labels. Neither contract performs fuzzy matching, changes
-other fields, or establishes an automatic rule for future imports.
+effective sub-asset labels. Contract v3 composes the approved English
+asset/sub-asset pair mapping from the tracked, reviewable 77-entry manifest.
+No contract performs fuzzy matching, changes original evidence, or establishes
+an automatic rule for future imports.
 
 The contract is governed by
-[ADR-005](decisions/ADR-005-compose-authorized-shortlist-classification-corrections.md),
+[ADR-006](decisions/ADR-006-standardize-effective-shortlist-classifications-in-english.md),
 and its admission, selection, persistence, and re-import flow is shown in the
 [classification correction diagram](diagrams/shortlist-classification-correction.puml).
 
@@ -58,6 +60,29 @@ changed authorization, inventory, dataset, source, mapping, or hash bindings
 fail without partial admission. A same-dataset copy-on-write re-import
 revalidates every stable evidence binding before publication.
 
+The approved English pair mapping is admitted with its exact tracked manifest:
+
+```bash
+poetry run python scripts/admit_shortlist_classification_correction.py \
+  --database database/portfolio_advisor.sqlite \
+  --backup /path/outside/repository/portfolio_advisor.pre-english-mapping.sqlite \
+  --correction-id SHORTLIST_CLASSIFICATION_ENGLISH_2026_09_23 \
+  --dataset-fingerprint <64-lowercase-hex> \
+  --initial-target-sha256 <authorized-pre-write-sha256> \
+  --authorization-reference USER_APPROVED_ENGLISH_CLASSIFICATION_MAPPING_2026_09_23 \
+  --reason "Standardize the reviewed effective pairs in English." \
+  --english-pair-mapping-manifest \
+    data/knowledge/validated_rules/shortlist_classification_english_mapping_v1.json \
+  --apply
+```
+
+The v3 admission binds all 10,833 current occurrences to their stable source
+references, original pair, expected v2 effective pair, and approved English
+pair. The manifest additionally binds the 77-to-51 pair inventory, resulting
+7 asset and 38 sub-asset labels, and reviewed snapshot group-count effects.
+NULL classifications remain NULL. Original classifications, raw JSON, conflict
+flags, and the installed v1/v2 records remain unchanged.
+
 ## Read-only reporting
 
 This query reports original and effective labels without modifying data:
@@ -83,7 +108,8 @@ ORDER BY snapshot.snapshot_date,
 ```
 
 `original_sub_asset_class` remains the source spelling.
-`effective_sub_asset_class` is the application classification. Conflict status
-is independent and remains source-reported. `correction_id` identifies the
-latest admission that changed that row; constructed-artifact provenance binds
-the ordered aggregate correction set.
+`original_asset_class` and `original_sub_asset_class` remain the source values;
+the corresponding `effective_*` columns are the application classifications.
+Conflict status is independent and remains source-reported. `correction_id`
+identifies the latest admission governing that row; constructed-artifact
+provenance binds the ordered aggregate correction set.

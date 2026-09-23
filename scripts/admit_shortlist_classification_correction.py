@@ -16,6 +16,11 @@ from portfolio_advisor.database.migrations.shortlist_classification_composition 
     ClassificationCompositionRequest,
     admit_composed_classification_correction,
 )
+from portfolio_advisor.database.migrations.shortlist_classification_pair_mapping import (
+    ClassificationPairMappingRequest,
+    admit_pair_mapping_correction,
+    load_pair_mapping_manifest,
+)
 from portfolio_advisor.database.migrations.shortlist_zero_null import (
     ShortlistCorrectionError,
     backup_database,
@@ -46,13 +51,54 @@ def main(argv: list[str] | None = None) -> int:
         metavar="LABEL=COUNT",
         help="exact prior effective label and authorized row count (repeatable)",
     )
+    parser.add_argument(
+        "--english-pair-mapping-manifest",
+        type=Path,
+        help=(
+            "append the exact authorized effective asset/sub-asset pair mapping "
+            "from a reviewed manifest"
+        ),
+    )
     parser.add_argument("--apply", action="store_true")
     arguments = parser.parse_args(argv)
     if not arguments.apply:
         parser.error("live admission requires explicit --apply")
+    if (
+        arguments.question_mark_to_o_double_acute
+        and arguments.english_pair_mapping_manifest is not None
+    ):
+        parser.error(
+            "--question-mark-to-o-double-acute and "
+            "--english-pair-mapping-manifest are mutually exclusive"
+        )
+    if (
+        arguments.english_pair_mapping_manifest is not None
+        and arguments.expected_prior_label_count
+    ):
+        parser.error(
+            "--expected-prior-label-count cannot be used with "
+            "--english-pair-mapping-manifest"
+        )
     try:
+        pair_manifest = (
+            load_pair_mapping_manifest(arguments.english_pair_mapping_manifest)
+            if arguments.english_pair_mapping_manifest is not None
+            else None
+        )
         backup_sha256 = backup_database(arguments.database, arguments.backup)
-        if arguments.question_mark_to_o_double_acute:
+        if pair_manifest is not None:
+            result = admit_pair_mapping_correction(
+                arguments.database,
+                ClassificationPairMappingRequest(
+                    correction_id=arguments.correction_id,
+                    dataset_fingerprint=arguments.dataset_fingerprint,
+                    initial_target_sha256=arguments.initial_target_sha256,
+                    authorization_reference=arguments.authorization_reference,
+                    reason=arguments.reason,
+                    manifest=pair_manifest,
+                ),
+            )
+        elif arguments.question_mark_to_o_double_acute:
             expected_counts = _parse_expected_counts(
                 arguments.expected_prior_label_count
             )

@@ -33,6 +33,9 @@ from portfolio_advisor.construction.persistence import (
 from portfolio_advisor.database.migrations import (
     shortlist_classification_composition as composition,
 )
+from portfolio_advisor.database.migrations import (
+    shortlist_classification_pair_mapping as pair_mapping,
+)
 from portfolio_advisor.database.migrations import shortlist_parallel as stage
 from portfolio_advisor.database.migrations.shortlist_classification import (
     EFFECTIVE_SUB_ASSET_CLASS,
@@ -48,12 +51,21 @@ from portfolio_advisor.database.migrations.shortlist_classification_composition 
     ClassificationCompositionRequest,
     admit_composed_classification_correction,
 )
+from portfolio_advisor.database.migrations.shortlist_classification_pair_mapping import (
+    ClassificationPairMappingRequest,
+    PairMappingEntry,
+    PairMappingManifest,
+    admit_pair_mapping_correction,
+    load_pair_mapping_manifest,
+    validate_pair_mapping_corrections,
+)
 from portfolio_advisor.database.migrations.shortlist_zero_null import (
     CorrectionRequest,
     admit_zero_null_corrections,
     validate_corrections,
 )
 from portfolio_advisor.database.schema.v3 import connect, initialize_schema
+from portfolio_advisor.history import nav_provenance as nav
 from portfolio_advisor.objectives import (
     CAPITAL_DEFENSIVE_CONSTRUCTION_POLICY_ARTIFACT,
     load_capital_defensive_construction_policy,
@@ -156,6 +168,78 @@ def _composition_request(
             "effective shortlist sub-asset labels."
         ),
         expected_prior_label_counts=label_counts,
+    )
+
+
+def _pair_manifest(
+    dataset_fingerprint: str,
+    *mappings: tuple[str, str, str, str, int],
+    mapping_id: str = "SYNTHETIC_ENGLISH_PAIR_MAPPING_V1",
+    expected_occurrence_count: int | None = None,
+    snapshot_date: str = "2026-09-22",
+) -> PairMappingManifest:
+    entries = tuple(
+        PairMappingEntry(
+            prior_asset_class=prior_asset,
+            prior_sub_asset_class=prior_sub_asset,
+            effective_asset_class=effective_asset,
+            effective_sub_asset_class=effective_sub_asset,
+            row_count=count,
+            snapshot_count=1,
+            first_snapshot_date=snapshot_date,
+            last_snapshot_date=snapshot_date,
+            reference_status="SYNTHETIC_TEST_MAPPING",
+        )
+        for prior_asset, prior_sub_asset, effective_asset, effective_sub_asset, count in mappings
+    )
+    output_pairs = {
+        (entry.effective_asset_class, entry.effective_sub_asset_class)
+        for entry in entries
+    }
+    prior_pairs = {
+        (entry.prior_asset_class, entry.prior_sub_asset_class) for entry in entries
+    }
+    return PairMappingManifest(
+        schema_version=1,
+        mapping_id=mapping_id,
+        authorization_reference="USER_APPROVED_SYNTHETIC_ENGLISH_MAPPING",
+        dataset_fingerprint=dataset_fingerprint,
+        expected_occurrence_count=(
+            expected_occurrence_count
+            if expected_occurrence_count is not None
+            else sum(entry.row_count for entry in entries)
+        ),
+        expected_mapped_occurrence_count=sum(entry.row_count for entry in entries),
+        expected_prior_asset_class_count=len({asset for asset, _sub in prior_pairs}),
+        expected_prior_sub_asset_class_count=len({sub for _asset, sub in prior_pairs}),
+        expected_prior_pair_count=len(prior_pairs),
+        expected_result_asset_class_count=len({asset for asset, _sub in output_pairs}),
+        expected_result_sub_asset_class_count=len(
+            {sub for _asset, sub in output_pairs}
+        ),
+        expected_result_pair_count=len(output_pairs),
+        expected_snapshot_count=1,
+        expected_unchanged_snapshot_count=1,
+        expected_changed_transitions=(),
+        entries=entries,
+        manifest_sha256="e" * 64,
+    )
+
+
+def _pair_request(
+    target: Path,
+    dataset_fingerprint: str,
+    manifest: PairMappingManifest,
+    *,
+    correction_id: str = "SHORTLIST_CLASSIFICATION_ENGLISH_TEST",
+) -> ClassificationPairMappingRequest:
+    return ClassificationPairMappingRequest(
+        correction_id=correction_id,
+        dataset_fingerprint=dataset_fingerprint,
+        initial_target_sha256=sha256(target.read_bytes()).hexdigest(),
+        authorization_reference=manifest.authorization_reference,
+        reason="Apply the explicitly reviewed synthetic English pair mapping.",
+        manifest=manifest,
     )
 
 
@@ -867,3 +951,437 @@ def test_persistence_uses_effective_mapping_and_historical_provenance_stays_orig
     with sqlite3.connect(corrected_fixture.database_path) as connection:
         connection.row_factory = sqlite3.Row
         validate_persisted_snapshot(connection, corrected_result.portfolio_snapshot_id)
+        rows = connection.execute(
+            """SELECT o.shortlist_entry_source_occurrence_id, i.isin,
+                      o.observed_asset_class, o.observed_sub_asset_class
+               FROM shortlist_entry_source_occurrence AS o
+               JOIN instrument AS i ON i.instrument_id=o.instrument_id"""
+        ).fetchall()
+        connection.executemany(
+            "UPDATE shortlist_entry_source_occurrence SET source_payload_json=? "
+            "WHERE shortlist_entry_source_occurrence_id=?",
+            (
+                (
+                    json.dumps(
+                        {
+                            "Aleszközosztály": row[3],
+                            "Eszközosztály": row[2],
+                            "ISIN": row[1],
+                        },
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
+                    row[0],
+                )
+                for row in rows
+            ),
+        )
+    pair_manifest = _pair_manifest(
+        "b" * 64,
+        ("Equity", EFFECTIVE_SUB_ASSET_CLASS, "Public Equity", "Emerging Markets", 1),
+        (
+            "Equity",
+            "Fejlődő piacok-Vállalatok",
+            "Public Equity",
+            "Emerging Markets-Corporates",
+            1,
+        ),
+        ("Bond", "Government", "Bond", "Government", 3),
+        ("Bond", "Corporate", "Bond", "Corporate", 3),
+        ("Cashlike", "Money", "Money Market", "Money", 2),
+        snapshot_date="2026-01-01",
+    )
+    admit_pair_mapping_correction(
+        corrected_fixture.database_path,
+        _pair_request(corrected_fixture.database_path, "b" * 64, pair_manifest),
+    )
+    with sqlite3.connect(corrected_fixture.database_path) as connection:
+        connection.row_factory = sqlite3.Row
+        validate_persisted_snapshot(connection, corrected_result.portfolio_snapshot_id)
+
+
+def _prepared_pair_mapping_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[Path, str, PairMappingManifest]:
+    affected = "Fejl?d? piacok-Vállalatok"
+    corrected = "Fejlődő piacok-Vállalatok"
+    target, integration, _audit = _target(
+        tmp_path,
+        monkeypatch,
+        sheet=_sheet(
+            rows=[
+                _row(
+                    2, "US0378331005", ORIGINAL_SUB_ASSET_CLASS, asset_class="Részvény"
+                ),
+                _row(3, "US5949181045", affected, asset_class="Részvény"),
+                _row(4, "US0231351067", "Globál", asset_class="Kötvény"),
+            ]
+        ),
+    )
+    dataset = str(integration["dataset_fingerprint"])
+    admit_classification_correction(target, _request(target, dataset))
+    admit_composed_classification_correction(
+        target, _composition_request(target, dataset, (affected, 1))
+    )
+    manifest = _pair_manifest(
+        dataset,
+        ("Részvény", EFFECTIVE_SUB_ASSET_CLASS, "Equity", "Emerging Markets", 1),
+        ("Részvény", corrected, "Equity", "Emerging Markets-Corporates", 1),
+        ("Kötvény", "Globál", "Investment Grade Bond", "Global", 1),
+    )
+    return target, dataset, manifest
+
+
+def test_pair_mapping_preserves_evidence_and_drives_shared_consumers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target, dataset, manifest = _prepared_pair_mapping_target(tmp_path, monkeypatch)
+    request = _pair_request(target, dataset, manifest)
+
+    result = admit_pair_mapping_correction(target, request)
+
+    assert result.item_count == 3
+    assert result.replayed is False
+    with sqlite3.connect(target) as connection:
+        connection.row_factory = sqlite3.Row
+        rows = connection.execute(
+            """SELECT original_asset_class, original_sub_asset_class,
+                      effective_asset_class, effective_sub_asset_class,
+                      correction_id, conflict_status
+               FROM v_effective_shortlist_classification
+               ORDER BY source_row_number"""
+        ).fetchall()
+        assert [tuple(row) for row in rows] == [
+            (
+                "Részvény",
+                ORIGINAL_SUB_ASSET_CLASS,
+                "Equity",
+                "Emerging Markets",
+                request.correction_id,
+                "SOURCE_REPORTED",
+            ),
+            (
+                "Részvény",
+                "Fejl?d? piacok-Vállalatok",
+                "Equity",
+                "Emerging Markets-Corporates",
+                request.correction_id,
+                "SOURCE_REPORTED",
+            ),
+            (
+                "Kötvény",
+                "Globál",
+                "Investment Grade Bond",
+                "Global",
+                request.correction_id,
+                "SOURCE_REPORTED",
+            ),
+        ]
+        assert tuple(
+            connection.execute(
+                "SELECT json_extract(source_payload_json, '$.Eszközosztály'), "
+                "json_extract(source_payload_json, '$.Aleszközosztály') "
+                "FROM shortlist_entry_source_occurrence WHERE source_row_number=2"
+            ).fetchone()
+        ) == ("Részvény", ORIGINAL_SUB_ASSET_CLASS)
+        validate_pair_mapping_corrections(connection)
+
+    evidence = load_construction_instrument_evidence(
+        target, _screening(target, dataset)
+    )
+    assert [item.group for item in evidence] == [
+        ("Equity", "Emerging Markets"),
+        ("Equity", "Emerging Markets-Corporates"),
+        ("Investment Grade Bond", "Global"),
+    ]
+    assert all(item.classification_correction_id for item in evidence)
+
+
+def test_pair_mapping_batch_validates_contract_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target, dataset, manifest = _prepared_pair_mapping_target(tmp_path, monkeypatch)
+    admit_pair_mapping_correction(target, _pair_request(target, dataset, manifest))
+    validation_calls = 0
+    validate = pair_mapping.validate_pair_mapping_corrections
+
+    def counted_validate(connection: sqlite3.Connection) -> None:
+        nonlocal validation_calls
+        validation_calls += 1
+        validate(connection)
+
+    monkeypatch.setattr(
+        pair_mapping, "validate_pair_mapping_corrections", counted_validate
+    )
+
+    evidence = load_construction_instrument_evidence(
+        target, _screening(target, dataset)
+    )
+
+    assert validation_calls == 1
+    assert len(evidence) == 3
+
+
+def test_phase_e_cohort_selection_uses_effective_pair_mapping(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target, dataset, manifest = _prepared_pair_mapping_target(tmp_path, monkeypatch)
+    admit_pair_mapping_correction(target, _pair_request(target, dataset, manifest))
+    expected_isins = {"US0378331005", "US5949181045", "US0231351067"}
+    monkeypatch.setattr(nav, "PHASE_E_CURRENCIES", ("EUR",))
+    monkeypatch.setattr(nav, "PHASE_E_COHORT_ISINS", {"EUR": expected_isins})
+    monkeypatch.setattr(nav, "PHASE_E_SECURITY_COUNT", 3)
+    monkeypatch.setattr(nav, "PHASE_E_CUTOFF", date(2026, 9, 22))
+
+    members = nav.select_phase_e_cohorts(target)["EUR"]
+
+    assert {member.isin for member in members} == expected_isins
+    assert {member.group for member in members} == {
+        ("Equity", "Emerging Markets"),
+        ("Equity", "Emerging Markets-Corporates"),
+        ("Investment Grade Bond", "Global"),
+    }
+
+
+def test_pair_mapping_replay_and_mismatched_bindings_are_nonmutating(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target, dataset, manifest = _prepared_pair_mapping_target(tmp_path, monkeypatch)
+    request = _pair_request(target, dataset, manifest)
+    admit_pair_mapping_correction(target, request)
+    admitted_sha256 = sha256(target.read_bytes()).hexdigest()
+
+    replay = admit_pair_mapping_correction(target, request)
+    assert replay.replayed is True
+    assert sha256(target.read_bytes()).hexdigest() == admitted_sha256
+
+    for changed in (
+        replace(request, initial_target_sha256="b" * 64),
+        replace(request, reason="Different reason"),
+        replace(request, correction_id="DIFFERENT_CORRECTION_ID"),
+    ):
+        with pytest.raises(ShortlistClassificationCorrectionError):
+            admit_pair_mapping_correction(target, changed)
+        assert sha256(target.read_bytes()).hexdigest() == admitted_sha256
+
+
+def test_pair_mapping_rejects_changed_evidence_without_partial_install(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target, dataset, manifest = _prepared_pair_mapping_target(tmp_path, monkeypatch)
+    with sqlite3.connect(target) as connection:
+        payload = json.loads(
+            connection.execute(
+                "SELECT source_payload_json FROM shortlist_entry_source_occurrence "
+                "WHERE source_row_number=4"
+            ).fetchone()[0]
+        )
+        payload["Eszközosztály"] = "Changed source"
+        connection.execute(
+            "UPDATE shortlist_entry_source_occurrence SET source_payload_json=? "
+            "WHERE source_row_number=4",
+            (json.dumps(payload, ensure_ascii=False, sort_keys=True),),
+        )
+    request = _pair_request(target, dataset, manifest)
+    before = sha256(target.read_bytes()).hexdigest()
+
+    with pytest.raises(
+        ShortlistClassificationCorrectionError, match="raw source evidence"
+    ):
+        admit_pair_mapping_correction(target, request)
+
+    assert sha256(target.read_bytes()).hexdigest() == before
+    with sqlite3.connect(target) as connection:
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM sqlite_master "
+                "WHERE name='shortlist_classification_pair_mapping_admission'"
+            ).fetchone()[0]
+            == 0
+        )
+
+
+def test_pair_mapping_same_dataset_reimport_and_changed_dataset_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target, dataset, manifest = _prepared_pair_mapping_target(tmp_path, monkeypatch)
+    admit_pair_mapping_correction(target, _pair_request(target, dataset, manifest))
+
+    same = stage.integrate_shortlist(
+        workbook_directory=tmp_path, target=target, apply=True
+    )
+    assert same["dataset_fingerprint"] == dataset
+    with sqlite3.connect(target) as connection:
+        connection.row_factory = sqlite3.Row
+        validate_pair_mapping_corrections(connection)
+
+    before = sha256(target.read_bytes()).hexdigest()
+    monkeypatch.setattr(
+        stage,
+        "audit_workbooks",
+        lambda _path: {
+            "files": [
+                _sheet(
+                    digest="b" * 64,
+                    rows=[
+                        _row(
+                            2,
+                            "US0378331005",
+                            ORIGINAL_SUB_ASSET_CLASS,
+                            asset_class="Részvény",
+                        ),
+                        _row(
+                            3,
+                            "US5949181045",
+                            "Fejl?d? piacok-Vállalatok",
+                            asset_class="Részvény",
+                        ),
+                        _row(4, "US0231351067", "Globál", asset_class="Kötvény"),
+                    ],
+                )
+            ]
+        },
+    )
+    with pytest.raises(
+        ShortlistClassificationCorrectionError, match="binding|dataset|evidence"
+    ):
+        stage.integrate_shortlist(
+            workbook_directory=tmp_path, target=target, apply=True
+        )
+    assert sha256(target.read_bytes()).hexdigest() == before
+
+
+def test_pair_mapping_composes_additional_admission_and_retains_prior_stage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target, dataset, manifest = _prepared_pair_mapping_target(tmp_path, monkeypatch)
+    first = _pair_request(target, dataset, manifest)
+    admit_pair_mapping_correction(target, first)
+    second_manifest = _pair_manifest(
+        dataset,
+        ("Equity", "Emerging Markets", "Public Equity", "Emerging Markets", 1),
+        (
+            "Equity",
+            "Emerging Markets-Corporates",
+            "Public Equity",
+            "Emerging Markets-Corporates",
+            1,
+        ),
+        ("Investment Grade Bond", "Global", "Bond", "Global", 1),
+        mapping_id="SYNTHETIC_ENGLISH_PAIR_MAPPING_V2",
+    )
+    second = _pair_request(
+        target,
+        dataset,
+        second_manifest,
+        correction_id="SHORTLIST_CLASSIFICATION_ENGLISH_TEST_2",
+    )
+
+    result = admit_pair_mapping_correction(target, second)
+
+    assert result.item_count == 3
+    with sqlite3.connect(target) as connection:
+        connection.row_factory = sqlite3.Row
+        stage_three = connection.execute(
+            "SELECT effective_asset_class, effective_sub_asset_class "
+            "FROM v_shortlist_classification_correction_stage "
+            "WHERE application_order=3 ORDER BY source_row_number"
+        ).fetchall()
+        effective = connection.execute(
+            "SELECT effective_asset_class, effective_sub_asset_class "
+            "FROM v_effective_shortlist_classification ORDER BY source_row_number"
+        ).fetchall()
+        assert [tuple(row) for row in stage_three] == [
+            ("Equity", "Emerging Markets"),
+            ("Equity", "Emerging Markets-Corporates"),
+            ("Investment Grade Bond", "Global"),
+        ]
+        assert [tuple(row) for row in effective] == [
+            ("Public Equity", "Emerging Markets"),
+            ("Public Equity", "Emerging Markets-Corporates"),
+            ("Bond", "Global"),
+        ]
+        validate_pair_mapping_corrections(connection)
+
+
+def test_pair_mapping_preserves_null_classifications(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    null_row = _row(5, "US02079K3059", "placeholder", asset_class="Részvény")
+    null_row["sub_asset_class"] = None
+    cast(dict[str, object], null_row["source_values"])["Aleszközosztály"] = None
+    target, integration, _audit = _target(
+        tmp_path,
+        monkeypatch,
+        sheet=_sheet(
+            rows=[
+                _row(
+                    2, "US0378331005", ORIGINAL_SUB_ASSET_CLASS, asset_class="Részvény"
+                ),
+                _row(
+                    3,
+                    "US5949181045",
+                    "Fejl?d? piacok-Vállalatok",
+                    asset_class="Részvény",
+                ),
+                _row(4, "US0231351067", "Globál", asset_class="Kötvény"),
+                null_row,
+            ]
+        ),
+    )
+    dataset = str(integration["dataset_fingerprint"])
+    admit_classification_correction(target, _request(target, dataset))
+    admit_composed_classification_correction(
+        target,
+        _composition_request(target, dataset, ("Fejl?d? piacok-Vállalatok", 1)),
+    )
+    manifest = _pair_manifest(
+        dataset,
+        ("Részvény", EFFECTIVE_SUB_ASSET_CLASS, "Equity", "Emerging Markets", 1),
+        (
+            "Részvény",
+            "Fejlődő piacok-Vállalatok",
+            "Equity",
+            "Emerging Markets-Corporates",
+            1,
+        ),
+        ("Kötvény", "Globál", "Investment Grade Bond", "Global", 1),
+        expected_occurrence_count=4,
+    )
+
+    admit_pair_mapping_correction(target, _pair_request(target, dataset, manifest))
+
+    with sqlite3.connect(target) as connection:
+        connection.row_factory = sqlite3.Row
+        row = connection.execute(
+            "SELECT original_sub_asset_class, effective_sub_asset_class "
+            "FROM v_effective_shortlist_classification WHERE source_row_number=5"
+        ).fetchone()
+        assert tuple(row) == (None, None)
+        validate_pair_mapping_corrections(connection)
+
+
+def test_reviewed_english_mapping_manifest_is_complete() -> None:
+    repository_root = Path(__file__).resolve().parents[1]
+    manifest = load_pair_mapping_manifest(
+        repository_root
+        / "data/knowledge/validated_rules/shortlist_classification_english_mapping_v1.json"
+    )
+
+    assert manifest.dataset_fingerprint == (
+        "32216038d2f69dbf4c6436e91782025ae117dc59fe466e8a31ebc3719f93e8b2"
+    )
+    assert len(manifest.entries) == manifest.expected_prior_pair_count == 77
+    assert manifest.expected_occurrence_count == 10_833
+    assert manifest.expected_result_asset_class_count == 7
+    assert manifest.expected_result_sub_asset_class_count == 38
+    assert manifest.expected_result_pair_count == 51
+    assert manifest.expected_changed_transitions == ((48, 46, 8), (48, 47, 8))
+    assert manifest.expected_unchanged_snapshot_count == 17
+    assert (
+        "Equity",
+        "Global - Industrials and Raw Materials",
+    ) in {
+        (entry.effective_asset_class, entry.effective_sub_asset_class)
+        for entry in manifest.entries
+    }

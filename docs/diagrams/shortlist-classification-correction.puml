@@ -2,6 +2,7 @@
 ' Status: Implemented
 ' Verified against: src/portfolio_advisor/database/migrations/shortlist_classification.py
 ' Verified against: src/portfolio_advisor/database/migrations/shortlist_classification_composition.py
+' Verified against: src/portfolio_advisor/database/migrations/shortlist_classification_pair_mapping.py
 ' Verified against: src/portfolio_advisor/database/migrations/shortlist_parallel.py
 ' Verified against: src/portfolio_advisor/construction/evidence.py
 ' Verified against: src/portfolio_advisor/construction/persistence.py
@@ -17,7 +18,7 @@ participant "Persistence validator" as Persistence
 participant "Copy-on-write importer" as Importer
 
 box "Explicit operator write boundary" #FFF2CC
-Operator -> CLI: database, new backup, correction identity,\ndataset fingerprint, original hash, authorization, reason,\nexact prior-label counts, --apply
+Operator -> CLI: database, new backup, correction identity,\ndataset fingerprint, original hash, authorization, reason,\nexact prior-label counts or reviewed pair manifest, --apply
 CLI -> DB: SQLite backup API to separate path
 CLI -> DB: inspect correction identity
 alt Existing identity: retry
@@ -32,7 +33,11 @@ else New identity
   alt Hash mismatch
     CLI --> Operator: reject before schema or data mutation
   else Hash matches
-    CLI -> Validator: inventory current effective labels containing ?\nand match every authorized label/count
+    alt v2 explicit sub-asset replacement
+      CLI -> Validator: inventory current effective labels containing ?\nand match every authorized label/count
+    else v3 reviewed asset/sub-asset mapping
+      CLI -> Validator: verify manifest hash, 77 exact prior pairs,\ncoverage/counts, 51 results, and group effects
+    end
     CLI -> DB: BEGIN IMMEDIATE
     CLI -> DB: install immutable ordered admission/items\nand composed effective/stage views
     CLI -> Validator: bind workbook hash, sheet, row, snapshot,\nISIN, asset class, raw JSON, original label,\nexpected prior effective label, and replacement result
@@ -51,7 +56,7 @@ end box
 Resolver -> Validator: validate the complete installed correction contract once\nand bind the current SQLite data version
 loop Each shortlist entry in the batch
   Resolver -> DB: verify bound data version, then read original\nand selected composed classification stage
-  DB --> Resolver: v1 exact mapping followed by explicitly\nadmitted ordered replacements; other labels pass through
+  DB --> Resolver: v1 exact mapping, v2 sub-asset replacement,\nthen v3 asset/sub-asset pair mapping
 end
 Resolver -> DB: verify bound data version after the batch
 alt Database changed after validation
@@ -80,8 +85,9 @@ end
 
 note over DB
 Original columns, raw JSON, conflict flags, the 1,278 v1 items,
-and metric corrections are unchanged.
-The current ? -> ő rule is an explicit dataset-bound admission;
-future datasets and later corrections require separate authorization.
+the 287 v2 items, and metric corrections are unchanged.
+The v3 English mapping is an explicit dataset-bound admission;
+NULL values pass through, and future datasets or mappings require
+separate review and authorization.
 end note
 @enduml

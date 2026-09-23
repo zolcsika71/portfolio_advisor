@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by ADR-006
 
 ## Context
 
@@ -50,3 +50,7 @@ stage view. Validators must verify both legacy and composed contracts, and
 operators must inventory and authorize exact prior labels and counts before an
 admission. Future additional corrections require their own explicit admission
 and must compose from the then-validated effective state.
+
+[ADR-006](ADR-006-standardize-effective-shortlist-classifications-in-english.md)
+supersedes this design for new asset/sub-asset pair admissions. The installed
+v1 and v2 records and their historical stages remain valid and immutable.

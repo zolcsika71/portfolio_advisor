@@ -38,7 +38,7 @@ exposed by those two pages.
 | `build_official_forward_label_store.py` | Materialize official results or explicit unavailable labels. |
 | `validate_forward_rank_signal.py` | Assess an existing label store; never optimize policy weights. |
 | `admit_shortlist_zero_null_corrections.py` | Back up an explicit schema-v3 target and atomically admit the authorized, provenance-bound shortlist zero-to-NULL correction set. |
-| `admit_shortlist_classification_correction.py` | Back up an explicit schema-v3 target and atomically admit an authorized, provenance-bound shortlist sub-asset classification correction, including explicit ordered composition. |
+| `admit_shortlist_classification_correction.py` | Back up an explicit schema-v3 target and atomically admit an authorized, provenance-bound shortlist classification correction, including ordered sub-asset replacements and reviewed asset/sub-asset pair manifests. |
 
 The shortlist correction command is an explicit operator-only write. It
 requires all admission bindings and `--apply`; see

@@ -76,4 +76,5 @@ Describe benefits, trade-offs, limitations, and follow-up obligations.
 | [ADR-002](ADR-002-adopt-plantuml-for-detailed-technical-diagrams.md) | Accepted | Use PlantUML selectively for detailed technical diagrams. |
 | [ADR-003](ADR-003-preserve-shortlist-evidence-with-null-corrections.md) | Accepted | Preserve shortlist source evidence while exposing an authorized zero set as explicit NULLs. |
 | [ADR-004](ADR-004-preserve-shortlist-classification-evidence-with-effective-mapping.md) | Superseded by ADR-005 | Preserve shortlist classification evidence while applying an authorized effective mapping. |
-| [ADR-005](ADR-005-compose-authorized-shortlist-classification-corrections.md) | Accepted | Compose separately authorized shortlist classification corrections without rewriting earlier admissions. |
+| [ADR-005](ADR-005-compose-authorized-shortlist-classification-corrections.md) | Superseded by ADR-006 | Compose separately authorized shortlist classification corrections without rewriting earlier admissions. |
+| [ADR-006](ADR-006-standardize-effective-shortlist-classifications-in-english.md) | Accepted | Standardize effective shortlist classifications through an authorized English asset/sub-asset pair mapping. |
