@@ -1,9 +1,10 @@
 @startuml
-' Status: Phase 1 and read-only Phase 3A implemented; operational cutover proposed
+' Status: Phase 1 and read-only Phase 3A implemented; Phase 3B writer and cutover proposed
 ' Verified current behavior against:
 ' - src/portfolio_advisor/main.py
 ' - src/portfolio_advisor/DB_creation/database_create.py
 ' - src/portfolio_advisor/operations/xls_import_watch.py
+' - src/portfolio_advisor/DB_creation/excel_processing.py
 ' - src/portfolio_advisor/database/migrations/model_portfolio_dry_run.py
 ' - src/portfolio_advisor/database/migrations/model_portfolio_parallel.py
 ' - src/portfolio_advisor/database/migrations/shortlist_parallel.py
@@ -19,7 +20,7 @@
 ' - tests/test_xls_import_watch.py
 ' Proposed contract: docs/architecture/model-portfolio-consolidation-plan.md
 ' Governing proposal: docs/decisions/ADR-007-consolidate-model-portfolio-workflows.md
-title Model-portfolio read-only shadow validation [Implemented] and cutover [Proposed]
+title Model-portfolio shadow validation [Implemented] and writer/cutover [Proposed]
 
 hide footbox
 skinparam sequenceMessageAlign center
@@ -31,6 +32,7 @@ actor "Phase 1 developer" as Developer
 participant "WatchPaths wrapper\n(or manual CLI)" as Trigger
 collections "Retained workbook\nand MNB PDF evidence" as Evidence
 participant "Single model admission\ncommand" as Writer
+participant "Generated-artifact\npublisher" as Publisher
 participant "Temporary-only Phase 1\ncontract command/API" as Phase1
 participant "Phase 3A shadow runner\n(explicit opt-in)" as Shadow
 database "Isolated schema-v3\ntemporary database" as Temporary
@@ -118,35 +120,44 @@ end
 
 note over Shadow, Validators
   Model snapshots and optional direct portfolio NAV are separate inputs.
-  The retained current-corpus run passed seven workflows. Forward-label
-  comparison is explicitly BLOCKED by a missing 2026-08-18 / 90-day
-  strict-coverage window; no NAV, eligibility, or label is synthesized.
+  After the maintained evidence refresh, all eight retained-corpus workflows
+  pass: 1,224 coverage identities, 408 feature rows, and 1,224 labels.
+  Every label remains explicitly unavailable; no NAV, eligibility, or
+  successful financial label is synthesized.
   Existing application, importer, watcher, and CLI defaults remain legacy.
 end note
 
-== Later operational admission [Proposed] ==
+== Phase 3B operational writer [Proposed, not authorized] ==
 
 box "Operator-controlled input boundary" #E8F4FF
 Operator -> Trigger: supply stable workbook
-Trigger -> Writer: request admission under watcher lock
+Trigger -> Writer: request admission under common manual/watcher lock
 end box
 
-Writer -> Evidence: read bytes, sheet inventory, and SHA-256
-Evidence --> Writer: immutable source identity and parsed rows
-Writer -> Writer: validate headers, categories, date, identifiers,\nstable row identities, and prior admission
+alt another manual or watcher writer owns the lock
+    Writer --> Trigger: leave input pending; retry later
+else writer lock acquired
+    Writer -> Evidence: retain bytes at non-overwriting content-addressed path
+    Evidence --> Writer: verify retained SHA-256
+    Writer -> Writer: inventory every visible sheet and role
+    Writer -> Writer: parse retained bytes; validate headers, categories,\ndate, identifiers, stable rows, and prior receipt
+end
 
 alt exact workbook and all bindings already admitted
     Writer -> Analytical: read matching immutable receipt
     Analytical --> Writer: exact replay confirmed
-    Writer --> Trigger: NO-OP (no rows added)
+    Writer --> Trigger: NO-OP; resume pending post-commit work
 else same date with changed bytes or bindings
     Writer --> Trigger: REJECT before mutation
-else new valid model evidence
+else changed dual-sheet workbook before policy approval
+    Writer --> Trigger: REJECT; retain explicit sheet inventory\nand pending evidence
+else new workbook permitted by an approved sheet policy
     Writer -> Backup: create and verify consistent recovery snapshot
     Backup --> Writer: recovery manifest and checksum
     Writer -> Analytical: BEGIN IMMEDIATE
     activate Analytical
-    Writer -> Analytical: append source, sheet, snapshot, occurrences,\ntyped fields, metrics, lineage, and import receipt
+    Writer -> Analytical: recheck predecessor receipt, evidence hash,\nand expected before-fingerprint
+    Writer -> Analytical: append source, sheets, dispositions, snapshots,\noccurrences, typed fields, metrics, lineage, receipt, and outbox
     Writer -> Validators: validate candidate transaction state
     activate Validators
     Validators -> Analytical: integrity + foreign keys + installed schema
@@ -157,24 +168,44 @@ else new valid model evidence
         Validators --> Writer: FAIL CLOSED
         Writer -> Analytical: ROLLBACK
         Writer --> Trigger: rejection; workbook remains pending
-    else shortlist evidence would change bound dataset
+    else shortlist evidence would change bound dataset\nwithout a separately authorized correction disposition
         Validators --> Writer: FAIL CLOSED pending separate authorization
         Writer -> Analytical: ROLLBACK
         Writer --> Trigger: no automatic correction inheritance
     else every gate passes
         Validators --> Writer: validated
         Writer -> Analytical: COMMIT
-        Writer --> Trigger: database admission complete
-        Trigger -> Evidence: move workbook after commit
-        note right of Trigger
-          The database transaction does not claim
-          atomicity for this later filesystem move.
-          A failed move is resumed by exact replay.
-        end note
+        Writer --> Trigger: database admission complete; post-commit work pending
     end
     deactivate Validators
     deactivate Analytical
 end
+
+group Post-commit filesystem and artifact work [Proposed]
+    Writer -> Evidence: finalize processed marker / incoming-file disposition
+    alt filesystem finalization fails
+        Writer -> Analytical: keep durable FILE_FINALIZATION_PENDING work
+        Writer --> Trigger: committed admission; retry exact receipt
+    else filesystem finalization succeeds
+        Writer -> Publisher: claim refresh work for committed receipt
+        Publisher -> Publisher: build coverage -> missing-data policy ->\nstrict validation -> features -> labels as candidates
+        Publisher -> Validators: validate complete dependency generation
+        alt candidate build or validation fails
+            Publisher -> Analytical: keep REFRESH_PENDING and failure detail
+            Publisher --> Trigger: prior published generation remains active
+        else complete generation validates
+            Publisher -> Publisher: atomically promote one generation manifest
+            Publisher -> Analytical: mark receipt generation complete
+            Publisher --> Trigger: admission and refresh complete
+        end
+    end
+end
+
+note over Writer, Publisher
+  SQLite commit, workbook finalization, and artifact publication are separate
+  failure domains. A committed receipt is never erased because later work fails.
+  Exact replay resumes durable work without duplicating source observations.
+end note
 
 == Separately authorized cutover ==
 

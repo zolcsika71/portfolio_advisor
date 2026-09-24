@@ -97,11 +97,33 @@ snapshots and optional direct portfolio NAV are separate inputs. A bounded
 shadow run uses one validated analytical session, records both source and
 authority provenance, requires a result or concrete blocker for each reviewed
 workflow, and accepts only exact path/value-specific expected differences.
-The retained-corpus rehearsal passed seven workflows but remains PARTIAL:
-forward-label construction fails closed because maintained strict-coverage
-evidence lacks the `PB Dinamikus EUR` / `2026-08-18` / 90-day window. This
-implementation and rehearsal evidence do not accept this ADR or authorize
-migration, authority transfer, cutover, or retirement.
+The initial retained-corpus rehearsal passed seven workflows and correctly
+blocked on an incomplete coverage grid. After the separately authorized
+evidence refresh, coverage contained 1,224 identities, the feature dataset
+contained 408 rows, and the label store contained 1,224 records. The follow-up
+bounded shadow comparison passed all eight workflows and session-exit
+validation. All labels remain explicitly unavailable under current evidence;
+the result proves reader equivalence, not financial-data availability.
+
+Phase 3B proposes—not accepts—the operational writer contract. One shared
+manual/watcher entry point would retain and hash workbook bytes before parsing,
+inventory every visible sheet, bind ordered before/after dataset fingerprints,
+and admit one immutable receipt plus durable post-commit work in a single
+validated SQLite transaction. Exact replay would resume pending filesystem or
+artifact work without adding rows. Same-date changed bytes would fail closed,
+and downstream artifacts would remain on the prior validated generation until
+a complete replacement generation was ready. Database commit, workbook
+movement, and artifact publication are explicitly separate failure domains.
+
+The smallest recommended implementation slice is synthetic and temporary-only:
+workbook envelopes, per-sheet dispositions, authority chaining, receipts,
+outbox state, common coordination, and failure injection. It does not wire the
+watcher, change defaults, admit retained workbooks, install a live schema, or
+transfer authority. The dual-sheet disposition, any future same-date
+supersession, generation-level artifact publication, compatibility lifetime,
+and portable MNB package layout still require explicit approval. This planning
+evidence does not accept this ADR or authorize migration, authority transfer,
+cutover, or retirement.
 
 ## Consequences
 
@@ -135,8 +157,17 @@ migration, authority transfer, cutover, or retirement.
   constructors and all operational defaults remain legacy-backed; an
   analytical reader is never selected by schema discovery or fallback.
 - Model projection equality is not evidence of direct-NAV or strict-coverage
-  equality. Missing maintained coverage remains a blocker, and Phase 3A does
-  not synthesize NAV, eligibility, or labels.
+  equality. The complete grid now demonstrates equivalent available and
+  unavailable results, but Phase 3A does not synthesize NAV, eligibility, or
+  labels and does not make unavailable outcomes available.
+- The proposed writer retains evidence before parsing and commits one ordered
+  receipt only after exhaustive validation. Later filesystem finalization and
+  artifact refresh are resumable from durable pending work; their failure must
+  not be described as rolling back an already committed admission.
+- Software rollback does not transfer data authority back to a stale legacy
+  file. Data restoration requires the latest verified analytical backup plus
+  ordered replay of later retained admissions.
 - The unresolved dual-sheet watcher policy, changed historical workbook
-  contract, external consumers, compatibility lifetime, and MNB portable
-  package layout must be decided before acceptance or cutover.
+  contract, atomic artifact-generation publication, external consumers,
+  compatibility lifetime, and MNB portable package layout must be decided
+  before acceptance or cutover.

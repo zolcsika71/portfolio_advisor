@@ -17,6 +17,12 @@ legacy store. Its comparison report is finalized only after one shared
 analytical read session completes exit validation. Phase 3A is evidence for
 the proposal; it is not authority transfer or cutover approval.
 
+The maintained evidence refresh completed the previously blocked forward-label
+comparison. Phase 3A now passes all eight bounded workflows, while all 1,224
+labels remain explicitly unavailable under the current financial evidence.
+Reader equivalence therefore does not establish outcome availability, release
+readiness, or authority transfer.
+
 ## Scope and verified baseline
 
 The scope is only the model-portfolio and MNB OTC workflows currently backed
@@ -33,7 +39,7 @@ The following evidence was rechecked read-only at Git revision
 | Analytical store | SHA-256 `9a0f0f8daf76de892f78ba7ba8637fdb5f21ef1b9810d8af7af8a1f003b5c4a6`; `PRAGMA user_version = 3`; integrity and foreign-key checks passed |
 | Model history | 5,283 legacy rows and analytical source occurrences, 408 analytical portfolio snapshots, 33 dates from 2024-07-02 through 2026-08-26, 13 portfolios, and 66 ISINs |
 | Ranking compatibility | `validate_parallel_database` reported `PARALLEL_VALIDATED`, exact results on all 33 dates, maximum numeric delta `0.0`, and six retained unresolved source occurrences |
-| Workbook evidence | The installed manifest names and hashes 33 processed workbooks and the legacy database; every binding still validated |
+| Workbook evidence | The installed manifest names and hashes 33 processed workbooks and the legacy database; every binding still validated. The analytical evidence catalog records both `modell portfóliók` and `shortlist` sheets for all 33 workbooks. |
 | Shortlist corrections | Dataset fingerprint `32216038d2f69dbf4c6436e91782025ae117dc59fe466e8a31ebc3719f93e8b2`; 1,278 original classification items, 287 composed items, 10,833 English pair-mapping items, and 23,979 metric corrections |
 | MNB OTC evidence | Three weekly observations for one exact ISIN; their three retained PDFs exist and match the hashes stored in the legacy rows; the analytical store has no MNB OTC table |
 | Concurrency context | No SQLite WAL, SHM, or journal sidecars were present. PyCharm held idle handles to both databases, and the installed XLS WatchPaths LaunchAgent was loaded, watching, and not running at inspection time. |
@@ -41,6 +47,17 @@ The following evidence was rechecked read-only at Git revision
 Different hashes would not by themselves establish a data difference. The
 model comparison above used row-level and behavioral checks. Both database
 files remain local evidence and were not changed by this review.
+
+The Phase 3B planning review rechecked the operational boundary at Git revision
+`f3e6bcb914b25c1dbe21d0fa5f1104f1c769d849` on 2026-09-24. The legacy and
+analytical database SHA-256 values remained those shown above; neither database
+had a WAL, SHM, or journal sidecar or an open handle at inspection time. The
+live analytical store still has no Phase 1 feature marker or contract tables.
+The installed WatchPaths LaunchAgent configuration had SHA-256
+`43b5e9165942e36eb2113c8c2f3761c11a48a32768b943beae9650b1fb17b4fa` and
+was loaded but not running. The refreshed maintained artifacts contained 1,224
+coverage identities, 408 feature rows, and 1,224 materialized labels. Their
+presence does not install an operational writer.
 
 ## Current authority and dependency matrix
 
@@ -55,18 +72,18 @@ zero model rows because the six unresolved duplicate occurrences prevent a
 canonical projection. Any replacement reader must preserve that deliberate
 source-occurrence grain.
 
-| Workflow or consumer | Current path and fields | Role today | Proposed replacement and gate |
+| Workflow or consumer | Current path and fields | Role today | Available replacement and remaining gate |
 | --- | --- | --- | --- |
-| Default advisor (`src/portfolio_advisor/main.py`, `CapitalPreservationAdvisor`) | `database/model_portfolio.sqlite`; latest/date-specific holdings and five ranking fields | Read | Inject an explicit analytical model repository implementing the same snapshot interface. Do not auto-detect schemas. Prove exact `HoldingObservation`, warnings, eligibility, metrics, ranks, and winner on every date before changing the default. |
+| Default advisor (`src/portfolio_advisor/main.py`, `CapitalPreservationAdvisor`) | `database/model_portfolio.sqlite`; latest/date-specific holdings and five ranking fields | Read | Explicit reader injection and the analytical adapter are implemented and the all-date shadow comparison passes. Do not auto-detect schemas. The default remains legacy until writer, authority, release, and rollback gates pass. |
 | Manual workbook import (`DB_creation.database_create`) | Writes the flat `model_portfolios` table; parses all 21 worksheet fields, converts numeric zero to SQL NULL, skips an existing date, then moves the workbook | Write | Replace with one schema-v3 model admission command. It must retain workbook bytes/hash, raw payload, every parsed field, stable source identity, and an immutable import receipt. Pointing the flat importer at the analytical store is forbidden. |
 | Watcher (`operations.xls_import_watch`) | Invokes `portfolio_advisor.main --import`; reads the hard-coded legacy path before and after import; then runs current-universe validation, prospective recording, and prospective audit | Orchestration/read/write | Use the same single admission command and shared configured analytical path. Preserve the lock, stable-file check, pending marker, and post-import sequence. Update and explicitly revalidate the installed LaunchAgent before cutover. |
-| Core repository and advisor validation (`database.repository`, `advisor.*`) | Concrete `ModelPortfolioRepository`; model identity, allocation, currency/risk, asset class, and five ranking metrics | Read | Introduce a small read protocol and an `AnalyticalModelPortfolioRepository`; retain the legacy implementation only for comparison and recovery validation. |
+| Core repository and advisor validation (`database.repository`, `advisor.*`) | Compatibility construction still selects `ModelPortfolioRepository`; model identity, allocation, currency/risk, asset class, and five ranking metrics | Read | `ModelPortfolioReader` and the opt-in `AnalyticalModelPortfolioRepository` are implemented. Retain the legacy implementation for operational defaults, comparison, and recovery validation until cutover. |
 | Ranking and methodology commands (`validate_active_*`, `validate_capital_preservation_methodology.py`, `validate_forward_rank_signal.py`) | Default legacy database, same model snapshot contract plus governed policy/audit inputs | Read/audit | Change defaults only after all-date old/new equivalence and isolated tests pass. Audit manifests must name the repository contract and current authority epoch, not merely a filename. |
-| Backtest coverage and strict validation (`audit_backtest_*`, `validate_strict_backtest_pipeline.py`, `HistoricalPortfolioRepository`) | Legacy holdings; optional flat `portfolio_nav_history` probe | Read/audit | Use the analytical model adapter. Split the optional legacy portfolio-NAV probe from the model repository; both current stores lack that optional table, and no NAV may be synthesized during the change. |
-| Features, labels, and research (`features.dataset`, `features.official_forward_labels`, `history.nav_acquisition`, `history.official_portfolio_performance_research`, portfolio-NAV blocker/methodology modules) | Legacy snapshot dates, holdings, ranking fields, and source identities | Read/build local artifacts | Inject the analytical adapter and include the new authority/dataset fingerprint in generated manifests. Compare generated artifacts byte-for-byte where deterministic and semantically otherwise. |
-| Prospective decision command (`record_prospective_portfolio_decision.py`) | Default legacy reader; writes only to the separate prospective ledger | Read model/write separate ledger | Switch only with the advisor reader gate. Preserve the prospective store and decision identity; do not replay or rewrite prior decisions. |
-| LTIA comparison (`compare_tbsz_portfolio.py`) | Separate LTIA store plus legacy model repository | Read | Change only the model-side adapter. The LTIA store, negative cash, missing cash, and unknown-date semantics are out of scope and unchanged. |
-| MNB OTC import and audits (`history.mnb_otc`, `import_mnb_otc_reports.py`, `inventory_mnb_otc_reports.py`, `generate_mnb_otc_coverage.py`, MNB/KELER audits) | Dedicated legacy table with all decimal text, period, type/frequency, source path, and source hash fields | Read/write evidence | Add a dedicated analytical MNB OTC evidence extension, not NAV or generic model metrics. Migrate and revalidate all three rows and PDFs exactly; keep exact replay/no-op and conflict rejection. |
+| Backtest coverage and strict validation (`audit_backtest_*`, `validate_strict_backtest_pipeline.py`, `HistoricalPortfolioRepository`) | Defaults use legacy holdings; optional flat `portfolio_nav_history` probe | Read/audit | Explicit model-reader and optional NAV-reader separation is implemented, and bounded strict-coverage shadow comparison passes. Defaults remain legacy; both current stores lack the optional NAV table, and no NAV may be synthesized during the change. |
+| Features, labels, and research (`features.dataset`, `features.official_forward_labels`, `history.nav_acquisition`, `history.official_portfolio_performance_research`, portfolio-NAV blocker/methodology modules) | Defaults use legacy snapshot dates, holdings, ranking fields, and source identities | Read/build local artifacts | Opt-in feature and label injection is implemented; the refreshed 408-row feature and 1,224-row label shadows pass. Operational generation still needs an authority/receipt fingerprint, an atomic generation contract, and explicit coverage for acquisition and methodology commands. |
+| Prospective decision command (`record_prospective_portfolio_decision.py`) | Default legacy reader; writes only to the separate prospective ledger | Read model/write separate ledger | Dry-run decision-input injection and shadow comparison pass without ledger writes. Switch only with the advisor, writer, and release gates; never replay or rewrite prior decisions. |
+| LTIA comparison (`compare_tbsz_portfolio.py`) | Separate LTIA store plus legacy model repository | Read | Explicit model-side injection and shadow comparison pass. The LTIA store, negative cash, missing cash, and unknown-date semantics are out of scope and unchanged. |
+| MNB OTC import and audits (`history.mnb_otc`, `import_mnb_otc_reports.py`, `inventory_mnb_otc_reports.py`, `generate_mnb_otc_coverage.py`, MNB/KELER audits) | Dedicated legacy table with all decimal text, period, type/frequency, source path, and source hash fields | Read/write evidence | The temporary-only analytical MNB contract and semantic shadow read are implemented, including exact decimal text. Operational import routing and portable evidence packaging remain unimplemented; MNB stays distinct from NAV and generic model metrics. |
 | Parallel migration and schema-v3 reference workflow (`model_portfolio_parallel`, `SchemaV3ReferenceRepository`) | Analytical reads, but the singleton manifest and reference validator require the live legacy path/hash and all workbook hashes | Historical validation/read | Preserve the original manifest as an immutable migration receipt. Add a versioned operational authority epoch and import-batch validator; keep a separate historical validator that accepts the retained legacy recovery package. |
 | Schema export, audits, and tests | `export_schema.zsh`, Milestone 4 audit, migration scripts, and several tests name or open the legacy store | Tooling/test | Make schema export explicit, convert retained-data tests to deterministic fixtures, and keep migration tests as historical compatibility tests. No test may require an ignored live database after retirement. |
 | Documentation and manual tools | Root README, importer README, schema-management guide, script catalog, two PyCharm data sources, and user-supplied `--database` overrides | Operational/manual | Update maintained operational documentation at cutover. Preserve milestone records as historical. Manual or external consumers are unresolved until the operator confirms them; IDE presence alone is not application authority. |
@@ -198,25 +215,77 @@ approved cutover completes.
 
 ### Single writer and atomic failure
 
-- One command owns model workbook admission. The manual CLI and watcher call
-  it; no second importer writes the same scope.
-- Parse and validate the workbook before opening a write transaction. Reject
-  unknown headers/categories, ambiguous dates, invalid identifiers, and
-  inconsistent source lineage.
-- Create and verify a SQLite-backup-API recovery snapshot before a live write.
-  Acquire the watcher lock and one SQLite write transaction. Insert source,
-  parsed facts, metrics, lineage, and the import receipt in that transaction.
-- Before commit, run schema, integrity, foreign-key, source-row, all-date model
-  projection, and every installed shortlist-correction validator. A failure
-  rolls back the entire database transaction. No atomic claim extends to the
-  later filesystem move of the workbook.
-- Move a workbook to `data/xls/processed` only after commit. If that move or a
-  post-import step fails, the immutable receipt makes an exact retry a no-op
-  and allows the operational step to resume without adding rows.
-- Exact source hash plus identical bindings is a no-op. A changed workbook for
-  an existing date fails closed. Historical replacement requires a separate,
-  explicitly authorized supersession contract; it never updates old rows in
-  place.
+The current importer is not this writer. `process_directory` can create the
+legacy database, skips any already-present date without checking workbook
+bytes, reads only the visible model sheet, commits one file, and then performs
+a separate filesystem move. The watcher adds stability checks, a PID lock, and
+a pending latest-snapshot marker, but manual `--import` does not share that
+lock. Its post-import sequence runs current-universe validation, prospective
+decision construction, and prospective audit; it does not refresh the full
+coverage-to-label artifact chain.
+
+The proposed operational contract is:
+
+1. **One entry point and authority.** Manual and watcher requests call the same
+   command. It requires one active operational authority epoch, one configured
+   analytical target, and one writer identity. The writer lock is acquired
+   before input inspection and is also used by manual operation; a SQLite
+   `BEGIN IMMEDIATE` remains the final database serialization boundary. Legacy
+   and analytical writers must never be enabled concurrently.
+2. **Retain bytes before parsing.** After a bounded stability check, copy the
+   workbook to a content-addressed, non-overwriting evidence path, verify the
+   retained SHA-256, and parse only those retained bytes. The incoming path,
+   mtime, and receipt time are operational metadata, never financial dates.
+   Failure before verified retention admits nothing and leaves the input
+   pending.
+3. **Inventory every visible sheet.** Bind the workbook hash, sheet names,
+   visibility, recognized roles, header signatures, source rows, parser
+   version, and per-sheet disposition into one immutable envelope. Both model
+   and shortlist sheets receive an explicit disposition; an unrecognized or
+   unhandled sheet can never disappear merely because one supported sheet was
+   admitted.
+4. **Validate before and inside one transaction.** Parse structural content
+   before opening the transaction. Inside one outer transaction, recheck the
+   authority predecessor, expected before-fingerprint, source bindings, and
+   retained evidence hash; append source rows, typed facts, metrics, lineage,
+   sheet dispositions, the ordered admission receipt, and durable downstream
+   work items. Run schema, integrity, foreign-key, occurrence, all-date model
+   projection, historical-manifest, MNB, and every installed correction
+   validator before the sole commit. Any body, interruption, or exit-validation
+   failure rolls back the entire admission.
+5. **Exact replay and conflict.** The same workbook hash, sheet inventory,
+   parser/authority versions, stable rows, expected before-fingerprint, and
+   resulting after-fingerprint is a no-op that can resume incomplete
+   post-commit work. The same date with changed bytes or bindings is rejected.
+   An append-only supersession remains a separate unresolved design; old rows
+   are never updated in place and arrival time never implies source chronology.
+   Duplicate source occurrences retain their row-level multiplicity and status;
+   the six unresolved occurrences are not canonicalized.
+6. **Filesystem and downstream work follow commit.** SQLite cannot make a
+   database commit atomic with a workbook move or generated files. After commit,
+   the receipt is authoritative even if moving the incoming file or refreshing
+   artifacts fails. A durable outbox/pending record drives idempotent retries.
+   Artifact candidates are generated in dependency order and published as one
+   validated generation so consumers never observe a mixed old/new set.
+
+The before/after dataset fingerprints and predecessor receipt form an ordered
+chain. Historical receipts and constructed artifacts stay pinned to their
+original authority, dataset, classification stages, and correction records;
+incremental admission appends a new state instead of invalidating that history.
+The exact MNB text contract remains separate and unchanged.
+
+### Failure and recovery states
+
+| Failure | Required durable outcome | Retry/recovery behavior |
+| --- | --- | --- |
+| Concurrent arrivals or manual/watcher overlap | One writer owns the lock; the other request remains unadmitted | Retry after the owner exits; never bypass the common lock |
+| Crash before retained-byte verification | No database receipt | Original input remains pending; reacquire and re-hash |
+| Crash after retention but before commit | Retained evidence may exist; no admission | Reconcile by content hash, then start a fresh transaction |
+| Parse, binding, correction, or exit-validation failure | No committed admission or outbox item | Correct the input or contract; a retry must revalidate everything |
+| Commit succeeds but incoming move/marker fails | Committed admission plus pending operational step | Exact replay finds the receipt and resumes the move/marker without inserting rows |
+| Commit succeeds but downstream refresh fails | Committed admission plus `REFRESH_PENDING` work; prior published generation remains active | Regenerate candidates and atomically publish only after the full dependency set validates |
+| Software rollback after later admissions | Consolidated receipts and authority remain authoritative | Route compatible readers or build a temporary validated flat export; do not resume stale legacy writes |
+| Data restoration | Latest verified analytical backup plus later retained receipts | Restore elsewhere, replay subsequent admissions in order, validate, then separately authorize replacement |
 
 ### Shortlist correction boundary
 
@@ -232,6 +301,13 @@ bind to the changed evidence. Corrections are never silently dropped, copied
 by row ID, or extended to new evidence. Whether the watcher should block the
 whole workbook until that separate shortlist disposition is available is an
 unresolved operational decision below.
+
+The initial Phase 3B implementation must therefore record a complete sheet
+inventory and fail closed before admitting either sheet when the proposed
+dual-sheet disposition is unresolved. A future partial-disposition design may
+admit the model sheet while retaining a durable `SHORTLIST_PENDING` state, but
+that changes operational semantics and requires explicit approval. Merely
+recording `SHORTLIST_NOT_ADMITTED` after moving the workbook is insufficient.
 
 Historical constructed artifacts keep their recorded original/effective
 classification stages and fingerprints. New artifacts use the then-current
@@ -325,7 +401,7 @@ exact; no retained database was written.
 ### Phase 3A — explicit consumer injection and shadow comparison
 
 **Implementation status: Implemented, non-operational; retained-corpus result
-PARTIAL because one evidence gate is missing.**
+PASS for all eight bounded workflows.**
 
 - `CapitalPreservationAdvisor`, active/temporal validation, feature and label
   builders, prospective decision construction, and LTIA model-side comparison
@@ -350,7 +426,7 @@ PARTIAL because one evidence gate is missing.**
 
 Synthetic tests cover all eight workflow categories, explicit NAV separation,
 the one-validation boundary, exact source-path difference accounting, and stale
-session rejection. On 2026-09-24 a retained-current-corpus rehearsal used
+session rejection. On 2026-09-24 retained-current-corpus rehearsals used
 SQLite-backup-API copies and the supported temporary-only admission contract:
 
 - admission reconciled 5,283 occurrences, 31,579 numeric observations, three
@@ -363,34 +439,73 @@ SQLite-backup-API copies and the supported temporary-only admission contract:
 - the prospective record's `source_evidence_state.database_reference` differed
   only as explicitly expected (`legacy.sqlite` versus `analytical.sqlite`), and
   both isolated database bytes were fingerprinted independently;
-- the public forward-label builder failed closed before comparison because the
-  retained strict-coverage artifact has no `PB Dinamikus EUR` / `2026-08-18` /
-  90-day window. This is an evidence-coverage blocker, not an allowed adapter
-  difference; forward-label equivalence remains unproven; and
+- the initial public forward-label comparison failed closed because the old
+  retained strict-coverage artifact omitted 72 identities for the two newest
+  dates;
+- after the separately authorized evidence refresh, maintained coverage held
+  the exact 1,224 identities, the feature dataset held 408 rows, and the label
+  store held 1,224 materialized records. The follow-up bounded shadow comparison
+  passed forward-label equivalence and successful session-exit validation, so
+  all eight workflows now pass;
+- all 1,224 labels remain explicitly unavailable under current evidence. For
+  example, `PB Dinamikus EUR` at 2026-08-18/90 days has required endpoint
+  2026-11-16 and remains `MISSING_END` / `SOURCE_INTERVAL_INCOMPLETE`. This is
+  correct evidence, not a successful financial label; and
 - integrity and foreign keys passed, one analytical full validation served the
   bounded comparison, retained database hashes were unchanged, and all
   temporary private data was removed.
 
-**Gate:** seven workflows pass on the current corpus. Phase 3A remains PARTIAL
-until the maintained strict-coverage evidence is brought through its own
-authorized workflow and the public forward-label comparison passes. No model
-or NAV evidence may be synthesized to clear this gate.
+**Gate:** all eight bounded workflows pass on the current corpus with no
+unexplained model-reader difference. Phase 3A is PASS. This closes only the
+read-equivalence gate: no model or NAV evidence was synthesized, and explicit
+unavailability remains unchanged.
 
-### Phase 3B — remaining shadow and behavioral gates
+### Phase 3B — operational workbook-writer contract
 
-- Run legacy and analytical adapters for every consumer in the matrix while
-  retaining the legacy writer and defaults.
-- Compare every date's holdings, missingness, metrics, warnings, eligibility,
-  ranking order, winner, backtest coverage, features, labels, acquisition
-  targets, methodology outputs, prospective input, and LTIA model-side result.
-- Compare MNB audit manifests semantically and verify exact persisted values.
-  Approved shortlist English-label differences are outside model equivalence
-  and must not be reported as numerical or selection regressions.
+Phase 3B is proposed and unimplemented. It supplies the operational contracts
+that the current temporary normalization API deliberately lacks. The smallest
+next implementation slice is **Phase 3B.1: synthetic writer core**:
 
-**Gate:** zero unexplained numerical, selection, multiplicity, or provenance
-differences. Expected presentation differences are explicitly allowlisted.
-The Phase 3A forward-label blocker must be resolved with maintained coverage
-evidence before this gate can pass.
+- add immutable workbook-envelope, visible-sheet-inventory, authority-chain,
+  per-sheet-disposition, admission-receipt, and downstream-outbox contracts to
+  temporary schema-v3 fixtures only;
+- add a storage-neutral workbook-inspection result that uses the established
+  parser/null rules, preserves raw cells and duplicate occurrences, and emits
+  stable source bindings without changing the legacy parser or defaults;
+- add a content-addressed retention abstraction rooted only in a supplied
+  temporary directory, plus one coordinator used by synthetic manual and
+  watcher-like callers;
+- implement strict changed-date rejection, exact replay, one outer admission
+  transaction, full exit validation, and post-commit pending-work resumption;
+- record both model and shortlist dispositions but fail closed on a changed
+  dual-sheet workbook until the policy below is approved; and
+- retain Phase 1 MNB, historical-manifest, classification, metric-correction,
+  and read-session validation unchanged.
+
+Synthetic completion criteria are: deterministic schema installation; exact
+receipt fingerprints; no silent sheet omission; replay adds no rows; changed
+bytes, sheet inventory, predecessor, authority, or dataset bindings roll back;
+the six duplicate occurrences remain occurrences; old correction bindings fail
+closed against changed shortlist evidence; unvalidated rows are not externally
+visible; concurrent writer attempts serialize or reject; and failures injected
+before retention, during parsing, at every transaction stage, after commit,
+during filesystem finalization, and during artifact refresh produce the states
+in the table above. Path traversal, symlink escape, stale locks, and evidence
+mutation must also fail closed.
+
+Phase 3B.1 excludes retained-data installation, real workbook admission,
+watcher wiring, default changes, MNB writer changes, artifact publication,
+prospective ledger writes, authority transfer, supersession, cutover, and
+retirement. After it passes locally and in an isolated candidate, a separately
+authorized Phase 3B.2 rehearsal must use SQLite-backup-API copies and retained
+workbooks, compare the entire ordered receipt chain and all eight read workflows,
+exercise crash recovery, and leave all live stores and watcher configuration
+unchanged.
+
+**Gate:** Phase 3B does not pass until the dual-sheet policy is approved, the
+synthetic writer core and failure-injection suite pass, the isolated retained
+rehearsal is exact, and the operational release design proves a single writer,
+recoverable ordered receipts, and atomic publication of generated evidence.
 
 ### Phase 4 — separately authorized cutover
 
@@ -451,21 +566,35 @@ removal.
 
 ## Unresolved decisions and blockers
 
-1. **Dual-sheet watcher policy:** decide whether a workbook containing a new
-   shortlist sheet blocks model admission until shortlist correction bindings
-   are separately authorized, or is admitted model-only with an explicit
-   `SHORTLIST_NOT_ADMITTED` receipt and retained pending evidence. Silent
-   omission is not acceptable.
-2. **Historical workbook correction contract:** same-date changed bytes must
-   fail today. A future append-only supersession model needs explicit approval
-   before such evidence can be admitted.
+1. **Dual-sheet watcher policy — approval required.** Option A is an atomic
+   workbook envelope: both valid sheets are admitted by the same outer
+   transaction, and any unadmittable changed shortlist sheet blocks all sheet
+   admissions. Option B permits model admission while retaining the exact
+   workbook and a durable `SHORTLIST_PENDING` disposition that prevents the
+   workbook from being declared fully processed. Option A is recommended for
+   Phase 3B.1 because it is smaller and cannot expose a partially processed
+   workbook; Option B should be reconsidered only with explicit partial-state,
+   artifact, and operator-display requirements. Silent omission and an
+   after-the-fact `SHORTLIST_NOT_ADMITTED` note are rejected options.
+2. **Same-date changed workbook — approval required for any supersession.**
+   Strict hash-aware rejection is recommended for the first operational
+   writer. Append-only supersession would need an explicit predecessor,
+   effective-state rules, affected-artifact policy, and authorization; neither
+   arrival time nor a filename date is sufficient.
 3. **External/manual consumers:** repository search cannot prove that no user
    command, SQL console, or external script uses the legacy path. Operator
    confirmation is required before cutover and again before retirement.
-4. **Compatibility rollback lifetime:** define how long the temporary flat
+4. **Post-commit artifact publication — approval required.** The recommended
+   design is a database outbox plus a generation-level manifest and atomic
+   pointer/directory promotion after coverage, missing-data policy, strict
+   validation, features, and labels all validate. Publishing files one by one
+   is rejected because it exposes mixed generations.
+5. **Compatibility rollback lifetime:** define how long the temporary flat
    compatibility exporter remains supported after cutover. It must never
-   become a second authority.
-5. **MNB source-path portability:** retain the original source-document text,
+   become a second authority. Software rollback should preserve analytical
+   data authority; data restoration should use the newest verified backup plus
+   ordered replay of later receipts.
+6. **MNB source-path portability:** retain the original source-document text,
    but new authority records should also bind portable evidence roles and
    hashes. The package layout and validator input need approval.
 
