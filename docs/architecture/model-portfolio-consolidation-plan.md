@@ -298,16 +298,20 @@ workbook as outside the model admission scope.
 A changed shortlist dataset must continue to fail the existing correction
 validators unless a separate authorized admission defines how all corrections
 bind to the changed evidence. Corrections are never silently dropped, copied
-by row ID, or extended to new evidence. Whether the watcher should block the
-whole workbook until that separate shortlist disposition is available is an
-unresolved operational decision below.
+by row ID, or extended to new evidence. Phase 3B.1 implements the explicitly
+approved conservative behavior for its synthetic temporary targets: a new
+dual-sheet append is rejected before durable database mutation whenever a
+dataset-bound shortlist correction layer is installed. Exact replay of an
+already admitted envelope remains permitted after full validation.
 
-The initial Phase 3B implementation must therefore record a complete sheet
-inventory and fail closed before admitting either sheet when the proposed
-dual-sheet disposition is unresolved. A future partial-disposition design may
-admit the model sheet while retaining a durable `SHORTLIST_PENDING` state, but
-that changes operational semantics and requires explicit approval. Merely
-recording `SHORTLIST_NOT_ADMITTED` after moving the workbook is insufficient.
+Phase 3B.1 records both supported sheets and admits them in the same outer
+transaction. An invalid or unsupported sheet rejects the entire envelope. A
+future partial-disposition design may admit the model sheet while retaining a
+durable `SHORTLIST_PENDING` state, but that changes operational semantics and
+requires separate approval. Merely recording `SHORTLIST_NOT_ADMITTED` after
+moving the workbook remains insufficient. The bounded synthetic approval does
+not select this behavior for the operational watcher or authorize a live
+correction disposition.
 
 Historical constructed artifacts keep their recorded original/effective
 classification stages and fingerprints. New artifacts use the then-current
@@ -462,36 +466,50 @@ unavailability remains unchanged.
 
 ### Phase 3B — operational workbook-writer contract
 
-Phase 3B is proposed and unimplemented. It supplies the operational contracts
-that the current temporary normalization API deliberately lacks. The smallest
-next implementation slice is **Phase 3B.1: synthetic writer core**:
+Phase 3B remains Proposed and non-operational. Its first bounded slice,
+**Phase 3B.1: synthetic writer core**, is implemented for generated JSON
+workbook envelopes and temporary schema-v3 databases only:
 
-- add immutable workbook-envelope, visible-sheet-inventory, authority-chain,
-  per-sheet-disposition, admission-receipt, and downstream-outbox contracts to
-  temporary schema-v3 fixtures only;
-- add a storage-neutral workbook-inspection result that uses the established
-  parser/null rules, preserves raw cells and duplicate occurrences, and emits
-  stable source bindings without changing the legacy parser or defaults;
-- add a content-addressed retention abstraction rooted only in a supplied
-  temporary directory, plus one coordinator used by synthetic manual and
-  watcher-like callers;
-- implement strict changed-date rejection, exact replay, one outer admission
-  transaction, full exit validation, and post-commit pending-work resumption;
-- record both model and shortlist dispositions but fail closed on a changed
-  dual-sheet workbook until the policy below is approved; and
-- retain Phase 1 MNB, historical-manifest, classification, metric-correction,
-  and read-session validation unchanged.
+- `src/portfolio_advisor/database/model_portfolio_phase3b.py` defines an exact
+  two-sheet synthetic inspection format. It requires the reviewed model and
+  shortlist sheet roles,
+  names, ordered headers, nonempty row sets, ISO snapshot date, explicit ISINs,
+  and established model parser/zero-to-NULL rules. This is not the retained
+  Excel parser and cannot be selected by production defaults. Raw cell payloads
+  and normalized parser output are bound separately, so source text such as
+  `"0"` remains exact evidence while typed numeric zero follows the applicable
+  model or shortlist storage contract.
+- Input bytes are SHA-256 verified and retained at a non-overwriting,
+  content-addressed relative path below a supplied temporary root. Input,
+  target, and retained files reject resolved escapes, symlinks, and hard links.
+- Additive immutable authority, receipt, sheet-disposition, model-item,
+  shortlist-item, and pending-outbox records bind workbook bytes, raw payloads,
+  stable source identities, parser projections, ordered before/after dataset
+  fingerprints, and predecessor identity. Duplicate model occurrences remain
+  `UNRESOLVED_DUPLICATE_SEMANTICS`; canonical model holdings remain empty.
+- One `BEGIN IMMEDIATE` owns both sheet inserts, their model/shortlist metrics,
+  receipt, and the `FILE_FINALIZATION` and `ARTIFACT_REFRESH` pending records.
+  Full schema, source-binding, metric, integrity, foreign-key, receipt-chain,
+  and installed-correction validation precedes the sole commit. Invalid sheet
+  data, interruption, stale bindings, or final validation failure rolls the
+  complete candidate back; a second connection cannot see uncommitted rows.
+- Exact replay is a validation-only no-op and does not duplicate source rows,
+  receipts, or outbox work. Changed content or bindings for an existing date
+  fail closed. Concurrent exact requests serialize at SQLite and converge on
+  one admission. A retry after a committed admission whose response was lost
+  observes the immutable receipt and returns exact replay.
+- Successive synthetic dates append an ordered receipt chain. Existing source
+  payloads and receipts remain unchanged. A target with an installed Phase 1
+  authority, historical migration/shortlist manifest, or correction
+  layer rejects a new append rather than silently invalidating historical
+  bindings or automatically extending dataset-bound corrections.
 
-Synthetic completion criteria are: deterministic schema installation; exact
-receipt fingerprints; no silent sheet omission; replay adds no rows; changed
-bytes, sheet inventory, predecessor, authority, or dataset bindings roll back;
-the six duplicate occurrences remain occurrences; old correction bindings fail
-closed against changed shortlist evidence; unvalidated rows are not externally
-visible; concurrent writer attempts serialize or reject; and failures injected
-before retention, during parsing, at every transaction stage, after commit,
-during filesystem finalization, and during artifact refresh produce the states
-in the table above. Path traversal, symlink escape, stale locks, and evidence
-mutation must also fail closed.
+Focused synthetic failure injection covers either-sheet rejection, mid-write
+interruption, final-validation failure, external visibility, concurrent exact
+submissions, and response loss after commit. The installed schema is validated
+against exact DDL. The implementation deliberately records pending work only:
+there is no lock shared with the operational importer, outbox worker,
+filesystem finalizer, or artifact publisher.
 
 Phase 3B.1 excludes retained-data installation, real workbook admission,
 watcher wiring, default changes, MNB writer changes, artifact publication,
@@ -502,10 +520,12 @@ workbooks, compare the entire ordered receipt chain and all eight read workflows
 exercise crash recovery, and leave all live stores and watcher configuration
 unchanged.
 
-**Gate:** Phase 3B does not pass until the dual-sheet policy is approved, the
-synthetic writer core and failure-injection suite pass, the isolated retained
-rehearsal is exact, and the operational release design proves a single writer,
-recoverable ordered receipts, and atomic publication of generated evidence.
+**Gate:** Phase 3B does not pass merely because Phase 3B.1 is implemented. A
+separately authorized retained-data rehearsal must prove the real Excel parser
+boundary and portable evidence package. The operational release must still
+prove a manual/watcher shared lock, authority transfer, correction disposition
+for changed datasets, recoverable ordered receipts, outbox execution, and
+atomic publication of generated evidence.
 
 ### Phase 4 — separately authorized cutover
 
@@ -566,28 +586,32 @@ removal.
 
 ## Unresolved decisions and blockers
 
-1. **Dual-sheet watcher policy — approval required.** Option A is an atomic
-   workbook envelope: both valid sheets are admitted by the same outer
-   transaction, and any unadmittable changed shortlist sheet blocks all sheet
-   admissions. Option B permits model admission while retaining the exact
+1. **Dual-sheet watcher policy — operational approval still required.** Option
+   A is an atomic workbook envelope: both valid sheets are admitted by the same
+   outer transaction, and any unadmittable changed shortlist sheet blocks all
+   sheet admissions. Option B permits model admission while retaining the exact
    workbook and a durable `SHORTLIST_PENDING` disposition that prevents the
-   workbook from being declared fully processed. Option A is recommended for
-   Phase 3B.1 because it is smaller and cannot expose a partially processed
-   workbook; Option B should be reconsidered only with explicit partial-state,
+   workbook from being declared fully processed. Phase 3B.1 implements Option
+   A on synthetic temporary targets under the bounded approval for that slice.
+   Option B should be reconsidered only with explicit partial-state,
    artifact, and operator-display requirements. Silent omission and an
    after-the-fact `SHORTLIST_NOT_ADMITTED` note are rejected options.
-2. **Same-date changed workbook — approval required for any supersession.**
-   Strict hash-aware rejection is recommended for the first operational
-   writer. Append-only supersession would need an explicit predecessor,
+2. **Same-date changed workbook — supersession remains unapproved.** Phase
+   3B.1 implements strict hash-aware rejection on synthetic temporary targets.
+   Using that policy operationally still belongs to a later release approval.
+   Append-only supersession would need an explicit predecessor,
    effective-state rules, affected-artifact policy, and authorization; neither
    arrival time nor a filename date is sufficient.
 3. **External/manual consumers:** repository search cannot prove that no user
    command, SQL console, or external script uses the legacy path. Operator
    confirmation is required before cutover and again before retirement.
-4. **Post-commit artifact publication — approval required.** The recommended
-   design is a database outbox plus a generation-level manifest and atomic
-   pointer/directory promotion after coverage, missing-data policy, strict
-   validation, features, and labels all validate. Publishing files one by one
+4. **Post-commit artifact publication — approval required.** Phase 3B.1
+   transactionally records immutable pending file-finalization and artifact-
+   refresh work, but implements no worker or state transition. The recommended
+   operational design remains a database outbox plus a generation-level
+   manifest and atomic pointer/directory promotion after coverage,
+   missing-data policy, strict validation, features, and labels all validate.
+   Publishing files one by one
    is rejected because it exposes mixed generations.
 5. **Compatibility rollback lifetime:** define how long the temporary flat
    compatibility exporter remains supported after cutover. It must never

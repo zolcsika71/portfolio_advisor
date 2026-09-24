@@ -1,5 +1,8 @@
 @startuml
-' Status: Phase 1 and read-only Phase 3A implemented; Phase 3B writer and cutover proposed
+' Status: Phase 1, read-only Phase 3A, and synthetic Phase 3B.1 implemented;
+' operational writer and cutover proposed
+' Implemented source: src/portfolio_advisor/database/model_portfolio_phase3b.py
+' Synthetic regressions: tests/test_model_portfolio_consolidation_phase3b.py
 ' Verified current behavior against:
 ' - src/portfolio_advisor/main.py
 ' - src/portfolio_advisor/DB_creation/database_create.py
@@ -20,7 +23,7 @@
 ' - tests/test_xls_import_watch.py
 ' Proposed contract: docs/architecture/model-portfolio-consolidation-plan.md
 ' Governing proposal: docs/decisions/ADR-007-consolidate-model-portfolio-workflows.md
-title Model-portfolio shadow validation [Implemented] and writer/cutover [Proposed]
+title Model-portfolio consolidation: synthetic writer [Implemented], operations/cutover [Proposed]
 
 hide footbox
 skinparam sequenceMessageAlign center
@@ -125,6 +128,45 @@ note over Shadow, Validators
   Every label remains explicitly unavailable; no NAV, eligibility, or
   successful financial label is synthesized.
   Existing application, importer, watcher, and CLI defaults remain legacy.
+end note
+
+== Phase 3B.1 synthetic temporary writer [Implemented, non-operational] ==
+
+box "Generated synthetic input boundary" #E8F4FF
+Operator -> Writer: supply exact two-sheet JSON envelope,\nauthorization, expected predecessor + before fingerprints
+Writer -> Evidence: verify input SHA-256; retain content-addressed bytes
+Evidence --> Writer: portable relative path + verified hash
+Writer -> Writer: validate sheet roles, names, ordered headers,\nrows, parser/NULL rules, identifiers, and raw payloads
+end box
+
+alt exact receipt and every binding already exist
+    Writer -> Analytical: validate schema, source/metric bindings,\nreceipt chain, outbox, corrections, integrity + foreign keys
+    Analytical --> Writer: exact replay; no mutation
+else changed date/content/authority/predecessor/before-state
+    Writer --> Operator: REJECT
+else new append with installed Phase 1/manifest/correction bindings
+    Writer --> Operator: REJECT before durable database mutation
+else new supported synthetic envelope
+    Writer -> Analytical: BEGIN IMMEDIATE
+    activate Analytical
+    Writer -> Analytical: append both source sheets, snapshots,\noccurrences, metrics, lineage, sheet dispositions + receipt
+    Writer -> Analytical: insert FILE_FINALIZATION + ARTIFACT_REFRESH PENDING
+    Writer -> Validators: exhaustive candidate validation
+    alt either sheet, interruption, stale binding, or validation fails
+        Validators --> Writer: FAIL CLOSED
+        Writer -> Analytical: ROLLBACK both sheets, receipt + outbox
+    else every gate passes
+        Validators --> Writer: validated
+        Writer -> Analytical: COMMIT once
+        Writer --> Operator: admission complete; pending work recorded
+    end
+    deactivate Analytical
+end
+
+note over Writer, Validators
+  Input, database, and retention paths must resolve below the system temp root;
+  symlinks and hard links fail closed. Concurrent exact submissions serialize
+  and converge on one receipt. Outbox execution is not implemented.
 end note
 
 == Phase 3B operational writer [Proposed, not authorized] ==

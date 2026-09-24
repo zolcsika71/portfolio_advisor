@@ -115,15 +115,27 @@ and downstream artifacts would remain on the prior validated generation until
 a complete replacement generation was ready. Database commit, workbook
 movement, and artifact publication are explicitly separate failure domains.
 
-The smallest recommended implementation slice is synthetic and temporary-only:
-workbook envelopes, per-sheet dispositions, authority chaining, receipts,
-outbox state, common coordination, and failure injection. It does not wire the
-watcher, change defaults, admit retained workbooks, install a live schema, or
-transfer authority. The dual-sheet disposition, any future same-date
-supersession, generation-level artifact publication, compatibility lifetime,
-and portable MNB package layout still require explicit approval. This planning
-evidence does not accept this ADR or authorize migration, authority transfer,
-cutover, or retirement.
+The explicitly authorized Phase 3B.1 slice now implements synthetic,
+temporary-only workbook envelopes, atomic model-and-shortlist admission,
+authority/predecessor chains, immutable receipts, and pending outbox records.
+It retains generated envelope bytes content-addressably below a caller-supplied
+temporary root, rejects path escapes and links, uses one outer SQLite
+transaction, and validates exact source and metric bindings before commit.
+Raw cell payloads remain distinct from normalized parser output; normalization
+cannot rewrite the retained source representation.
+Exact replay is mutation-free; changed same-date content is rejected; and a
+new append fails closed when a Phase 1 authority, historical dataset manifest,
+or dataset-bound shortlist correction is installed.
+These choices are approved only for this bounded implementation and do not
+select an operational watcher policy or authorize a live correction mapping.
+
+Phase 3B.1 does not wire the watcher, change defaults, admit retained Excel
+workbooks, install a live schema, execute outbox work, publish artifacts, or
+transfer authority. Any future same-date supersession, generation-level
+artifact publication, compatibility lifetime, operational dual-sheet release,
+and portable MNB package layout still require explicit approval. This
+implementation evidence does not accept this ADR or authorize migration,
+authority transfer, cutover, or retirement.
 
 ## Consequences
 
@@ -167,7 +179,11 @@ cutover, or retirement.
 - Software rollback does not transfer data authority back to a stale legacy
   file. Data restoration requires the latest verified analytical backup plus
   ordered replay of later retained admissions.
-- The unresolved dual-sheet watcher policy, changed historical workbook
-  contract, atomic artifact-generation publication, external consumers,
-  compatibility lifetime, and MNB portable package layout must be decided
-  before acceptance or cutover.
+- The implemented Phase 3B.1 contract proves only the synthetic transaction
+  and provenance boundary. Its JSON envelope is not the retained Excel parser,
+  its pending outbox has no worker, and its SQLite serialization is not the
+  operational manual/watcher lock.
+- The unresolved operational dual-sheet watcher policy, changed historical
+  workbook contract, atomic artifact-generation publication, external
+  consumers, compatibility lifetime, and MNB portable package layout must be
+  decided before acceptance or cutover.
