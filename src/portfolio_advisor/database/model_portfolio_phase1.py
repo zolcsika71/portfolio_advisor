@@ -2,11 +2,14 @@
 
 This module does not select an operational database, ingest workbooks, or
 authorize cutover.  Its write APIs are intended for synthetic temporary
-databases until a later phase supplies an approved writer and authority epoch.
+or isolated rehearsal databases until a later phase supplies an approved
+writer and authority epoch.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import re
 import sqlite3
@@ -16,11 +19,13 @@ from datetime import date
 from decimal import Decimal
 from numbers import Real
 from pathlib import Path
+from typing import Self
 
 from portfolio_advisor.canonical import canonical_fingerprint
 from portfolio_advisor.database.migrations.model_portfolio_dry_run import (
     SchemaV3ModelPortfolioRepository,
 )
+from portfolio_advisor.database.repository import HoldingObservation
 from portfolio_advisor.database.schema.v3 import (
     transaction,
     validate_schema,
@@ -28,15 +33,14 @@ from portfolio_advisor.database.schema.v3 import (
 from portfolio_advisor.history.mnb_otc import (
     MnbOtcError,
     MnbOtcObservation,
-    decimal_text,
     parse_decimal,
     parse_otc_price,
     parse_transaction_count,
 )
 
 FEATURE_ID = "MODEL_PORTFOLIO_CONSOLIDATION_PHASE1"
-FEATURE_REVISION = 1
-CONTRACT_VERSION = 1
+FEATURE_REVISION = 2
+CONTRACT_VERSION = 2
 PARSER_VERSION = "MODEL_WORKBOOK_PARSER_V1"
 NON_OPERATIONAL_STATUS = "PHASE1_NON_OPERATIONAL"
 
@@ -193,10 +197,25 @@ class MnbEvidenceBinding:
     authorization_reference: str
 
 
+@dataclass(frozen=True, slots=True)
+class MnbOtcExactText:
+    """Exact provider decimal strings, retained separately from parsed values."""
+
+    nominal_value_huf_thousand: str
+    purchase_value_huf_thousand: str
+    average_price: str
+    minimum_price: str
+    maximum_price: str
+
+    @property
+    def as_dict(self) -> dict[str, str]:
+        return asdict(self)
+
+
 _SCHEMA_SQL = """
 CREATE TABLE model_source_authority_epoch (
     epoch_id TEXT PRIMARY KEY CHECK(length(trim(epoch_id)) > 0),
-    contract_version INTEGER NOT NULL CHECK(contract_version = 1),
+    contract_version INTEGER NOT NULL CHECK(contract_version = 2),
     operational_status TEXT NOT NULL CHECK(operational_status = 'PHASE1_NON_OPERATIONAL'),
     baseline_source_sha256 TEXT NOT NULL CHECK(length(baseline_source_sha256) = 64),
     baseline_dataset_fingerprint TEXT NOT NULL CHECK(length(baseline_dataset_fingerprint) = 64),
@@ -208,7 +227,7 @@ CREATE TABLE model_source_authority_epoch (
 CREATE TABLE model_workbook_admission (
     admission_id TEXT PRIMARY KEY CHECK(length(trim(admission_id)) > 0),
     epoch_id TEXT NOT NULL REFERENCES model_source_authority_epoch(epoch_id),
-    contract_version INTEGER NOT NULL CHECK(contract_version = 1),
+    contract_version INTEGER NOT NULL CHECK(contract_version = 2),
     source_file_sha256 TEXT NOT NULL CHECK(length(source_file_sha256) = 64),
     filename TEXT NOT NULL CHECK(length(trim(filename)) > 0),
     snapshot_date TEXT NOT NULL CHECK(length(snapshot_date) = 10),
@@ -262,7 +281,7 @@ CREATE TABLE model_import_batch (
 );
 CREATE TABLE model_mnb_otc_evidence_source (
     source_document_hash TEXT PRIMARY KEY CHECK(length(source_document_hash) = 64),
-    contract_version INTEGER NOT NULL CHECK(contract_version = 1),
+    contract_version INTEGER NOT NULL CHECK(contract_version = 2),
     portable_evidence_role TEXT NOT NULL CHECK(length(trim(portable_evidence_role)) > 0),
     original_source_document TEXT NOT NULL CHECK(length(trim(original_source_document)) > 0),
     source_identity TEXT NOT NULL CHECK(source_identity = 'mnb_otc'),
@@ -451,9 +470,14 @@ def source_dataset_fingerprint(connection: sqlite3.Connection) -> str:
 
 
 def admit_workbook_normalization(
-    connection: sqlite3.Connection, request: WorkbookAdmissionRequest
+    connection: sqlite3.Connection,
+    request: WorkbookAdmissionRequest,
+    *,
+    _session: Phase1AdmissionSession | None = None,
 ) -> WorkbookAdmissionResult:
     """Admit typed fields for existing synthetic source occurrences atomically."""
+    if _session is not None:
+        _session._assert_usable(connection)
     validate_phase1_schema(connection)
     _validate_request(request)
     current_fingerprint = source_dataset_fingerprint(connection)
@@ -468,9 +492,17 @@ def admit_workbook_normalization(
         (request.admission_id,),
     ).fetchone()
     if existing is not None:
-        return _validate_replay(
-            connection, request, rows, admission_fingerprint, existing
+        result = _validate_replay(
+            connection,
+            request,
+            rows,
+            admission_fingerprint,
+            existing,
+            full_validation=_session is None,
         )
+        if _session is not None:
+            _session._refresh_expected_state()
+        return result
     date_conflict = connection.execute(
         """SELECT admission_id FROM model_workbook_admission
            WHERE snapshot_date=? AND source_sheet_name=?""",
@@ -543,13 +575,16 @@ def admit_workbook_normalization(
                     typed_fingerprint,
                 ),
             )
-            validate_phase1_contracts(
-                connection, expected_epoch_id=request.authority.epoch_id
-            )
+            if _session is None:
+                validate_phase1_contracts(
+                    connection, expected_epoch_id=request.authority.epoch_id
+                )
     except sqlite3.IntegrityError as error:
         raise ModelPortfolioPhase1Error(
             "Phase 1 admission conflicts with installed immutable state"
         ) from error
+    if _session is not None:
+        _session._refresh_expected_state()
     return WorkbookAdmissionResult(
         request.admission_id,
         request.batch_id,
@@ -566,6 +601,14 @@ def validate_phase1_contracts(
     """Validate schema, stable bindings, receipts, MNB evidence, and corrections."""
     validate_phase1_schema(connection)
     _validate_installed_shortlist_corrections(connection)
+    _validate_phase1_records(connection, expected_epoch_id=expected_epoch_id)
+
+
+def _validate_phase1_records(
+    connection: sqlite3.Connection, *, expected_epoch_id: str | None = None
+) -> None:
+    """Validate Phase 1 records after session-wide prerequisites were checked."""
+    validate_phase1_schema(connection)
     epochs = connection.execute(
         "SELECT * FROM model_source_authority_epoch ORDER BY epoch_id"
     ).fetchall()
@@ -708,10 +751,16 @@ def typed_projection_fingerprint(
 def admit_mnb_otc_evidence(
     connection: sqlite3.Connection,
     observation: MnbOtcObservation,
+    exact_text: MnbOtcExactText,
     binding: MnbEvidenceBinding,
+    *,
+    _session: Phase1AdmissionSession | None = None,
 ) -> bool:
     """Append one synthetic Phase 1 MNB aggregate, or accept an exact replay."""
+    if _session is not None:
+        _session._assert_usable(connection)
     validate_phase1_schema(connection)
+    _validate_mnb_exact_text(observation, exact_text)
     if (
         not binding.portable_evidence_role.strip()
         or not binding.authorization_reference.strip()
@@ -720,7 +769,7 @@ def admit_mnb_otc_evidence(
             "MNB portable role and authorization are required"
         )
     source_fingerprint = _mnb_source_fingerprint(observation, binding)
-    observation_fingerprint = _mnb_observation_fingerprint(observation)
+    observation_fingerprint = _mnb_observation_fingerprint(observation, exact_text)
     existing = connection.execute(
         """SELECT * FROM model_mnb_otc_evidence_observation
            WHERE source=? AND isin=? AND period_start=? AND period_end=?""",
@@ -745,7 +794,10 @@ def admit_mnb_otc_evidence(
         ).fetchone()
         if source is None or str(source["source_fingerprint"]) != source_fingerprint:
             raise ModelPortfolioPhase1Error("MNB OTC replay provenance differs")
-        _validate_mnb_contract(connection)
+        if _session is None:
+            _validate_mnb_contract(connection)
+        else:
+            _session._refresh_expected_state()
         return False
     try:
         with transaction(connection):
@@ -756,7 +808,7 @@ def admit_mnb_otc_evidence(
             if source is None:
                 connection.execute(
                     """INSERT INTO model_mnb_otc_evidence_source VALUES(
-                           ?,1,?,?,'mnb_otc','WEEKLY_OTC_AGGREGATE_NOT_NAV',?,?,CURRENT_TIMESTAMP
+                           ?,2,?,?,'mnb_otc','WEEKLY_OTC_AGGREGATE_NOT_NAV',?,?,CURRENT_TIMESTAMP
                        )""",
                     (
                         observation.source_document_hash,
@@ -779,11 +831,11 @@ def admit_mnb_otc_evidence(
                     observation.period_end.isoformat(),
                     observation.instrument_name,
                     observation.currency,
-                    decimal_text(observation.nominal_value_huf_thousand),
-                    decimal_text(observation.purchase_value_huf_thousand),
-                    decimal_text(observation.average_price),
-                    decimal_text(observation.minimum_price),
-                    decimal_text(observation.maximum_price),
+                    exact_text.nominal_value_huf_thousand,
+                    exact_text.purchase_value_huf_thousand,
+                    exact_text.average_price,
+                    exact_text.minimum_price,
+                    exact_text.maximum_price,
                     observation.transaction_count,
                     observation.price_type,
                     observation.frequency,
@@ -791,31 +843,240 @@ def admit_mnb_otc_evidence(
                     observation_fingerprint,
                 ),
             )
-            _validate_mnb_contract(connection)
+            if _session is None:
+                _validate_mnb_contract(connection)
     except (sqlite3.IntegrityError, MnbOtcError) as error:
         raise ModelPortfolioPhase1Error("invalid MNB OTC evidence admission") from error
+    if _session is not None:
+        _session._refresh_expected_state()
     return True
+
+
+class Phase1AdmissionSession:
+    """Reuse one prerequisite validation across an ordered temporary admission run."""
+
+    def __init__(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        external_dependencies: Mapping[Path, str] | None = None,
+    ) -> None:
+        self._connection = connection
+        self._explicit_dependencies = dict(external_dependencies or {})
+        self._database_path: Path | None = None
+        self._database_state: tuple[int, int, int, int, int] | None = None
+        self._storage_state: tuple[tuple[str, tuple[int, ...] | None], ...] = ()
+        self._dependency_state: tuple[tuple[str, str, tuple[int, ...]], ...] = ()
+        self._open = False
+        self.full_validation_count = 0
+
+    def __enter__(self) -> Self:
+        if self._open:
+            raise ModelPortfolioPhase1Error("admission session is already open")
+        if self._connection.in_transaction:
+            raise ModelPortfolioPhase1Error(
+                "admission session requires control of the transaction boundary"
+            )
+        row = self._connection.execute("PRAGMA database_list").fetchone()
+        if row is None or not str(row[2]):
+            raise ModelPortfolioPhase1Error(
+                "admission session requires a file database"
+            )
+        self._database_path = Path(str(row[2])).resolve()
+        try:
+            self._connection.execute("PRAGMA foreign_keys=ON")
+            if int(self._connection.execute("PRAGMA foreign_keys").fetchone()[0]) != 1:
+                raise ModelPortfolioPhase1Error(
+                    "admission session requires foreign-key enforcement"
+                )
+            self._connection.execute("BEGIN IMMEDIATE")
+            validate_phase1_contracts(self._connection)
+            self._dependency_state = _validated_external_dependencies(
+                self._connection, self._explicit_dependencies
+            )
+            self.full_validation_count = 1
+            self._open = True
+            self._refresh_expected_state()
+            return self
+        except BaseException:
+            if self._connection.in_transaction:
+                self._connection.rollback()
+            raise
+
+    def __exit__(self, exc_type: object, *_exc: object) -> None:
+        try:
+            if exc_type is None:
+                self._assert_usable(self._connection)
+                validate_phase1_contracts(self._connection)
+                _revalidate_external_dependencies(self._dependency_state)
+                self.full_validation_count += 1
+                self._connection.commit()
+            else:
+                self._connection.rollback()
+        except BaseException:
+            self._connection.rollback()
+            raise
+        finally:
+            self._open = False
+
+    def _assert_usable(self, connection: sqlite3.Connection) -> None:
+        if not self._open or connection is not self._connection:
+            raise ModelPortfolioPhase1Error(
+                "admission session is not open for this connection"
+            )
+        if self._database_state != _connection_validation_state(connection):
+            raise ModelPortfolioPhase1Error(
+                "database state changed outside the validated admission session"
+            )
+        if (
+            self._database_path is None
+            or self._storage_state != _database_storage_state(self._database_path)
+        ):
+            raise ModelPortfolioPhase1Error(
+                "database storage changed outside the validated admission session"
+            )
+        _assert_external_dependency_metadata(self._dependency_state)
+
+    def _refresh_expected_state(self) -> None:
+        if self._database_path is None:
+            raise ModelPortfolioPhase1Error("admission session has no database path")
+        self._database_state = _connection_validation_state(self._connection)
+        self._storage_state = _database_storage_state(self._database_path)
+
+    def admit_workbook(
+        self, request: WorkbookAdmissionRequest
+    ) -> WorkbookAdmissionResult:
+        return admit_workbook_normalization(self._connection, request, _session=self)
+
+    def admit_mnb(
+        self,
+        observation: MnbOtcObservation,
+        exact_text: MnbOtcExactText,
+        binding: MnbEvidenceBinding,
+    ) -> bool:
+        return admit_mnb_otc_evidence(
+            self._connection,
+            observation,
+            exact_text,
+            binding,
+            _session=self,
+        )
 
 
 class AnalyticalModelPortfolioRepository(SchemaV3ModelPortfolioRepository):
     """Explicit opt-in Phase 1 reader; it is never selected by defaults."""
 
-    def __init__(self, database_path: Path, *, authority_epoch_id: str) -> None:
+    def __init__(
+        self,
+        database_path: Path,
+        *,
+        authority_epoch_id: str,
+        external_dependencies: Mapping[Path, str] | None = None,
+    ) -> None:
         super().__init__(database_path)
         self.authority_epoch_id = authority_epoch_id
+        self.external_dependencies = dict(external_dependencies or {})
 
     def _connection(self) -> sqlite3.Connection:
         connection = super()._connection()
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA query_only=ON")
+        return connection
+
+    def validated_session(self) -> AnalyticalModelPortfolioSession:
+        """Open one pinned read transaction with one complete validation."""
+        return AnalyticalModelPortfolioSession(self)
+
+    def observation_dates(self) -> tuple[date, ...]:
+        with self.validated_session() as session:
+            return session.observation_dates()
+
+    def latest_observation_date(self) -> date:
+        with self.validated_session() as session:
+            return session.latest_observation_date()
+
+    def load_holdings(self, observation_date: date) -> list[HoldingObservation]:
+        with self.validated_session() as session:
+            return session.load_holdings(observation_date)
+
+    def load_typed_occurrences(
+        self, observation_date: date
+    ) -> tuple[TypedModelOccurrence, ...]:
+        with self.validated_session() as session:
+            return session.load_typed_occurrences(observation_date)
+
+
+class AnalyticalModelPortfolioSession:
+    """Connection-scoped validation proof for a pinned analytical read snapshot."""
+
+    def __init__(self, repository: AnalyticalModelPortfolioRepository) -> None:
+        self._repository = repository
+        self._connection: sqlite3.Connection | None = None
+        self._database_state: tuple[int, int, int, int, int] | None = None
+        self._storage_state: tuple[tuple[str, tuple[int, ...] | None], ...] = ()
+        self._dependency_state: tuple[tuple[str, str, tuple[int, ...]], ...] = ()
+        self.full_validation_count = 0
+
+    def __enter__(self) -> Self:
+        if self._connection is not None:
+            raise ModelPortfolioPhase1Error("validated session is already open")
+        connection = self._repository._connection()
         try:
+            connection.execute("PRAGMA foreign_keys=ON")
+            connection.execute("BEGIN")
             validate_phase1_contracts(
-                connection, expected_epoch_id=self.authority_epoch_id
+                connection, expected_epoch_id=self._repository.authority_epoch_id
             )
+            dependencies = _validated_external_dependencies(
+                connection, self._repository.external_dependencies
+            )
+            self._connection = connection
+            self._database_state = _connection_validation_state(connection)
+            self._storage_state = _database_storage_state(
+                self._repository.database_path
+            )
+            self._dependency_state = dependencies
+            self.full_validation_count = 1
+            return self
         except BaseException:
             connection.close()
             raise
+
+    def __exit__(self, exc_type: object, *_exc: object) -> None:
+        connection = self._connection
+        if connection is None:
+            return
+        try:
+            if exc_type is None:
+                self._checked_connection()
+                _revalidate_external_dependencies(self._dependency_state)
+        finally:
+            connection.rollback()
+            connection.close()
+            self._connection = None
+
+    def _checked_connection(self) -> sqlite3.Connection:
+        connection = self._connection
+        if connection is None or self._database_state is None:
+            raise ModelPortfolioPhase1Error("validated session is not open")
+        if _connection_validation_state(connection) != self._database_state:
+            raise ModelPortfolioPhase1Error(
+                "analytical database changed after session validation"
+            )
+        if (
+            _database_storage_state(self._repository.database_path)
+            != self._storage_state
+        ):
+            raise ModelPortfolioPhase1Error(
+                "analytical database storage changed after session validation"
+            )
+        _assert_external_dependency_metadata(self._dependency_state)
         return connection
+
+    def observation_dates(self) -> tuple[date, ...]:
+        connection = self._checked_connection()
+        rows = self._repository._observation_date_rows(connection)
+        return tuple(date.fromisoformat(str(row[0])) for row in rows)
 
     def latest_observation_date(self) -> date:
         dates = self.observation_dates()
@@ -823,50 +1084,56 @@ class AnalyticalModelPortfolioRepository(SchemaV3ModelPortfolioRepository):
             raise ModelPortfolioPhase1Error("no model observation dates are available")
         return dates[-1]
 
+    def load_holdings(self, observation_date: date) -> list[HoldingObservation]:
+        connection = self._checked_connection()
+        return self._repository._load_holdings_from_connection(
+            connection, observation_date
+        )
+
     def load_typed_occurrences(
         self, observation_date: date
     ) -> tuple[TypedModelOccurrence, ...]:
-        with self._connection() as connection:
-            rows = connection.execute(
-                """SELECT o.portfolio_holding_source_occurrence_id,
-                          extension.stable_source_reference, p.portfolio_name,
-                          i.isin, o.source_row_number, o.source_semantics_status,
-                          extension.sustainability,
-                          extension.parsed_fields_fingerprint
-                   FROM portfolio_holding_source_occurrence AS o
-                   JOIN portfolio_snapshot AS snapshot
-                     ON snapshot.portfolio_snapshot_id=o.portfolio_snapshot_id
-                   JOIN portfolio AS p ON p.portfolio_id=snapshot.portfolio_id
-                   JOIN instrument AS i ON i.instrument_id=o.instrument_id
-                   JOIN model_source_occurrence_typed_extension AS extension
-                     ON extension.source_occurrence_id=o.portfolio_holding_source_occurrence_id
-                   WHERE snapshot.snapshot_date=?
-                   ORDER BY p.portfolio_name, i.isin, o.source_row_number""",
-                (observation_date.isoformat(),),
-            ).fetchall()
-            result: list[TypedModelOccurrence] = []
-            for row in rows:
-                fields = _parsed_fields_from_metrics(
-                    connection,
+        connection = self._checked_connection()
+        rows = connection.execute(
+            """SELECT o.portfolio_holding_source_occurrence_id,
+                      extension.stable_source_reference, p.portfolio_name,
+                      i.isin, o.source_row_number, o.source_semantics_status,
+                      extension.sustainability,
+                      extension.parsed_fields_fingerprint
+               FROM portfolio_holding_source_occurrence AS o
+               JOIN portfolio_snapshot AS snapshot
+                 ON snapshot.portfolio_snapshot_id=o.portfolio_snapshot_id
+               JOIN portfolio AS p ON p.portfolio_id=snapshot.portfolio_id
+               JOIN instrument AS i ON i.instrument_id=o.instrument_id
+               JOIN model_source_occurrence_typed_extension AS extension
+                 ON extension.source_occurrence_id=o.portfolio_holding_source_occurrence_id
+               WHERE snapshot.snapshot_date=?
+               ORDER BY p.portfolio_name, i.isin, o.source_row_number""",
+            (observation_date.isoformat(),),
+        ).fetchall()
+        result: list[TypedModelOccurrence] = []
+        for row in rows:
+            fields = _parsed_fields_from_metrics(
+                connection,
+                source_occurrence_id=int(row[0]),
+                stable_source_reference=str(row[1]),
+                sustainability=row[6],
+            )
+            if fields.fingerprint != str(row[7]):
+                raise ModelPortfolioPhase1Error(
+                    "typed occurrence parsed-field fingerprint is stale"
+                )
+            result.append(
+                TypedModelOccurrence(
                     source_occurrence_id=int(row[0]),
                     stable_source_reference=str(row[1]),
-                    sustainability=row[6],
+                    portfolio_name=str(row[2]),
+                    isin=str(row[3]),
+                    source_row_number=int(row[4]),
+                    source_semantics_status=str(row[5]),
+                    fields=fields,
                 )
-                if fields.fingerprint != str(row[7]):
-                    raise ModelPortfolioPhase1Error(
-                        "typed occurrence parsed-field fingerprint is stale"
-                    )
-                result.append(
-                    TypedModelOccurrence(
-                        source_occurrence_id=int(row[0]),
-                        stable_source_reference=str(row[1]),
-                        portfolio_name=str(row[2]),
-                        isin=str(row[3]),
-                        source_row_number=int(row[4]),
-                        source_semantics_status=str(row[5]),
-                        fields=fields,
-                    )
-                )
+            )
         return tuple(result)
 
 
@@ -1343,8 +1610,13 @@ def _validate_replay(
     rows: tuple[tuple[object, ...], ...],
     admission_fingerprint: str,
     existing: sqlite3.Row,
+    *,
+    full_validation: bool,
 ) -> WorkbookAdmissionResult:
-    validate_phase1_contracts(connection, expected_epoch_id=request.authority.epoch_id)
+    if full_validation:
+        validate_phase1_contracts(
+            connection, expected_epoch_id=request.authority.epoch_id
+        )
     if str(existing["admission_fingerprint"]) != admission_fingerprint:
         raise ModelPortfolioPhase1Error("workbook admission replay differs")
     stored = connection.execute(
@@ -1425,8 +1697,53 @@ def _mnb_source_fingerprint(
     )
 
 
-def _mnb_observation_fingerprint(observation: MnbOtcObservation) -> str:
-    return canonical_fingerprint(observation.as_dict())
+def _mnb_observation_fingerprint(
+    observation: MnbOtcObservation, exact_text: MnbOtcExactText
+) -> str:
+    return canonical_fingerprint(
+        {
+            "numeric_observation": observation.as_dict(),
+            "exact_decimal_text": exact_text.as_dict,
+        }
+    )
+
+
+def _mnb_exact_text_from_row(row: sqlite3.Row) -> MnbOtcExactText:
+    return MnbOtcExactText(
+        nominal_value_huf_thousand=str(row["nominal_value_huf_thousand"]),
+        purchase_value_huf_thousand=str(row["purchase_value_huf_thousand"]),
+        average_price=str(row["average_price"]),
+        minimum_price=str(row["minimum_price"]),
+        maximum_price=str(row["maximum_price"]),
+    )
+
+
+def _validate_mnb_exact_text(
+    observation: MnbOtcObservation, exact_text: MnbOtcExactText
+) -> None:
+    try:
+        parsed = (
+            parse_decimal(exact_text.nominal_value_huf_thousand, "exact nominal value"),
+            parse_decimal(
+                exact_text.purchase_value_huf_thousand, "exact purchase value"
+            ),
+            parse_otc_price(exact_text.average_price, "exact average price"),
+            parse_otc_price(exact_text.minimum_price, "exact minimum price"),
+            parse_otc_price(exact_text.maximum_price, "exact maximum price"),
+        )
+    except MnbOtcError as error:
+        raise ModelPortfolioPhase1Error("MNB exact decimal text is invalid") from error
+    expected = (
+        observation.nominal_value_huf_thousand,
+        observation.purchase_value_huf_thousand,
+        observation.average_price,
+        observation.minimum_price,
+        observation.maximum_price,
+    )
+    if parsed != expected:
+        raise ModelPortfolioPhase1Error(
+            "MNB exact decimal text differs numerically from the parsed observation"
+        )
 
 
 def _validate_mnb_contract(connection: sqlite3.Connection) -> None:
@@ -1447,12 +1764,14 @@ def _validate_mnb_contract(connection: sqlite3.Connection) -> None:
             raise ModelPortfolioPhase1Error("MNB evidence source has no observation")
         for row in rows:
             observation = _mnb_from_row(row, str(source["original_source_document"]))
+            exact_text = _mnb_exact_text_from_row(row)
+            _validate_mnb_exact_text(observation, exact_text)
             if str(source["source_fingerprint"]) != _mnb_source_fingerprint(
                 observation, binding
             ):
                 raise ModelPortfolioPhase1Error("MNB source fingerprint mismatch")
             if str(row["observation_fingerprint"]) != _mnb_observation_fingerprint(
-                observation
+                observation, exact_text
             ):
                 raise ModelPortfolioPhase1Error("MNB observation fingerprint mismatch")
 
@@ -1502,6 +1821,119 @@ def _validate_installed_shortlist_corrections(connection: sqlite3.Connection) ->
 
     validate_corrections_if_present(connection)
     validate_classification_corrections_if_present(connection)
+
+
+def _connection_validation_state(
+    connection: sqlite3.Connection,
+) -> tuple[int, int, int, int, int]:
+    return (
+        int(connection.execute("PRAGMA data_version").fetchone()[0]),
+        int(connection.execute("PRAGMA schema_version").fetchone()[0]),
+        int(connection.execute("PRAGMA user_version").fetchone()[0]),
+        connection.total_changes,
+        int(connection.in_transaction),
+    )
+
+
+def _path_state(path: Path) -> tuple[int, ...]:
+    stat = path.stat()
+    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+
+
+def _database_storage_state(
+    database_path: Path,
+) -> tuple[tuple[str, tuple[int, ...] | None], ...]:
+    resolved = database_path.resolve()
+    paths = (
+        resolved,
+        Path(f"{resolved}-wal"),
+        Path(f"{resolved}-shm"),
+        Path(f"{resolved}-journal"),
+    )
+    return tuple(
+        (str(path), _path_state(path) if path.exists() else None) for path in paths
+    )
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _validated_external_dependencies(
+    connection: sqlite3.Connection, explicit: Mapping[Path, str]
+) -> tuple[tuple[str, str, tuple[int, ...]], ...]:
+    dependencies = {
+        Path(path).resolve(): expected for path, expected in explicit.items()
+    }
+    row = connection.execute(
+        "SELECT source_fingerprints_json FROM migration_build_manifest WHERE singleton=1"
+    ).fetchone()
+    if row is not None:
+        try:
+            manifest = json.loads(str(row[0]))
+        except (TypeError, ValueError) as error:
+            raise ModelPortfolioPhase1Error(
+                "historical source dependency manifest is malformed"
+            ) from error
+        if not isinstance(manifest, dict) or any(
+            not isinstance(path, str) or not isinstance(expected, str)
+            for path, expected in manifest.items()
+        ):
+            raise ModelPortfolioPhase1Error(
+                "historical source dependency manifest has invalid fields"
+            )
+        for path_text, expected in manifest.items():
+            path = Path(path_text)
+            if not path.is_absolute():
+                raise ModelPortfolioPhase1Error(
+                    "historical source dependency path is not absolute"
+                )
+            resolved = path.resolve()
+            prior = dependencies.get(resolved)
+            if prior is not None and prior != expected:
+                raise ModelPortfolioPhase1Error(
+                    "external dependency has conflicting expected hashes"
+                )
+            dependencies[resolved] = expected
+    states: list[tuple[str, str, tuple[int, ...]]] = []
+    for path, expected in sorted(dependencies.items(), key=lambda item: str(item[0])):
+        _require_sha256(expected, "external dependency fingerprint")
+        if not path.is_file() or _file_sha256(path) != expected:
+            raise ModelPortfolioPhase1Error(
+                f"validated external dependency differs: {path}"
+            )
+        states.append((str(path), expected, _path_state(path)))
+    return tuple(states)
+
+
+def _revalidate_external_dependencies(
+    states: tuple[tuple[str, str, tuple[int, ...]], ...],
+) -> None:
+    for path_text, expected, state in states:
+        path = Path(path_text)
+        if (
+            not path.is_file()
+            or _path_state(path) != state
+            or _file_sha256(path) != expected
+        ):
+            raise ModelPortfolioPhase1Error(
+                f"validated external dependency changed: {path}"
+            )
+
+
+def _assert_external_dependency_metadata(
+    states: tuple[tuple[str, str, tuple[int, ...]], ...],
+) -> None:
+    for path_text, _expected, state in states:
+        path = Path(path_text)
+        if not path.is_file() or _path_state(path) != state:
+            raise ModelPortfolioPhase1Error(
+                f"validated external dependency changed: {path}"
+            )
 
 
 def _feature_marker(connection: sqlite3.Connection) -> list[tuple[object, ...]]:

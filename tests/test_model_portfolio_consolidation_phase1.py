@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from portfolio_advisor.database import model_portfolio_phase1 as phase1
 from portfolio_advisor.database.migrations.model_portfolio_dry_run import (
     equivalence_report,
 )
@@ -20,8 +21,10 @@ from portfolio_advisor.database.model_portfolio_phase1 import (
     AnalyticalMnbOtcRepository,
     AnalyticalModelPortfolioRepository,
     MnbEvidenceBinding,
+    MnbOtcExactText,
     ModelOccurrenceBinding,
     ModelPortfolioPhase1Error,
+    Phase1AdmissionSession,
     admit_mnb_otc_evidence,
     admit_workbook_normalization,
     install_phase1_schema,
@@ -35,7 +38,7 @@ from portfolio_advisor.database.repository import (
     ModelPortfolioRepository,
 )
 from portfolio_advisor.database.schema.v3 import connect, initialize_schema
-from portfolio_advisor.history.mnb_otc import MnbOtcObservation
+from portfolio_advisor.history.mnb_otc import MnbOtcObservation, MnbOtcRepository
 from portfolio_advisor.metrics.portfolio import calculate_all_portfolio_metrics
 from portfolio_advisor.ranking.config import load_ranking_rules
 from portfolio_advisor.ranking.ranking import rank_portfolios
@@ -72,6 +75,16 @@ def _mnb_observation() -> MnbOtcObservation:
         transaction_count=2,
         source_document="evidence/mnb/synthetic.pdf",
         source_document_hash="d" * 64,
+    )
+
+
+def _mnb_exact_text() -> MnbOtcExactText:
+    return MnbOtcExactText(
+        nominal_value_huf_thousand="1000.0",
+        purchase_value_huf_thousand="1020.0",
+        average_price="102.000000",
+        minimum_price="101.900000",
+        maximum_price="102.100000",
     )
 
 
@@ -331,7 +344,7 @@ def test_mismatched_replays_and_changed_evidence_roll_back_without_mutation(
         )
 
 
-def test_ordered_multiple_admissions_validate_each_projection_prefix(
+def test_ordered_multiple_admissions_validate_completed_projection(
     tmp_path: Path,
 ) -> None:
     _legacy, analytical, initial_request = create_phase1_databases(tmp_path)
@@ -429,8 +442,11 @@ def test_ordered_multiple_admissions_validate_each_projection_prefix(
             items=(second_item,),
         )
         install_phase1_schema(connection)
-        assert admit_workbook_normalization(connection, first).replayed is False
-        assert admit_workbook_normalization(connection, second).replayed is False
+        connection.commit()
+        with Phase1AdmissionSession(connection) as session:
+            assert session.admit_workbook(first).replayed is False
+            assert session.admit_workbook(second).replayed is False
+        assert session.full_validation_count == 2
         validate_phase1_contracts(connection, expected_epoch_id=authority.epoch_id)
         assert [
             int(row[0])
@@ -442,8 +458,143 @@ def test_ordered_multiple_admissions_validate_each_projection_prefix(
     with sqlite3.connect(analytical) as connection:
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys=ON")
-        assert admit_workbook_normalization(connection, second).replayed is True
+        with Phase1AdmissionSession(connection) as session:
+            assert session.admit_workbook(first).replayed is True
+            assert session.admit_workbook(second).replayed is True
+        assert session.full_validation_count == 2
     assert _sha256(analytical) == before
+
+
+def test_admission_session_rolls_back_when_exit_validation_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _legacy, analytical, request = create_phase1_databases(tmp_path)
+    with sqlite3.connect(analytical) as connection:
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys=ON")
+        install_phase1_schema(connection)
+        validation_calls = 0
+        original_validate = validate_phase1_contracts
+
+        def fail_second_validation(
+            candidate: sqlite3.Connection, *, expected_epoch_id: str | None = None
+        ) -> None:
+            nonlocal validation_calls
+            validation_calls += 1
+            if validation_calls == 2:
+                raise ModelPortfolioPhase1Error("injected exit-validation failure")
+            original_validate(candidate, expected_epoch_id=expected_epoch_id)
+
+        monkeypatch.setattr(
+            "portfolio_advisor.database.model_portfolio_phase1.validate_phase1_contracts",
+            fail_second_validation,
+        )
+        with (
+            pytest.raises(ModelPortfolioPhase1Error, match="injected"),
+            Phase1AdmissionSession(connection) as session,
+        ):
+            assert session.admit_workbook(request).replayed is False
+
+    with sqlite3.connect(analytical) as connection:
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM model_workbook_admission"
+            ).fetchone()[0]
+            == 0
+        )
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM model_source_occurrence_typed_extension"
+            ).fetchone()[0]
+            == 0
+        )
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM instrument_metric_observation "
+                "WHERE source_reference LIKE 'MODEL_PHASE1:%'"
+            ).fetchone()[0]
+            == 0
+        )
+
+
+def test_admission_session_rolls_back_on_interruption_and_hides_unvalidated_rows(
+    tmp_path: Path,
+) -> None:
+    _legacy, analytical, request = create_phase1_databases(tmp_path)
+    with sqlite3.connect(analytical) as connection:
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys=ON")
+        install_phase1_schema(connection)
+        with (
+            pytest.raises(KeyboardInterrupt, match="injected interruption"),
+            Phase1AdmissionSession(connection) as session,
+        ):
+            assert session.admit_workbook(request).replayed is False
+            with sqlite3.connect(analytical) as observer:
+                assert (
+                    observer.execute(
+                        "SELECT count(*) FROM model_workbook_admission"
+                    ).fetchone()[0]
+                    == 0
+                )
+            raise KeyboardInterrupt("injected interruption")
+
+    with sqlite3.connect(analytical) as connection:
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM model_workbook_admission"
+            ).fetchone()[0]
+            == 0
+        )
+
+
+def test_admission_session_rejects_out_of_band_writes_and_rolls_back(
+    tmp_path: Path,
+) -> None:
+    _legacy, analytical, request = create_phase1_databases(tmp_path)
+    with sqlite3.connect(analytical) as connection:
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys=ON")
+        install_phase1_schema(connection)
+        with (
+            pytest.raises(ModelPortfolioPhase1Error, match="outside"),
+            Phase1AdmissionSession(connection) as session,
+        ):
+            assert session.admit_workbook(request).replayed is False
+            connection.execute(
+                "UPDATE source_file SET filename=filename || '-changed' "
+                "WHERE source_file_id=1"
+            )
+            session.admit_workbook(request)
+
+    with sqlite3.connect(analytical) as connection:
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM model_workbook_admission"
+            ).fetchone()[0]
+            == 0
+        )
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM source_file WHERE filename LIKE '%-changed'"
+            ).fetchone()[0]
+            == 0
+        )
+
+
+def test_phase1_revision_one_marker_is_rejected(tmp_path: Path) -> None:
+    database = tmp_path / "revision.sqlite"
+    with connect(database) as connection:
+        initialize_schema(connection)
+        install_phase1_schema(connection)
+        connection.execute(
+            "UPDATE schema_feature_contract SET revision=1 WHERE feature_id=?",
+            ("MODEL_PORTFOLIO_CONSOLIDATION_PHASE1",),
+        )
+        with pytest.raises(
+            ModelPortfolioPhase1Error, match="marker is missing or stale"
+        ):
+            validate_phase1_schema(connection)
 
 
 def test_stale_source_binding_is_rejected_by_adapter(tmp_path: Path) -> None:
@@ -473,15 +624,35 @@ def test_dedicated_mnb_contract_preserves_non_nav_semantics_and_replay(
             portable_evidence_role="evidence/mnb/synthetic.pdf",
             authorization_reference="synthetic-MNB-authorization",
         )
-        assert admit_mnb_otc_evidence(connection, observation, binding) is True
-        assert admit_mnb_otc_evidence(connection, observation, binding) is False
+        exact_text = _mnb_exact_text()
+        assert (
+            admit_mnb_otc_evidence(connection, observation, exact_text, binding) is True
+        )
+        assert (
+            admit_mnb_otc_evidence(connection, observation, exact_text, binding)
+            is False
+        )
         before = tuple(
             connection.execute("SELECT * FROM model_mnb_otc_evidence_observation")
         )
         with pytest.raises(ModelPortfolioPhase1Error, match="conflicting"):
             admit_mnb_otc_evidence(
                 connection,
+                observation,
+                replace(exact_text, maximum_price="102.1000"),
+                binding,
+            )
+        assert (
+            tuple(
+                connection.execute("SELECT * FROM model_mnb_otc_evidence_observation")
+            )
+            == before
+        )
+        with pytest.raises(ModelPortfolioPhase1Error, match="conflicting"):
+            admit_mnb_otc_evidence(
+                connection,
                 replace(observation, average_price=Decimal("102.050000")),
+                replace(exact_text, average_price="102.050000"),
                 binding,
             )
         assert (
@@ -495,6 +666,140 @@ def test_dedicated_mnb_contract_preserves_non_nav_semantics_and_replay(
     assert stored == (_mnb_observation(),)
     assert stored[0].as_dict()["nav_equivalent"] is False
     assert stored[0].as_dict()["backtest_return_series_approved"] is False
+
+
+def test_mnb_admission_preserves_legacy_decimal_text_exactly(tmp_path: Path) -> None:
+    legacy = tmp_path / "legacy-mnb.sqlite"
+    legacy_repository = MnbOtcRepository(legacy)
+    legacy_repository.ensure_schema()
+    with sqlite3.connect(legacy) as connection:
+        connection.execute(
+            """INSERT INTO mnb_otc_observations VALUES(
+                   'mnb_otc','HU0000554795','Synthetic one-year government security',
+                   'HUF','2024-11-25','2024-12-01','1000.0','1020.0',
+                   '102.000000','101.900000','102.9096',2,
+                   'OTC_WEEKLY_TRANSACTION_AVERAGE','WEEKLY_OTC_AGGREGATE',
+                   'evidence/mnb/synthetic.pdf',?
+               )""",
+            ("d" * 64,),
+        )
+    observation = legacy_repository.observations()[0]
+    assert observation.maximum_price == Decimal("102.909600")
+
+    analytical = tmp_path / "analytical.sqlite"
+    with connect(analytical) as connection:
+        initialize_schema(connection)
+        install_phase1_schema(connection)
+        assert admit_mnb_otc_evidence(
+            connection,
+            observation,
+            MnbOtcExactText(
+                nominal_value_huf_thousand="1000.0",
+                purchase_value_huf_thousand="1020.0",
+                average_price="102.000000",
+                minimum_price="101.900000",
+                maximum_price="102.9096",
+            ),
+            MnbEvidenceBinding(
+                portable_evidence_role="evidence/mnb/synthetic.pdf",
+                authorization_reference="synthetic-MNB-authorization",
+            ),
+        )
+        stored_text = connection.execute(
+            "SELECT maximum_price FROM model_mnb_otc_evidence_observation"
+        ).fetchone()[0]
+
+    assert stored_text == "102.9096"
+
+
+def test_public_validated_session_reuses_one_full_validation(tmp_path: Path) -> None:
+    _legacy, analytical, request = create_phase1_databases(tmp_path)
+    with sqlite3.connect(analytical) as connection:
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys=ON")
+        install_phase1_schema(connection)
+        admit_workbook_normalization(connection, request)
+
+    reader = AnalyticalModelPortfolioRepository(
+        analytical, authority_epoch_id=request.authority.epoch_id
+    )
+    with reader.validated_session() as session:
+        assert session.observation_dates() == (FIXTURE_DATE,)
+        assert session.latest_observation_date() == FIXTURE_DATE
+        assert session.load_holdings(FIXTURE_DATE)
+        assert session.load_typed_occurrences(FIXTURE_DATE)
+        assert session.full_validation_count == 1
+
+
+def test_validated_session_rejects_changed_database_and_dependency(
+    tmp_path: Path,
+) -> None:
+    _legacy, analytical, request = create_phase1_databases(tmp_path)
+    with sqlite3.connect(analytical) as connection:
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys=ON")
+        connection.execute("PRAGMA journal_mode=WAL")
+        install_phase1_schema(connection)
+        admit_workbook_normalization(connection, request)
+
+    dependency = tmp_path / "external-evidence.bin"
+    dependency.write_bytes(b"validated evidence")
+    reader = AnalyticalModelPortfolioRepository(
+        analytical,
+        authority_epoch_id=request.authority.epoch_id,
+        external_dependencies={dependency: _sha256(dependency)},
+    )
+    with (
+        pytest.raises(ModelPortfolioPhase1Error, match="dependency changed"),
+        reader.validated_session() as session,
+    ):
+        dependency.write_bytes(b"changed evidence")
+        session.observation_dates()
+
+    dependency.write_bytes(b"validated evidence")
+    with (
+        pytest.raises(ModelPortfolioPhase1Error, match="database"),
+        reader.validated_session() as session,
+    ):
+        with sqlite3.connect(analytical) as writer:
+            writer.execute(
+                "UPDATE source_file SET filename=filename || '-changed' WHERE source_file_id=1"
+            )
+        session.observation_dates()
+
+
+def test_validated_session_rehashes_dependencies_at_exit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _legacy, analytical, request = create_phase1_databases(tmp_path)
+    with sqlite3.connect(analytical) as connection:
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys=ON")
+        install_phase1_schema(connection)
+        admit_workbook_normalization(connection, request)
+
+    dependency = tmp_path / "external-evidence.bin"
+    dependency.write_bytes(b"validated evidence")
+    dependency_state = phase1._path_state(dependency)
+    original_path_state = phase1._path_state
+
+    def stable_dependency_metadata(path: Path) -> tuple[int, ...]:
+        if path.resolve() == dependency.resolve():
+            return dependency_state
+        return original_path_state(path)
+
+    monkeypatch.setattr(phase1, "_path_state", stable_dependency_metadata)
+    reader = AnalyticalModelPortfolioRepository(
+        analytical,
+        authority_epoch_id=request.authority.epoch_id,
+        external_dependencies={dependency: _sha256(dependency)},
+    )
+    with (
+        pytest.raises(ModelPortfolioPhase1Error, match="dependency changed"),
+        reader.validated_session() as session,
+    ):
+        assert session.observation_dates() == (FIXTURE_DATE,)
+        dependency.write_bytes(b"validated evidencE")
 
 
 def test_phase1_command_rejects_path_aliases_and_non_temporary_databases(

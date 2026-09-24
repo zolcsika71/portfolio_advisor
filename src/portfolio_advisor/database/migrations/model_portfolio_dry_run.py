@@ -280,15 +280,19 @@ class SchemaV3ModelPortfolioRepository:
 
     def observation_dates(self) -> tuple[date, ...]:
         with self._connection() as connection:
-            values = connection.execute(
-                """SELECT DISTINCT snapshot.snapshot_date
-                   FROM portfolio_snapshot AS snapshot
-                   JOIN portfolio AS portfolio
-                     ON portfolio.portfolio_id=snapshot.portfolio_id
-                   WHERE portfolio.portfolio_type='MODEL'
-                   ORDER BY snapshot.snapshot_date"""
-            ).fetchall()
+            values = self._observation_date_rows(connection)
         return tuple(date.fromisoformat(str(row[0])) for row in values)
+
+    @staticmethod
+    def _observation_date_rows(connection: sqlite3.Connection) -> list[sqlite3.Row | tuple[object, ...]]:
+        return connection.execute(
+            """SELECT DISTINCT snapshot.snapshot_date
+               FROM portfolio_snapshot AS snapshot
+               JOIN portfolio AS portfolio
+                 ON portfolio.portfolio_id=snapshot.portfolio_id
+               WHERE portfolio.portfolio_type='MODEL'
+               ORDER BY snapshot.snapshot_date"""
+        ).fetchall()
 
     def latest_observation_date(self) -> date:
         dates = self.observation_dates()
@@ -298,35 +302,39 @@ class SchemaV3ModelPortfolioRepository:
 
     def load_holdings(self, observation_date: date) -> list[HoldingObservation]:
         with self._connection() as connection:
-            rows = connection.execute(
-                """SELECT o.portfolio_holding_source_occurrence_id, p.portfolio_name, o.observed_product_name, i.isin,
-                           o.reported_weight, o.observed_currency_code, o.observed_currency_risk, o.observed_asset_class
-                    FROM portfolio_holding_source_occurrence o
-                    JOIN portfolio_snapshot s ON s.portfolio_snapshot_id=o.portfolio_snapshot_id
-                    JOIN portfolio p ON p.portfolio_id=s.portfolio_id
-                    JOIN instrument i ON i.instrument_id=o.instrument_id
-                    WHERE s.snapshot_date=? AND p.portfolio_type='MODEL'
-                    ORDER BY p.portfolio_name, i.isin, o.observed_product_name, o.portfolio_holding_source_occurrence_id""",
-                (observation_date.isoformat(),),
-            ).fetchall()
-            references = [
-                _metric_reference(int(row[0]), code)
-                for row in rows
-                for code, _name, _unit, _field in _METRICS
-            ]
-            metric_values: dict[tuple[int, str], float] = {}
-            for start in range(0, len(references), 500):
-                batch = references[start:start + 500]
-                placeholders = ", ".join("?" for _ in batch)
-                for reference, code, value in connection.execute(
-                    f"""SELECT m.source_reference, d.metric_code, m.value
-                        FROM instrument_metric_observation m
-                        JOIN metric_definition d ON d.metric_id=m.metric_id
-                        WHERE m.source_reference IN ({placeholders})""",
-                    batch,
-                ):
-                    occurrence_id = int(str(reference).split(":", 2)[1])
-                    metric_values[(occurrence_id, str(code))] = float(value)
+            return self._load_holdings_from_connection(connection, observation_date)
+
+    @staticmethod
+    def _load_holdings_from_connection(connection: sqlite3.Connection, observation_date: date) -> list[HoldingObservation]:
+        rows = connection.execute(
+            """SELECT o.portfolio_holding_source_occurrence_id, p.portfolio_name, o.observed_product_name, i.isin,
+                       o.reported_weight, o.observed_currency_code, o.observed_currency_risk, o.observed_asset_class
+                FROM portfolio_holding_source_occurrence o
+                JOIN portfolio_snapshot s ON s.portfolio_snapshot_id=o.portfolio_snapshot_id
+                JOIN portfolio p ON p.portfolio_id=s.portfolio_id
+                JOIN instrument i ON i.instrument_id=o.instrument_id
+                WHERE s.snapshot_date=? AND p.portfolio_type='MODEL'
+                ORDER BY p.portfolio_name, i.isin, o.observed_product_name, o.portfolio_holding_source_occurrence_id""",
+            (observation_date.isoformat(),),
+        ).fetchall()
+        references = [
+            _metric_reference(int(row[0]), code)
+            for row in rows
+            for code, _name, _unit, _field in _METRICS
+        ]
+        metric_values: dict[tuple[int, str], float] = {}
+        for start in range(0, len(references), 500):
+            batch = references[start:start + 500]
+            placeholders = ", ".join("?" for _ in batch)
+            for reference, code, value in connection.execute(
+                f"""SELECT m.source_reference, d.metric_code, m.value
+                    FROM instrument_metric_observation m
+                    JOIN metric_definition d ON d.metric_id=m.metric_id
+                    WHERE m.source_reference IN ({placeholders})""",
+                batch,
+            ):
+                occurrence_id = int(str(reference).split(":", 2)[1])
+                metric_values[(occurrence_id, str(code))] = float(value)
         return [
             HoldingObservation(
                 str(row[1]), row[2], row[3], row[4], row[5], row[6],

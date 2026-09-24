@@ -252,8 +252,11 @@ validated stages. Consolidation does not reinterpret prior artifacts.
   Phase 1 epoch is explicitly `PHASE1_NON_OPERATIONAL`; it cannot represent a
   production cutover authorization.
 - The dedicated `model_mnb_otc_evidence_source` and
-  `model_mnb_otc_evidence_observation` tables preserve exact Decimal text,
-  reporting periods, source hashes, portable roles, and non-NAV semantics.
+  `model_mnb_otc_evidence_observation` tables preserve the exact provider
+  decimal strings separately from their validated numerical meaning. Both
+  representations are fingerprinted, so a numerically equal replay with
+  changed formatting is rejected. Reporting periods, source hashes, portable
+  roles, and non-NAV semantics remain bound as well.
 - `admit_model_portfolio_phase1.py` accepts only an existing database beneath
   the system temporary directory. It normalizes source occurrences already
   staged by a synthetic fixture; it does not parse or insert a workbook,
@@ -262,6 +265,19 @@ validated stages. Consolidation does not reinterpret prior artifacts.
   fingerprints, metric provenance, exact MNB evidence, SQLite integrity and
   foreign keys, and every installed shortlist correction layer. The existing
   `migration_build_manifest` and its legacy path/hash validator are unchanged.
+- Ordered temporary admissions use a connection-bound validation session. It
+  validates all prerequisite contracts and declared external dependencies at
+  entry, owns one outer `BEGIN IMMEDIATE`, and validates each request before a
+  nested savepoint write. The session exhaustively validates the completed
+  contract before its sole commit; body exceptions, interruption, stale state,
+  and exit-validation failures roll back every session admission. Unvalidated
+  rows are never visible to another connection. The public analytical reader
+  uses one pinned read transaction and one full validation for an all-date
+  session; database, sidecar, or declared-dependency changes invalidate that
+  session.
+- Phase 1 contract revision 2 adds these exact-text and session guarantees and
+  fails closed on revision-1 temporary schemas. The retained analytical store
+  has no Phase 1 feature marker, so this is not a live-schema migration.
 - Deterministic synthetic fixtures preserve duplicate occurrences and compare
   the legacy and analytical adapters through the real metric and ranking
   functions. No test requires retained workbooks, ignored audits, financial
@@ -269,8 +285,22 @@ validated stages. Consolidation does not reinterpret prior artifacts.
 
 **Gate:** schemas and contracts are versioned; exact replay and conflicting
 date/hash cases are tested; no production default changes. This gate covers
-only the implemented scaffolding. Real-data rehearsal remains Phase 2 and is
-not authorized by this implementation.
+only the implemented scaffolding and does not itself authorize real-data
+rehearsal. The corrective rehearsal below was separately authorized.
+
+The corrective real-data rehearsal on 2026-09-24 passed on independent
+SQLite-API copies. It admitted 5,283 occurrences from 33 workbook snapshots,
+31,579 numeric observations, and all three MNB records; retained six unresolved
+duplicates and zero canonical holdings; and preserved the four installed
+shortlist correction sets. The final MNB maximum-price string remained exactly
+`102.9096`. After the transaction-safety correction, admission completed in
+105.266 seconds with two full validations and kept pending rows invisible to a
+second connection; the public all-date comparison completed in 89.098 seconds
+with one full validation, instead of exceeding two hours through per-call
+revalidation. Exact replay completed in 201.283 seconds and was byte-stable,
+representative mismatches failed without mutation, and integrity and foreign
+keys passed. This rehearsal evidence does not change application defaults,
+accept ADR-007, or authorize migration, cutover, or retirement.
 
 ### Phase 2 — baseline migration rehearsal
 

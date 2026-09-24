@@ -81,6 +81,16 @@ non-operational, the command refuses retained project paths, and the current
 legacy defaults and watcher remain unchanged. This implementation evidence
 does not accept this ADR or authorize any later phase.
 
+The 2026-09-24 corrective rehearsal extended that non-operational contract to
+retain provider decimal strings independently from parsed Decimal values and
+to expose connection-scoped validated admission/read sessions. The rehearsal
+on isolated SQLite-API copies reconciled all 33 dates and three MNB records,
+including exact `102.9096` text, while reducing the all-date public adapter from
+an unfinished two-hour run to one 89.098-second validated session. The
+transaction-safe admission completed in 105.266 seconds and exact replay in
+201.283 seconds. This is validation evidence for the proposal, not acceptance
+or cutover authorization.
+
 ## Consequences
 
 - Model source authority becomes explicit and portable instead of being
@@ -97,6 +107,14 @@ does not accept this ADR or authorize any later phase.
   retain their existing provenance and semantics.
 - Temporary parallel readers, recovery packages, and rollback rehearsals add
   implementation cost but make the authority change testable and recoverable.
+- Exact source formatting is part of MNB provenance even when its parsed
+  Decimal value is numerically equal. Reusable validation is scoped to one
+  connection and database snapshot plus verified external dependencies; a
+  changed dependency or database state must open and validate a new session.
+- A Phase 1 admission session owns its outer transaction. It commits only
+  after exhaustive exit validation; interruption, stale state, or failed exit
+  validation rolls back the entire session so unvalidated admissions cannot
+  become visible or durable.
 - The implemented Phase 1 surface deliberately stops before workbook
   ingestion: it binds typed normalization to already staged synthetic source
   occurrences. A real single writer, baseline migration, and operational

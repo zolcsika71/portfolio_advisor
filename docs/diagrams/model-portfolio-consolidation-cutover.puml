@@ -1,5 +1,5 @@
 @startuml
-' Status: Phase 1 implemented; operational admission and cutover proposed
+' Status: corrective Phase 1 rehearsal implemented; operational cutover proposed
 ' Verified current behavior against:
 ' - src/portfolio_advisor/main.py
 ' - src/portfolio_advisor/DB_creation/database_create.py
@@ -16,7 +16,7 @@
 ' - tests/test_xls_import_watch.py
 ' Proposed contract: docs/architecture/model-portfolio-consolidation-plan.md
 ' Governing proposal: docs/decisions/ADR-007-consolidate-model-portfolio-workflows.md
-title Model-portfolio Phase 1 [Implemented] and cutover [Proposed]
+title Model-portfolio corrective rehearsal [Implemented] and cutover [Proposed]
 
 hide footbox
 skinparam sequenceMessageAlign center
@@ -29,7 +29,7 @@ participant "WatchPaths wrapper\n(or manual CLI)" as Trigger
 collections "Retained workbook\nand MNB PDF evidence" as Evidence
 participant "Single model admission\ncommand" as Writer
 participant "Temporary-only Phase 1\ncontract command/API" as Phase1
-database "Synthetic schema-v3\ntemporary database" as Temporary
+database "Isolated schema-v3\ntemporary database" as Temporary
 database "portfolio_advisor.sqlite\nproposed operational authority" as Analytical
 participant "Model + provenance +\ncorrection validators" as Validators
 database "SQLite-API\nrecovery backup" as Backup
@@ -37,12 +37,34 @@ database "model_portfolio.sqlite\nfrozen legacy after cutover" as Legacy
 
 == Phase 1 contracts and adapters [Implemented, non-operational] ==
 
-Developer -> Phase1: provide existing temporary v3 database\nand exact synthetic admission request
+Developer -> Phase1: provide existing temporary v3 database\nand exact admission requests
 Phase1 -> Temporary: validate core schema and install additive contract
 Phase1 -> Temporary: bind existing source occurrences by\nhash, sheet, row, date, portfolio, and ISIN
 Phase1 -> Temporary: append Sustainability attribute and\nseven provider-reported metric observations
 Phase1 -> Temporary: append non-operational epoch,\nadmission items, and ordered receipt
-Phase1 -> Temporary: validate provenance, integrity, foreign keys,\nand installed shortlist correction contracts
+Phase1 -> Validators: open connection-bound admission session
+Validators -> Temporary: validate provenance, historical manifest,\nexternal evidence, and installed correction contracts once
+Phase1 -> Temporary: BEGIN IMMEDIATE\n(session owns outer transaction)
+loop 33 workbook admissions and 3 MNB records
+    Phase1 -> Temporary: SAVEPOINT; validate exact request; append; RELEASE
+    Phase1 -> Temporary: retain exact MNB decimal strings
+    Phase1 -> Temporary: validate parsed numerical meaning separately
+end
+Validators -> Temporary: exhaustively validate completed Phase 1 contract once
+alt exit validation succeeds and session state is current
+    Phase1 -> Temporary: COMMIT once
+else body exception, interruption, stale state, or validation failure
+    Phase1 -> Temporary: ROLLBACK entire session
+    Phase1 --> Developer: no admission becomes visible or durable
+end
+
+Developer -> Phase1: open public validated read session
+Phase1 -> Validators: validate pinned connection/database state\nand external dependencies once
+loop all 33 observation dates
+    Phase1 -> Temporary: read holdings and typed occurrences
+    Temporary --> Phase1: MODEL-only projection
+    Phase1 -> Phase1: reject if database, sidecar,\nor dependency state changed
+end
 
 alt exact request and bindings already admitted
     Temporary --> Phase1: exact replay confirmed
@@ -51,6 +73,11 @@ else changed source, hash, date, or binding
     Temporary --> Phase1: mismatch
     Phase1 -> Temporary: no mutation\n(ROLLBACK if transaction opened)
     Phase1 --> Developer: reject without partial admission
+end
+
+alt numerically equal MNB value with changed source text
+    Temporary --> Phase1: exact-evidence fingerprint mismatch
+    Phase1 --> Developer: reject; preserve admitted bytes
 end
 
 Developer -> Temporary: optionally exercise dedicated synthetic MNB contract
