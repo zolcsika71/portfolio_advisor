@@ -12,9 +12,13 @@ from portfolio_advisor.backtesting.eligibility import (
     BACKTEST_REJECTED_UNRESOLVED_CONSTITUENT,
     BacktestEligibilityError,
     StrictCoverageEligibilityGate,
+    validate_coverage_grid,
 )
 from portfolio_advisor.backtesting.service import WalkForwardBacktester
-from portfolio_advisor.database.repository import ModelPortfolioRepository
+from portfolio_advisor.database.repository import (
+    HoldingObservation,
+    ModelPortfolioRepository,
+)
 from portfolio_advisor.history.repository import HistoricalPortfolioRepository
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -120,6 +124,89 @@ def _terminal_resolution(path: Path) -> None:
 
 def _history(database: Path) -> HistoricalPortfolioRepository:
     return HistoricalPortfolioRepository(ModelPortfolioRepository(database))
+
+
+class _GridReader:
+    def __init__(self) -> None:
+        self._portfolios = {
+            date(2025, 1, 1): ("Alpha", "Beta"),
+            date(2025, 2, 1): ("Beta",),
+        }
+
+    def observation_dates(self) -> tuple[date, ...]:
+        return tuple(self._portfolios)
+
+    def latest_observation_date(self) -> date:
+        return self.observation_dates()[-1]
+
+    def load_holdings(self, observation_date: date) -> list[HoldingObservation]:
+        return [
+            HoldingObservation(
+                portfolio_name=portfolio,
+                product="Synthetic fund",
+                isin=f"{portfolio}-{observation_date.isoformat()}",
+                allocation=100.0,
+                currency="EUR",
+                currency_risk=None,
+                return_1y=None,
+                sharpe_ratio_1y=None,
+                volatility_1y=None,
+                downside_risk=None,
+                maximum_drawdown=None,
+            )
+            for portfolio in self._portfolios[observation_date]
+        ]
+
+
+def _complete_grid() -> tuple[tuple[str, str, int], ...]:
+    return tuple(
+        (observation_date, portfolio, horizon)
+        for observation_date, portfolios in (
+            ("2025-01-01", ("Alpha", "Beta")),
+            ("2025-02-01", ("Beta",)),
+        )
+        for portfolio in portfolios
+        for horizon in (90, 180, 365)
+    )
+
+
+def test_coverage_grid_matches_only_portfolios_observed_on_each_date() -> None:
+    validate_coverage_grid(_GridReader(), _complete_grid())
+
+
+@pytest.mark.parametrize(
+    ("identities", "diagnostic"),
+    [
+        (_complete_grid()[1:], "missing_count=1"),
+        (
+            _complete_grid() + (("2025-02-01", "Alpha", 90),),
+            "unexpected_count=1",
+        ),
+        (_complete_grid() + (_complete_grid()[0],), "duplicate_count=1"),
+    ],
+)
+def test_coverage_grid_rejects_identity_mismatches_with_diagnostics(
+    identities: tuple[tuple[str, str, int], ...], diagnostic: str
+) -> None:
+    with pytest.raises(BacktestEligibilityError, match=diagnostic):
+        validate_coverage_grid(_GridReader(), identities)
+
+
+def test_present_unavailable_windows_are_a_complete_coverage_grid() -> None:
+    gate = StrictCoverageEligibilityGate(
+        {
+            identity: {
+                "observation_date": identity[0],
+                "portfolio_name": identity[1],
+                "horizon": identity[2],
+                "status": "MISSING_END",
+            }
+            for identity in _complete_grid()
+        },
+        {},
+    )
+
+    gate.validate_complete_grid(_GridReader())
 
 
 def test_strict_gate_rejects_terminal_constituent_and_emits_diagnostics(tmp_path: Path) -> None:

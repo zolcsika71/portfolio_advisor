@@ -22,6 +22,7 @@ DEFAULT_COVERAGE = Path("data/audit/backtest_window_coverage.json")
 DEFAULT_POLICY = Path("data/audit/backtest_missing_data_policy_analysis.json")
 DEFAULT_DATABASE = Path("database/model_portfolio.sqlite")
 DEFAULT_OUTPUT = Path("data/audit/strict_backtest_pipeline_validation.json")
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_json(path: Path, label: str) -> dict[str, object]:
@@ -60,7 +61,11 @@ def main(argv: list[str] | None = None) -> int:
         coverage = _load_json(args.coverage, "backtest coverage artifact")
         policy = _load_json(args.policy_analysis, "missing-data policy analysis")
         history = HistoricalPortfolioRepository(ModelPortfolioRepository(args.database))
-        gate = StrictCoverageEligibilityGate.from_default_artifacts()
+        gate = StrictCoverageEligibilityGate.from_artifacts(
+            args.coverage,
+            tuple(sorted((ROOT / "data/audit").glob("*_backtest_resolvability.json"))),
+        )
+        gate.validate_complete_grid(history.model_repository)
         result = validate_strict_pipeline(
             history=history,
             gate=gate,

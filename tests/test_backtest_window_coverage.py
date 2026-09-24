@@ -234,6 +234,69 @@ def test_oekb_range_missing_required_end() -> None:
     assert result.status == coverage.MISSING_END
 
 
+def test_usable_erste_range_missing_required_end() -> None:
+    result = _window(
+        {
+            "AAA": _availability(
+                "AAA",
+                erste_first=date(2025, 1, 1),
+                erste_last=date(2025, 3, 31),
+            )
+        }
+    )
+
+    assert result.status == coverage.MISSING_END
+    assert result.missing_isins == ("AAA",)
+    assert result.unusable_isins == ()
+    assert result.reasons == (
+        "AAA: required end 2025-04-01 exceeds Erste available end 2025-03-31",
+    )
+
+
+def test_mixed_missing_end_and_unusable_source_preserves_status_precedence() -> None:
+    result = _window(
+        {
+            "AAA": _availability(
+                "AAA",
+                erste_first=date(2025, 1, 1),
+                erste_last=date(2025, 3, 31),
+            ),
+            "BBB": _availability(
+                "BBB",
+                erste_status="INVALID_NAV",
+                erste_usable=False,
+            ),
+        },
+        ("AAA", "BBB"),
+    )
+
+    assert result.status == coverage.UNUSABLE_SOURCE
+    assert result.missing_isins == ("AAA",)
+    assert result.unusable_isins == ("BBB",)
+
+
+def test_reconciliation_precedes_missing_end_without_losing_gap_detail() -> None:
+    result = _window(
+        {
+            "AAA": _availability(
+                "AAA",
+                erste_first=date(2025, 1, 1),
+                erste_last=date(2025, 3, 31),
+            ),
+            "BBB": _availability(
+                "BBB",
+                erste_status="CONFLICTING_HISTORY",
+                erste_usable=False,
+            ),
+        },
+        ("AAA", "BBB"),
+    )
+
+    assert result.status == coverage.RECONCILIATION_REQUIRED
+    assert result.missing_isins == ("AAA",)
+    assert result.unusable_isins == ("BBB",)
+
+
 def test_lu2180923653_inside_morningstar_range_is_covered() -> None:
     result = _window(
         {

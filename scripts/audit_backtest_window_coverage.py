@@ -18,6 +18,10 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import TextIO, TypedDict
 
+from portfolio_advisor.backtesting.eligibility import (
+    BacktestEligibilityError,
+    validate_coverage_grid,
+)
 from portfolio_advisor.database.repository import (
     ModelPortfolioRepository,
     RepositoryError,
@@ -895,7 +899,7 @@ def evaluate_window(
             continue
 
         erste = record.erste
-        if record.is_unusable_without_fallback:
+        if record.is_unusable_without_fallback():
             unusable.append(isin)
             source_status = erste.source_status if erste is not None else "NO_METADATA"
             reasons.append(f"{isin}: Erste source status {source_status} is not usable")
@@ -972,6 +976,16 @@ def audit_windows(
                         availability=availability,
                     )
                 )
+    try:
+        validate_coverage_grid(
+            repository,
+            (
+                (row.observation_date.isoformat(), row.portfolio_name, row.horizon)
+                for row in rows
+            ),
+        )
+    except BacktestEligibilityError as exc:
+        raise CoverageAuditError(f"generated coverage grid is incomplete: {exc}") from exc
     return rows
 
 

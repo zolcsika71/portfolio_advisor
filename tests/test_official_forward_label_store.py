@@ -9,6 +9,7 @@ from typing import TypedDict
 
 import pytest
 
+from portfolio_advisor.backtesting.eligibility import StrictCoverageEligibilityGate
 from portfolio_advisor.backtesting.models import (
     BacktestEligibility,
     ConstituentDiagnostic,
@@ -17,6 +18,7 @@ from portfolio_advisor.backtesting.models import (
 )
 from portfolio_advisor.database.repository import ModelPortfolioRepository
 from portfolio_advisor.features.official_forward_labels import (
+    BACKTEST_REJECTED,
     LABEL_AVAILABLE,
     NO_LOCAL_HISTORY,
     RECONCILIATION_REQUIRED,
@@ -260,6 +262,63 @@ def test_rejections_and_no_local_history_never_carry_fallback_metrics() -> None:
         assert item.forward_mdd is None
         assert item.forward_var is None
         assert item.forward_cvar is None
+
+
+def test_strict_missing_end_coverage_propagates_to_unavailable_labels(
+    fixture_label_store_arguments: _BuildArguments,
+    tmp_path: Path,
+) -> None:
+    decision_date = "2026-07-06"
+    constituents = {
+        "AT fixture": "AT0000605324",
+        "HU fixture": "HU0000554795",
+    }
+    coverage_path = tmp_path / "strict-missing-end-coverage.json"
+    coverage_path.write_text(
+        json.dumps(
+            {
+                "windows": [
+                    {
+                        "observation_date": decision_date,
+                        "portfolio_name": portfolio_name,
+                        "horizon": horizon,
+                        "required_isins": [isin],
+                        "missing_isins": [isin],
+                        "unusable_isins": [],
+                        "status": "MISSING_END",
+                    }
+                    for portfolio_name, isin in constituents.items()
+                    for horizon in (90, 180, 365)
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    gate = StrictCoverageEligibilityGate.from_artifacts(coverage_path)
+
+    labels, manifest = build_official_forward_label_store(
+        **fixture_label_store_arguments,
+        eligibility_gate=gate,
+    )
+
+    assert len(labels) == 6
+    assert manifest["unavailable_label_count"] == 6
+    assert all(item.result_type == BACKTEST_REJECTED for item in labels)
+    assert all(item.label_status == SOURCE_INTERVAL_INCOMPLETE for item in labels)
+    assert all(item.blocking_categories == ("TEMPORARY_DATA_GAP",) for item in labels)
+    assert all(item.forward_return is None for item in labels)
+
+    incomplete_payload = json.loads(coverage_path.read_text(encoding="utf-8"))
+    incomplete_payload["windows"].pop()
+    incomplete_path = tmp_path / "incomplete-strict-coverage.json"
+    incomplete_path.write_text(json.dumps(incomplete_payload), encoding="utf-8")
+    incomplete_gate = StrictCoverageEligibilityGate.from_artifacts(incomplete_path)
+
+    with pytest.raises(OfficialForwardLabelStoreError, match="missing_count=1"):
+        build_official_forward_label_store(
+            **fixture_label_store_arguments,
+            eligibility_gate=incomplete_gate,
+        )
 
 
 def test_available_metrics_are_canonical_and_metric_safety_fails_closed() -> None:

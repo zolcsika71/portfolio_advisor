@@ -9,18 +9,20 @@ malformed evidence artifact remains a fail-closed error.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections import Counter
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Protocol
 
+from portfolio_advisor.database.repository import ModelPortfolioReader
 from portfolio_advisor.history.backtest_missing_data_policy import (
     MissingDataPolicyError,
     aggregate_holdings,
 )
-from portfolio_advisor.history.models import ForwardWindow
+from portfolio_advisor.history.models import SUPPORTED_HORIZON_DAYS, ForwardWindow
 from portfolio_advisor.history.repository import HistoricalPortfolioRepository
 
 from .models import BacktestEligibility, ConstituentDiagnostic, UnresolvedConstituent
@@ -30,6 +32,7 @@ BACKTEST_ELIGIBLE = "BACKTEST_ELIGIBLE"
 BACKTEST_REJECTED_UNRESOLVED_CONSTITUENT = "BACKTEST_REJECTED_UNRESOLVED_CONSTITUENT"
 TERMINAL_RESOLUTION_STATUS = "BACKTEST_UNRESOLVABLE_WITH_CURRENT_PUBLIC_EVIDENCE"
 WEIGHT_TOTAL = Decimal(100)
+CoverageWindowIdentity = tuple[str, str, int]
 
 
 class BacktestEligibilityError(RuntimeError):
@@ -189,6 +192,46 @@ class StrictCoverageEligibilityGate:
             constituent_weights=constituents,
             diagnostics_allowed=not eligible,
         )
+
+    def validate_complete_grid(self, model_repository: ModelPortfolioReader) -> None:
+        """Require one retained identity per observed date/portfolio/horizon."""
+        validate_coverage_grid(model_repository, self.coverage_windows)
+
+
+def validate_coverage_grid(
+    model_repository: ModelPortfolioReader,
+    identities: Iterable[CoverageWindowIdentity],
+) -> None:
+    """Fail closed unless coverage exactly matches the observed snapshot grid."""
+    actual_identities = tuple(identities)
+    counts = Counter(actual_identities)
+    duplicates = tuple(sorted(identity for identity, count in counts.items() if count > 1))
+
+    expected: set[CoverageWindowIdentity] = set()
+    for observation_date in model_repository.observation_dates():
+        portfolios = {
+            holding.portfolio_name
+            for holding in model_repository.load_holdings(observation_date)
+        }
+        expected.update(
+            (observation_date.isoformat(), portfolio_name, horizon)
+            for portfolio_name in portfolios
+            for horizon in SUPPORTED_HORIZON_DAYS
+        )
+
+    actual = set(actual_identities)
+    missing = tuple(sorted(expected - actual))
+    unexpected = tuple(sorted(actual - expected))
+    if not (missing or unexpected or duplicates):
+        return
+
+    raise BacktestEligibilityError(
+        "coverage grid does not match observed model snapshots; "
+        f"expected_count={len(expected)}, actual_count={len(actual_identities)}, "
+        f"missing_count={len(missing)}, missing_examples={list(missing[:5])}, "
+        f"unexpected_count={len(unexpected)}, unexpected_examples={list(unexpected[:5])}, "
+        f"duplicate_count={len(duplicates)}, duplicate_examples={list(duplicates[:5])}"
+    )
 
 
 def _blocking_category(

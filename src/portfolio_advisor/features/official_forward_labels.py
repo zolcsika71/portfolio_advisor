@@ -208,6 +208,13 @@ def build_official_forward_label_store(
         )
     _validate_feature_source_join(feature_rows, history)
     gate = eligibility_gate or StrictCoverageEligibilityGate.from_default_artifacts()
+    if isinstance(gate, StrictCoverageEligibilityGate):
+        try:
+            gate.validate_complete_grid(history.model_repository)
+        except BacktestEligibilityError as exc:
+            raise OfficialForwardLabelStoreError(
+                f"strict eligibility failed closed: {exc}"
+            ) from exc
     backtester = WalkForwardBacktester(history, rules_path, eligibility_gate=gate)
     labels: list[OfficialForwardLabel] = []
     for row in feature_rows:
