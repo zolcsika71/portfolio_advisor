@@ -92,8 +92,8 @@ change tooling merely to validate documentation.
 - [Model-portfolio consolidation and cutover](model-portfolio-consolidation-cutover.puml)
   — implemented non-operational Phase 1 contracts and Phase 3A read-only
   shadow comparison, the implemented parser-only BIFF envelope and synthetic
-  writer, plus proposed single-writer admission, cutover, and post-cutover
-  recovery boundaries.
+  writer, plus the proposed normalization/eligibility boundary, single-writer
+  admission, cutover, and post-cutover recovery boundaries.
 
 ### Existing diagrams retained in place
 

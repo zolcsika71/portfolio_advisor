@@ -546,6 +546,18 @@ workbooks and preserves 5,283 model plus 10,833 shortlist occurrences. This is
 parser validation only: it creates no database, receipt, retained package,
 normalized projection, or correction binding.
 
+The proposed next boundary is specified in
+[BIFF-XLS normalization and admission policy v1](biff-xls-normalization-admission-policy-v1.md).
+It defines a deterministic normalization candidate between the parser and any
+writer, including field types, unscaled metric units, role-scoped zero rules,
+approved shortlist classification mapping reuse, warning dispositions,
+recovery/formula eligibility, exact replay, and preservation of existing
+dataset-bound correction references. It does not implement that adapter or
+authorize admission. In particular, model zero-to-absence remains a proposed
+reuse of the legacy-compatible model rule; shortlist original zeros remain
+`0.0` and become effective `NULL` only through the exact existing ADR-003
+bindings.
+
 A later separately authorized admission rehearsal must use SQLite-backup-API
 copies and retained workbooks, compare the entire ordered receipt chain and all
 eight read workflows, exercise crash recovery, and leave all live stores and
@@ -653,6 +665,16 @@ removal.
 6. **MNB source-path portability:** retain the original source-document text,
    but new authority records should also bind portable evidence roles and
    hashes. The package layout and validator input need approval.
+7. **Recovered BIFF and formula-origin eligibility:** 27 retained workbooks
+   require compound-document recovery, and `xlrd` cannot prove literal-cell
+   origin or formula absence. Approve either a hash-bound baseline exception
+   plus independent cell comparison, or stronger formula-aware evidence;
+   parser success alone is insufficient.
+8. **Real-source model zero semantics and anomaly dispositions:** approve
+   whether the model-only compatibility projection may continue omitting
+   numeric-zero metric observations, and approve occurrence-bound treatment of
+   the 24 currency-risk and three sustainability warnings. No proposed English
+   currency-risk mapping is currently authorized.
 
 Until these are resolved and Phase 4 is explicitly authorized, the current
 legacy defaults and parallel analytical status remain correct.

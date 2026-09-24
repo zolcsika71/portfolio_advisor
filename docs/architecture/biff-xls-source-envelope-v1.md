@@ -69,8 +69,10 @@ filename/date, malformed or unsupported BIFF bytes, missing/ambiguous/hidden or
 variant target sheets, missing/ambiguous headers, unexpected header/data cells,
 unresolvable number formats, unsupported cell types, or an empty target sheet.
 
-The retained files require `xlrd` compound-document recovery mode. This is
-declared in parser metadata; it does not modify or repair the source bytes.
+The parser uses `xlrd` compound-document recovery mode for every retained file;
+27 of the 33 files fail a separate strict open and require that mode, while six
+open strictly. Recovery use is declared in parser metadata; it does not modify
+or repair the source bytes and does not establish admission eligibility.
 
 ## Formula limitation
 
@@ -87,4 +89,6 @@ requires formula provenance.
 Database admission, portable evidence packaging, normalized and legacy
 projections, correction disposition/rebinding, receipt-chain construction,
 watcher/manual coordination, outbox execution, artifact publication, and
-cutover remain separately gated. ADR-007 remains Proposed.
+cutover remain separately gated. The proposed next boundary is documented in
+[BIFF-XLS normalization and admission policy v1](biff-xls-normalization-admission-policy-v1.md);
+it is not implemented by this parser. ADR-007 remains Proposed.
