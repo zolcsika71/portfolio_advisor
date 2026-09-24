@@ -514,15 +514,47 @@ filesystem finalizer, or artifact publisher.
 Phase 3B.1 excludes retained-data installation, real workbook admission,
 watcher wiring, default changes, MNB writer changes, artifact publication,
 prospective ledger writes, authority transfer, supersession, cutover, and
-retirement. After it passes locally and in an isolated candidate, a separately
-authorized Phase 3B.2 rehearsal must use SQLite-backup-API copies and retained
-workbooks, compare the entire ordered receipt chain and all eight read workflows,
-exercise crash recovery, and leave all live stores and watcher configuration
-unchanged.
+retirement.
 
-**Gate:** Phase 3B does not pass merely because Phase 3B.1 is implemented. A
-separately authorized retained-data rehearsal must prove the real Excel parser
-boundary and portable evidence package. The operational release must still
+The next bounded slice, **Phase 3B.2: BIFF-XLS parser/adapter**, is implemented
+as a pure source extractor with no admission surface. Its versioned contract is
+documented in the
+[BIFF-XLS dual-sheet source envelope v1](biff-xls-source-envelope-v1.md):
+
+- one immutable byte sequence is read once, SHA-256 bound, and supplied to
+  `xlrd`; filenames require a terminal valid `YYYYMMDD.xls` date;
+- the exact visible sheet names ` modell portfóliók` and ` shortlist` map to
+  the distinct real-source roles `MODEL_PORTFOLIO` and
+  `ANALYTICAL_SHORTLIST`. The latter is not Phase 3B.1's synthetic
+  `terméklista` contract;
+- exact sheet indices, visibility, ordered header cells, physical row/column
+  coordinates, BIFF cell types, raw values, XF/format metadata, merged ranges,
+  duplicate occurrences, row references, and deterministic fingerprints are
+  retained without translation, scaling, correction, or zero replacement;
+- currency-risk, sustainability, and text-zero metric anomalies are reported
+  without changing source values; and
+- formula text and formula presence remain unavailable through `xlrd`; only a
+  cached result, when present, can be extracted, and formulas are never
+  evaluated.
+
+Synthetic BIFF fixtures cover both leading-space sheets, duplicate rows,
+numeric zero versus blank and text zero, number formats, error cells, formula
+limits, invalid dates, malformed bytes, missing/ambiguous/hidden/variant sheets,
+invalid or ambiguous headers, data outside the header, and deterministic
+repeated parsing. The retained-corpus read-only reconciliation parses all 33
+workbooks and preserves 5,283 model plus 10,833 shortlist occurrences. This is
+parser validation only: it creates no database, receipt, retained package,
+normalized projection, or correction binding.
+
+A later separately authorized admission rehearsal must use SQLite-backup-API
+copies and retained workbooks, compare the entire ordered receipt chain and all
+eight read workflows, exercise crash recovery, and leave all live stores and
+watcher configuration unchanged.
+
+**Gate:** Phase 3B does not pass merely because Phase 3B.1 and the parser-only
+Phase 3B.2 slice are implemented. A separately authorized retained-data
+admission rehearsal must prove the portable evidence package, correction
+disposition, and ordered receipts. The operational release must still
 prove a manual/watcher shared lock, authority transfer, correction disposition
 for changed datasets, recoverable ordered receipts, outbox execution, and
 atomic publication of generated evidence.

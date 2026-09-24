@@ -1,8 +1,12 @@
 @startuml
-' Status: Phase 1, read-only Phase 3A, and synthetic Phase 3B.1 implemented;
-' operational writer and cutover proposed
-' Implemented source: src/portfolio_advisor/database/model_portfolio_phase3b.py
-' Synthetic regressions: tests/test_model_portfolio_consolidation_phase3b.py
+' Status: Phase 1, read-only Phase 3A, synthetic Phase 3B.1, and parser-only
+' Phase 3B.2 implemented; operational writer and cutover proposed
+' Implemented sources:
+' - src/portfolio_advisor/database/model_portfolio_phase3b.py
+' - src/portfolio_advisor/workbook_source/biff_xls.py
+' Synthetic regressions:
+' - tests/test_model_portfolio_consolidation_phase3b.py
+' - tests/test_biff_xls_source.py
 ' Verified current behavior against:
 ' - src/portfolio_advisor/main.py
 ' - src/portfolio_advisor/DB_creation/database_create.py
@@ -23,7 +27,7 @@
 ' - tests/test_xls_import_watch.py
 ' Proposed contract: docs/architecture/model-portfolio-consolidation-plan.md
 ' Governing proposal: docs/decisions/ADR-007-consolidate-model-portfolio-workflows.md
-title Model-portfolio consolidation: synthetic writer [Implemented], operations/cutover [Proposed]
+title Model-portfolio consolidation: parser + synthetic writer [Implemented], operations/cutover [Proposed]
 
 hide footbox
 skinparam sequenceMessageAlign center
@@ -38,6 +42,7 @@ participant "Single model admission\ncommand" as Writer
 participant "Generated-artifact\npublisher" as Publisher
 participant "Temporary-only Phase 1\ncontract command/API" as Phase1
 participant "Phase 3A shadow runner\n(explicit opt-in)" as Shadow
+participant "BIFF-XLS source parser\n(no admission)" as Parser
 database "Isolated schema-v3\ntemporary database" as Temporary
 database "portfolio_advisor.sqlite\nproposed operational authority" as Analytical
 participant "Model + provenance +\ncorrection validators" as Validators
@@ -128,6 +133,23 @@ note over Shadow, Validators
   Every label remains explicitly unavailable; no NAV, eligibility, or
   successful financial label is synthesized.
   Existing application, importer, watcher, and CLI defaults remain legacy.
+end note
+
+== Phase 3B.2 BIFF source envelope [Implemented, no admission] ==
+
+Operator -> Parser: supply one ordinary .xls source path
+Parser -> Parser: read bytes once; SHA-256 same bytes passed to xlrd
+Parser -> Parser: require terminal valid date and exact visible\nleading-space model + shortlist sheet names
+Parser -> Parser: preserve ordered headers, coordinates, cell types,\nraw values, formats, merges, and duplicate occurrences
+Parser -> Parser: warn on anomalous currency-risk, sustainability,\nand text-zero metric values without changing them
+Parser --> Operator: canonical versioned envelope + fingerprints\nstatus NOT_EVALUATED_PARSER_ONLY
+
+note over Operator, Parser
+  Real ANALYTICAL_SHORTLIST is not the synthetic terméklista role.
+  Numeric zero, blank, empty, text zero, and error remain distinct.
+  xlrd exposes cached formula results only when present; formula text and
+  reliable formula presence are unavailable, and nothing is evaluated.
+  No SQLite write, file movement, watcher route, correction, or admission.
 end note
 
 == Phase 3B.1 synthetic temporary writer [Implemented, non-operational] ==

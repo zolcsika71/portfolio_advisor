@@ -137,6 +137,29 @@ and portable MNB package layout still require explicit approval. This
 implementation evidence does not accept this ADR or authorize migration,
 authority transfer, cutover, or retirement.
 
+The explicitly authorized Phase 3B.2 parser-only slice now implements a
+versioned BIFF-XLS dual-sheet source envelope without database admission. It
+binds the exact parsed bytes and filename date, requires the two actual visible
+leading-space sheet names, assigns real-source roles that are deliberately
+distinct from Phase 3B.1's synthetic `terméklista` role, and preserves header
+order, row/column coordinates, BIFF cell types, raw values, formats, duplicate
+occurrences, and source-order fingerprints. Numeric zero, formatted blank,
+empty, text `"0"`, error, and other BIFF types remain distinct. Hungarian
+labels and anomalous currency-risk or sustainability values are not translated
+or repaired. Canonical serialization contains no local path or timestamp.
+
+The parser records that `xlrd` provides only cached formula results when
+available and does not expose formula text or a reliable formula-presence flag;
+it never evaluates formulas. Its success status is
+`NOT_EVALUATED_PARSER_ONLY`, not an admission decision. Read-only reconciliation
+of the 33 retained workbooks preserved 5,283 model rows and 10,833 shortlist
+occurrences, while synthetic fixtures cover typed-cell and fail-closed
+structure behavior. No database, workbook, watcher, operational route,
+correction layer, or artifact is mutated. Database admission, normalized and
+legacy projections, correction disposition, evidence packaging, receipt-chain
+integration, and operational coordination remain future authorization gates.
+This implementation evidence leaves this ADR Proposed.
+
 ## Consequences
 
 - Model source authority becomes explicit and portable instead of being
@@ -183,6 +206,10 @@ authority transfer, cutover, or retirement.
   and provenance boundary. Its JSON envelope is not the retained Excel parser,
   its pending outbox has no worker, and its SQLite serialization is not the
   operational manual/watcher lock.
+- The implemented Phase 3B.2 parser proves typed extraction and deterministic
+  provenance only. It deliberately has no admission adapter and establishes no
+  compatibility between the real shortlist sheet and Phase 3B.1's synthetic
+  `terméklista` role.
 - The unresolved operational dual-sheet watcher policy, changed historical
   workbook contract, atomic artifact-generation publication, external
   consumers, compatibility lifetime, and MNB portable package layout must be
