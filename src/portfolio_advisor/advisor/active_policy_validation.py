@@ -9,7 +9,10 @@ from math import isfinite
 from pathlib import Path
 from typing import Any
 
-from portfolio_advisor.database.repository import ModelPortfolioRepository
+from portfolio_advisor.database.repository import (
+    FileBackedModelPortfolioReader,
+    ModelPortfolioRepository,
+)
 from portfolio_advisor.ranking.config import load_ranking_rules
 from portfolio_advisor.ranking.models import CandidateEvaluation, MetricRule
 
@@ -27,6 +30,7 @@ def build_active_policy_validation(
     contract_path: Path,
     methodology_path: Path,
     strict_pipeline_path: Path,
+    model_repository: FileBackedModelPortfolioReader | None = None,
 ) -> dict[str, Any]:
     """Evaluate the current universe twice and validate the active policy boundary.
 
@@ -40,7 +44,12 @@ def build_active_policy_validation(
     _validate_active_evidence(contract, methodology, strict, rules.version, rules.schema_version)
 
     before_hash = _sha256(database_path)
-    advisor = CapitalPreservationAdvisor(ModelPortfolioRepository(database_path), rules_path)
+    repository = model_repository or ModelPortfolioRepository(database_path)
+    if repository.database_path.resolve() != database_path.resolve():
+        raise ActivePolicyValidationError(
+            "injected model reader does not match the declared provenance path"
+        )
+    advisor = CapitalPreservationAdvisor(repository, rules_path)
     first = advisor.evaluate(alternative_count=100)
     second = advisor.evaluate(alternative_count=100)
     after_hash = _sha256(database_path)

@@ -14,6 +14,7 @@ from statistics import median
 from typing import Any
 
 from portfolio_advisor.database.repository import (
+    FileBackedModelPortfolioReader,
     HoldingObservation,
     ModelPortfolioRepository,
 )
@@ -47,6 +48,7 @@ def build_temporal_policy_validation(
     methodology_path: Path,
     strict_pipeline_path: Path,
     current_universe_path: Path,
+    model_repository: FileBackedModelPortfolioReader | None = None,
 ) -> dict[str, Any]:
     """Evaluate the current active policy twice at every source snapshot date."""
     contract = _load_json(contract_path, "ranking policy contract")
@@ -59,7 +61,11 @@ def build_temporal_policy_validation(
     except ActivePolicyValidationError as error:
         raise TemporalPolicyValidationError(str(error)) from error
 
-    repository = ModelPortfolioRepository(database_path)
+    repository = model_repository or ModelPortfolioRepository(database_path)
+    if repository.database_path.resolve() != database_path.resolve():
+        raise TemporalPolicyValidationError(
+            "injected model reader does not match the declared provenance path"
+        )
     dates = repository.observation_dates()
     fingerprint = _sha256(rules_path)
     before_hash = _sha256(database_path)

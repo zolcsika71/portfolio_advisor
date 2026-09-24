@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from portfolio_advisor.database.repository import ModelPortfolioRepository
+from portfolio_advisor.database.repository import ModelPortfolioReader
 from portfolio_advisor.metrics.portfolio import calculate_all_portfolio_metrics
 from portfolio_advisor.ranking.config import RuleConfigurationError, load_ranking_rules
 from portfolio_advisor.ranking.ranking import rank_portfolios
@@ -16,7 +16,7 @@ from .models import AdvisorResult
 class CapitalPreservationAdvisor:
     """Run the fixed read → calculate → filter → score → rank workflow."""
 
-    def __init__(self, repository: ModelPortfolioRepository, rules_path: Path) -> None:
+    def __init__(self, repository: ModelPortfolioReader, rules_path: Path) -> None:
         self.repository = repository
         self.rules_path = rules_path
 

@@ -27,6 +27,7 @@ from portfolio_advisor.backtesting.eligibility import (
 )
 from portfolio_advisor.backtesting.service import WalkForwardBacktester
 from portfolio_advisor.database.repository import (
+    FileBackedModelPortfolioReader,
     HoldingObservation,
     ModelPortfolioRepository,
 )
@@ -90,6 +91,8 @@ def build_point_in_time_feature_dataset(
     rules_path: Path,
     graph_path: Path,
     contract_path: Path,
+    model_repository: FileBackedModelPortfolioReader | None = None,
+    history_repository: HistoricalPortfolioRepository | None = None,
 ) -> tuple[list[dict[str, object]], dict[str, object]]:
     """Build rows and a deterministic manifest without mutating source data.
 
@@ -105,8 +108,14 @@ def build_point_in_time_feature_dataset(
         raise DatasetBuildError("ranking policy contract is not active")
     evidence_paths = _validate_existing_policy_evidence()
 
-    repository = ModelPortfolioRepository(database_path)
-    history = HistoricalPortfolioRepository(repository)
+    repository = model_repository or ModelPortfolioRepository(database_path)
+    if repository.database_path.resolve() != database_path.resolve():
+        raise DatasetBuildError(
+            "injected model reader does not match the declared provenance path"
+        )
+    history = history_repository or HistoricalPortfolioRepository(repository)
+    if history.model_repository is not repository:
+        raise DatasetBuildError("history and model repositories must share one model reader")
     dates = repository.observation_dates()
     knowledge = load_graphify_knowledge(graph_path)
     admitted_knowledge = tuple(item for item in knowledge if item.admitted)

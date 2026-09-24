@@ -11,6 +11,12 @@ schema, immutable rehearsal contracts, synthetic-only command, and explicit
 read adapters do not change the Proposed status of the consolidation or make
 the analytical database an operational authority.
 
+Phase 3A now adds **explicit, opt-in read injection and shadow comparison**.
+It leaves every application, importer, watcher, and command default on the
+legacy store. Its comparison report is finalized only after one shared
+analytical read session completes exit validation. Phase 3A is evidence for
+the proposal; it is not authority transfer or cutover approval.
+
 ## Scope and verified baseline
 
 The scope is only the model-portfolio and MNB OTC workflows currently backed
@@ -316,7 +322,61 @@ accept ADR-007, or authorize migration, cutover, or retirement.
 **Gate:** integrity and foreign keys pass; full row/provenance comparisons are
 exact; no retained database was written.
 
-### Phase 3 — shadow readers and behavioral comparison
+### Phase 3A — explicit consumer injection and shadow comparison
+
+**Implementation status: Implemented, non-operational; retained-corpus result
+PARTIAL because one evidence gate is missing.**
+
+- `CapitalPreservationAdvisor`, active/temporal validation, feature and label
+  builders, prospective decision construction, and LTIA model-side comparison
+  accept the storage-neutral reader boundary. Existing callers still construct
+  `ModelPortfolioRepository`, so production behavior and defaults are unchanged.
+- `HistoricalPortfolioRepository` now separates model snapshots from the
+  optional direct portfolio-NAV source. Its compatibility default still probes
+  the model database, while shadow callers can explicitly supply a distinct
+  NAV reader or `None`. Model-row equality therefore cannot be mistaken for
+  official backtest coverage equality.
+- `run_shadow_comparison` requires an explicit result or concrete blocker for
+  advisor/current, temporal ranking, strict coverage, feature data, forward
+  labels, prospective decision input, LTIA model-side comparison, and MNB
+  semantic audit. It rejects missing workflow names, unexplained differences,
+  and stale allowlists. Expected differences bind an exact result path and both
+  expected values; there is no blanket fingerprint exclusion.
+- One bounded run opens one validated analytical read session. Dataset and
+  authority provenance are recorded separately for the legacy and analytical
+  sources, a storage-neutral all-date model-projection fingerprint must match,
+  exact MNB decimal text is compared, and results are returned only after
+  database, sidecar, and external-dependency exit validation succeeds.
+
+Synthetic tests cover all eight workflow categories, explicit NAV separation,
+the one-validation boundary, exact source-path difference accounting, and stale
+session rejection. On 2026-09-24 a retained-current-corpus rehearsal used
+SQLite-backup-API copies and the supported temporary-only admission contract:
+
+- admission reconciled 5,283 occurrences, 31,579 numeric observations, three
+  exact-text MNB records, six unresolved duplicates, and zero canonical model
+  holdings in 106.708 seconds with two full validations;
+- one validated shadow session completed in 204.410 seconds; current and all
+  33 temporal advisor results, strict coverage results, point-in-time feature
+  rows, prospective decision input, LTIA model-side allocation, and exact MNB
+  semantics matched without unexplained differences;
+- the prospective record's `source_evidence_state.database_reference` differed
+  only as explicitly expected (`legacy.sqlite` versus `analytical.sqlite`), and
+  both isolated database bytes were fingerprinted independently;
+- the public forward-label builder failed closed before comparison because the
+  retained strict-coverage artifact has no `PB Dinamikus EUR` / `2026-08-18` /
+  90-day window. This is an evidence-coverage blocker, not an allowed adapter
+  difference; forward-label equivalence remains unproven; and
+- integrity and foreign keys passed, one analytical full validation served the
+  bounded comparison, retained database hashes were unchanged, and all
+  temporary private data was removed.
+
+**Gate:** seven workflows pass on the current corpus. Phase 3A remains PARTIAL
+until the maintained strict-coverage evidence is brought through its own
+authorized workflow and the public forward-label comparison passes. No model
+or NAV evidence may be synthesized to clear this gate.
+
+### Phase 3B — remaining shadow and behavioral gates
 
 - Run legacy and analytical adapters for every consumer in the matrix while
   retaining the legacy writer and defaults.
@@ -329,6 +389,8 @@ exact; no retained database was written.
 
 **Gate:** zero unexplained numerical, selection, multiplicity, or provenance
 differences. Expected presentation differences are explicitly allowlisted.
+The Phase 3A forward-label blocker must be resolved with maintained coverage
+evidence before this gate can pass.
 
 ### Phase 4 — separately authorized cutover
 

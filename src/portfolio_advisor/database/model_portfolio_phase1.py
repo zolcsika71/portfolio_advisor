@@ -212,6 +212,15 @@ class MnbOtcExactText:
         return asdict(self)
 
 
+@dataclass(frozen=True, slots=True)
+class MnbOtcEvidenceRecord:
+    """One semantic MNB observation plus exact text and source binding."""
+
+    observation: MnbOtcObservation
+    exact_text: MnbOtcExactText
+    binding: MnbEvidenceBinding
+
+
 _SCHEMA_SQL = """
 CREATE TABLE model_source_authority_epoch (
     epoch_id TEXT PRIMARY KEY CHECK(length(trim(epoch_id)) > 0),
@@ -1042,6 +1051,11 @@ class AnalyticalModelPortfolioSession:
             connection.close()
             raise
 
+    @property
+    def database_path(self) -> Path:
+        """Expose the validated source path for provenance-only consumers."""
+        return self._repository.database_path
+
     def __exit__(self, exc_type: object, *_exc: object) -> None:
         connection = self._connection
         if connection is None:
@@ -1136,6 +1150,23 @@ class AnalyticalModelPortfolioSession:
             )
         return tuple(result)
 
+    def load_mnb_evidence_records(self) -> tuple[MnbOtcEvidenceRecord, ...]:
+        """Read exact MNB evidence within this already validated snapshot."""
+        return _mnb_evidence_records(self._checked_connection())
+
+    def authority_provenance(self) -> tuple[str, str]:
+        """Return the validated authority epoch and bound baseline dataset."""
+        row = self._checked_connection().execute(
+            """SELECT epoch_id, baseline_dataset_fingerprint
+               FROM model_source_authority_epoch WHERE epoch_id=?""",
+            (self._repository.authority_epoch_id,),
+        ).fetchone()
+        if row is None:  # pragma: no cover - entry validation guarantees this
+            raise ModelPortfolioPhase1Error(
+                "validated analytical authority epoch is missing"
+            )
+        return str(row[0]), str(row[1])
+
 
 class AnalyticalMnbOtcRepository:
     """Read-only adapter for the dedicated analytical MNB evidence contract."""
@@ -1167,6 +1198,20 @@ class AnalyticalMnbOtcRepository:
         return tuple(
             _mnb_from_row(row, str(row["original_source_document"])) for row in rows
         )
+
+    def evidence_records(self) -> tuple[MnbOtcEvidenceRecord, ...]:
+        """Return exact decimal text and binding together with parsed values."""
+        if not self.database_path.is_file():
+            raise ModelPortfolioPhase1Error(
+                f"analytical database missing: {self.database_path}"
+            )
+        with sqlite3.connect(
+            f"file:{self.database_path.resolve()}?mode=ro", uri=True
+        ) as connection:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA query_only=ON")
+            validate_phase1_contracts(connection)
+            return _mnb_evidence_records(connection)
 
 
 def request_from_json(payload: Mapping[str, object]) -> WorkbookAdmissionRequest:
@@ -1694,6 +1739,30 @@ def _mnb_source_fingerprint(
             "source_document_hash": observation.source_document_hash,
             "source_identity": observation.source,
         }
+    )
+
+
+def _mnb_evidence_records(
+    connection: sqlite3.Connection,
+) -> tuple[MnbOtcEvidenceRecord, ...]:
+    rows = connection.execute(
+        """SELECT observation.*, source.original_source_document,
+                  source.portable_evidence_role, source.authorization_reference
+           FROM model_mnb_otc_evidence_observation AS observation
+           JOIN model_mnb_otc_evidence_source AS source
+             ON source.source_document_hash=observation.source_document_hash
+           ORDER BY observation.period_start, observation.period_end"""
+    ).fetchall()
+    return tuple(
+        MnbOtcEvidenceRecord(
+            observation=_mnb_from_row(row, str(row["original_source_document"])),
+            exact_text=_mnb_exact_text_from_row(row),
+            binding=MnbEvidenceBinding(
+                portable_evidence_role=str(row["portable_evidence_role"]),
+                authorization_reference=str(row["authorization_reference"]),
+            ),
+        )
+        for row in rows
     )
 
 

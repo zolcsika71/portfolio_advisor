@@ -22,8 +22,8 @@ from typing import Any, Final, cast
 from portfolio_advisor.advisor.models import AdvisorResult
 from portfolio_advisor.canonical import canonical_fingerprint, canonical_json
 from portfolio_advisor.database.repository import (
+    FileBackedModelPortfolioReader,
     HoldingObservation,
-    ModelPortfolioRepository,
 )
 from portfolio_advisor.features.dataset import (
     KnowledgeItem,
@@ -541,7 +541,7 @@ def _official_outcome_evidence_exists(
 def build_prospective_decision(
     *,
     advisor_result: AdvisorResult,
-    repository: ModelPortfolioRepository,
+    repository: FileBackedModelPortfolioReader,
     rules_path: Path,
     graph_path: Path,
     repository_root: Path,

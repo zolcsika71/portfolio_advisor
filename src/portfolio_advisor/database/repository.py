@@ -74,6 +74,14 @@ class ModelPortfolioReader(Protocol):
     def load_holdings(self, observation_date: date) -> list[HoldingObservation]: ...
 
 
+@runtime_checkable
+class FileBackedModelPortfolioReader(ModelPortfolioReader, Protocol):
+    """Model reader whose immutable source can be named in provenance."""
+
+    @property
+    def database_path(self) -> Path: ...
+
+
 class ModelPortfolioRepository:
     """Expose only parameterized, non-mutating queries against SQLite."""
 

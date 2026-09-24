@@ -1,5 +1,15 @@
 """Read-only access to model portfolio observations."""
 
-from .repository import ModelPortfolioReader, ModelPortfolioRepository, RepositoryError
+from .repository import (
+    FileBackedModelPortfolioReader,
+    ModelPortfolioReader,
+    ModelPortfolioRepository,
+    RepositoryError,
+)
 
-__all__ = ["ModelPortfolioReader", "ModelPortfolioRepository", "RepositoryError"]
+__all__ = [
+    "FileBackedModelPortfolioReader",
+    "ModelPortfolioReader",
+    "ModelPortfolioRepository",
+    "RepositoryError",
+]

@@ -1,5 +1,5 @@
 @startuml
-' Status: corrective Phase 1 rehearsal implemented; operational cutover proposed
+' Status: Phase 1 and read-only Phase 3A implemented; operational cutover proposed
 ' Verified current behavior against:
 ' - src/portfolio_advisor/main.py
 ' - src/portfolio_advisor/DB_creation/database_create.py
@@ -10,13 +10,16 @@
 ' - src/portfolio_advisor/database/migrations/shortlist_zero_null.py
 ' - src/portfolio_advisor/database/migrations/shortlist_classification_pair_mapping.py
 ' - src/portfolio_advisor/database/model_portfolio_phase1.py
+' - src/portfolio_advisor/database/model_portfolio_shadow.py
+' - src/portfolio_advisor/history/repository.py
 ' - scripts/admit_model_portfolio_phase1.py
 ' - tests/test_schema_v3_model_portfolio_migration.py
 ' - tests/test_model_portfolio_consolidation_phase1.py
+' - tests/test_model_portfolio_consolidation_phase3a.py
 ' - tests/test_xls_import_watch.py
 ' Proposed contract: docs/architecture/model-portfolio-consolidation-plan.md
 ' Governing proposal: docs/decisions/ADR-007-consolidate-model-portfolio-workflows.md
-title Model-portfolio corrective rehearsal [Implemented] and cutover [Proposed]
+title Model-portfolio read-only shadow validation [Implemented] and cutover [Proposed]
 
 hide footbox
 skinparam sequenceMessageAlign center
@@ -29,6 +32,7 @@ participant "WatchPaths wrapper\n(or manual CLI)" as Trigger
 collections "Retained workbook\nand MNB PDF evidence" as Evidence
 participant "Single model admission\ncommand" as Writer
 participant "Temporary-only Phase 1\ncontract command/API" as Phase1
+participant "Phase 3A shadow runner\n(explicit opt-in)" as Shadow
 database "Isolated schema-v3\ntemporary database" as Temporary
 database "portfolio_advisor.sqlite\nproposed operational authority" as Analytical
 participant "Model + provenance +\ncorrection validators" as Validators
@@ -85,6 +89,39 @@ note over Phase1, Temporary
   Phase 1 does not parse or insert workbooks, migrate retained data,
   select an application default, alter the watcher, or authorize cutover.
   MNB observations remain weekly OTC evidence and are never NAV.
+end note
+
+== Phase 3A consumer injection and shadow comparison [Implemented, non-operational] ==
+
+Developer -> Shadow: provide legacy reader, explicit analytical reader,\nand eight named workflow captures
+Shadow -> Legacy: fingerprint isolated legacy source
+Shadow -> Temporary: fingerprint isolated analytical source
+Shadow -> Legacy: capture advisor/current + temporal ranking,\nstrict coverage, features, prospective input,\nLTIA model side, and exact MNB semantics
+Shadow -> Phase1: open one validated analytical read session
+Phase1 -> Validators: validate pinned database, authority epoch,\nhistorical manifest, corrections, and dependencies once
+loop every non-blocked workflow
+    Shadow -> Phase1: capture through the shared validated reader
+    Shadow -> Shadow: compare values, missingness, warnings,\nordering, ties, provenance, and exact MNB text
+    alt exact reviewed path/value difference
+        Shadow -> Shadow: retain difference plus concrete reason
+    else unexplained or stale allowlist difference
+        Shadow --> Developer: FAIL CLOSED; no successful report
+    end
+end
+alt database, sidecar, or dependency changed before exit
+    Phase1 --> Shadow: exit validation fails
+    Shadow --> Developer: no successful report
+else session exit validation succeeds
+    Phase1 --> Shadow: validated session closed
+    Shadow --> Developer: finalize PASS or PARTIAL report
+end
+
+note over Shadow, Validators
+  Model snapshots and optional direct portfolio NAV are separate inputs.
+  The retained current-corpus run passed seven workflows. Forward-label
+  comparison is explicitly BLOCKED by a missing 2026-08-18 / 90-day
+  strict-coverage window; no NAV, eligibility, or label is synthesized.
+  Existing application, importer, watcher, and CLI defaults remain legacy.
 end note
 
 == Later operational admission [Proposed] ==

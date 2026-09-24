@@ -91,6 +91,18 @@ transaction-safe admission completed in 105.266 seconds and exact replay in
 201.283 seconds. This is validation evidence for the proposal, not acceptance
 or cutover authorization.
 
+Phase 3A now implements explicit opt-in reader injection and a fail-closed
+shadow comparison boundary without changing any operational default. Model
+snapshots and optional direct portfolio NAV are separate inputs. A bounded
+shadow run uses one validated analytical session, records both source and
+authority provenance, requires a result or concrete blocker for each reviewed
+workflow, and accepts only exact path/value-specific expected differences.
+The retained-corpus rehearsal passed seven workflows but remains PARTIAL:
+forward-label construction fails closed because maintained strict-coverage
+evidence lacks the `PB Dinamikus EUR` / `2026-08-18` / 90-day window. This
+implementation and rehearsal evidence do not accept this ADR or authorize
+migration, authority transfer, cutover, or retirement.
+
 ## Consequences
 
 - Model source authority becomes explicit and portable instead of being
@@ -119,6 +131,12 @@ or cutover authorization.
   ingestion: it binds typed normalization to already staged synthetic source
   occurrences. A real single writer, baseline migration, and operational
   authority epoch remain later gated work.
+- Phase 3A dependency injection is explicit and read-only. Compatibility
+  constructors and all operational defaults remain legacy-backed; an
+  analytical reader is never selected by schema discovery or fallback.
+- Model projection equality is not evidence of direct-NAV or strict-coverage
+  equality. Missing maintained coverage remains a blocker, and Phase 3A does
+  not synthesize NAV, eligibility, or labels.
 - The unresolved dual-sheet watcher policy, changed historical workbook
   contract, external consumers, compatibility lifetime, and MNB portable
   package layout must be decided before acceptance or cutover.

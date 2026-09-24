@@ -18,7 +18,7 @@ from typing import Final
 from portfolio_advisor.advisor.service import CapitalPreservationAdvisor
 from portfolio_advisor.database.repository import (
     HoldingObservation,
-    ModelPortfolioRepository,
+    ModelPortfolioReader,
     RepositoryError,
 )
 from portfolio_advisor.objectives.models import PortfolioObjective
@@ -276,7 +276,7 @@ _UNRESOLVED_DESCRIPTIVE_CONSTRAINTS: Final = (
 def compare_tbsz_to_selected_portfolio_descriptively(
     *,
     tbsz_repository: TbszPortfolioRepository,
-    model_repository: ModelPortfolioRepository,
+    model_repository: ModelPortfolioReader,
     rules_path: Path,
     account_label: str,
     target_portfolio_name: str,
@@ -346,7 +346,7 @@ def compare_tbsz_to_selected_portfolio_descriptively(
 def compare_tbsz_to_recommended_portfolio(
     *,
     tbsz_repository: TbszPortfolioRepository,
-    model_repository: ModelPortfolioRepository,
+    model_repository: ModelPortfolioReader,
     rules_path: Path,
     account_label: str | None = None,
     all_tbsz: bool = False,
@@ -388,7 +388,7 @@ def compare_tbsz_to_recommended_portfolio(
 
 
 def _target_allocations(
-    repository: ModelPortfolioRepository,
+    repository: ModelPortfolioReader,
     rules_path: Path,
     requested_name: str | None,
 ) -> tuple[date, str, dict[str, _TargetAllocation], tuple[str, ...], str, str]:

@@ -16,7 +16,10 @@ from math import ceil, isfinite
 from pathlib import Path
 from typing import Any, Literal
 
-from portfolio_advisor.database.repository import ModelPortfolioRepository
+from portfolio_advisor.database.repository import (
+    FileBackedModelPortfolioReader,
+    ModelPortfolioRepository,
+)
 from portfolio_advisor.history.repository import HistoricalPortfolioRepository
 from portfolio_advisor.ranking.config import load_ranking_rules
 
@@ -51,6 +54,8 @@ def build_forward_rank_signal_validation(
     methodology_path: Path,
     current_universe_path: Path,
     temporal_path: Path,
+    model_repository: FileBackedModelPortfolioReader | None = None,
+    history_repository: HistoricalPortfolioRepository | None = None,
 ) -> dict[str, object]:
     """Validate available official labels, or report insufficient evidence.
 
@@ -83,7 +88,16 @@ def build_forward_rank_signal_validation(
 
     rows = _read_dataset(dataset_path)
     availability = label_availability(rows)
-    history = HistoricalPortfolioRepository(ModelPortfolioRepository(database_path))
+    repository = model_repository or ModelPortfolioRepository(database_path)
+    if repository.database_path.resolve() != database_path.resolve():
+        raise ForwardRankSignalValidationError(
+            "injected model reader does not match the declared provenance path"
+        )
+    history = history_repository or HistoricalPortfolioRepository(repository)
+    if history.model_repository is not repository:
+        raise ForwardRankSignalValidationError(
+            "history and model repositories must share one model reader"
+        )
     nav_history_available = history.nav_history_available()
     if nav_history_available:
         # This task may safely use retained official labels if they are present,

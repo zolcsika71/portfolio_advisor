@@ -30,7 +30,10 @@ from portfolio_advisor.backtesting.eligibility import (
 )
 from portfolio_advisor.backtesting.models import BacktestEligibility, ForwardMetrics
 from portfolio_advisor.backtesting.service import WalkForwardBacktester
-from portfolio_advisor.database.repository import ModelPortfolioRepository
+from portfolio_advisor.database.repository import (
+    FileBackedModelPortfolioReader,
+    ModelPortfolioRepository,
+)
 from portfolio_advisor.history.repository import HistoricalPortfolioRepository
 from portfolio_advisor.ranking.config import load_ranking_rules
 
@@ -167,6 +170,8 @@ def build_official_forward_label_store(
     current_universe_path: Path,
     temporal_path: Path,
     eligibility_gate: BacktestEligibilityGate | None = None,
+    model_repository: FileBackedModelPortfolioReader | None = None,
+    history_repository: HistoricalPortfolioRepository | None = None,
 ) -> tuple[list[OfficialForwardLabel], dict[str, object]]:
     """Build every exact date/portfolio/horizon label candidate offline.
 
@@ -191,8 +196,16 @@ def build_official_forward_label_store(
     _validate_feature_manifest(feature_manifest, rules_path)
     feature_rows = _load_feature_rows(feature_dataset_path)
 
-    repository = ModelPortfolioRepository(database_path)
-    history = HistoricalPortfolioRepository(repository)
+    repository = model_repository or ModelPortfolioRepository(database_path)
+    if repository.database_path.resolve() != database_path.resolve():
+        raise OfficialForwardLabelStoreError(
+            "injected model reader does not match the declared provenance path"
+        )
+    history = history_repository or HistoricalPortfolioRepository(repository)
+    if history.model_repository is not repository:
+        raise OfficialForwardLabelStoreError(
+            "history and model repositories must share one model reader"
+        )
     _validate_feature_source_join(feature_rows, history)
     gate = eligibility_gate or StrictCoverageEligibilityGate.from_default_artifacts()
     backtester = WalkForwardBacktester(history, rules_path, eligibility_gate=gate)
