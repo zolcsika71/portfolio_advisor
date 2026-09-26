@@ -558,7 +558,8 @@ Model zero-to-absence remains unresolved; shortlist original zeros remain
 `0.0`, and the exact existing ADR-003 corrections are not inherited by new
 sources. Recovery/formula evidence is governed by the subsequently approved
 hash-bound sub-decisions described below; anomaly dispositions, executable
-eligibility, writer integration, and all admission decisions remain proposed.
+overall eligibility, writer integration, and all admission decisions remain
+proposed.
 
 The read-only, hash-bound
 [BIFF recovery and formula evidence verifier](biff-xls-recovery-formula-evidence-v1.md)
@@ -570,7 +571,12 @@ keeps its audit-time recovery, formula-origin, and admission approval fields
 scoped evidence sub-decisions: the exact 27-hash recovery exception with every
 documented condition, and current-retained-file formula-origin sufficiency for
 the exact 33-hash registry. The documentation approval neither rewrites the
-historical report nor implements eligibility enforcement or admission.
+historical report nor authorizes admission. The pure implemented
+`BIFF_XLS_EVIDENCE_GATE_EVALUATION` v1 evaluator now enforces these two scopes
+from explicit in-memory report bytes and workbook identity, emits separate
+verdicts, and always keeps `admission_approval = NOT_GRANTED`. It performs no
+fresh workbook inspection; the declared identity only selects the exact entry
+in the approved historical report.
 
 A later separately authorized admission rehearsal must use SQLite-backup-API
 copies and retained workbooks, compare the entire ordered receipt chain and all
@@ -680,13 +686,14 @@ removal.
 6. **MNB source-path portability:** retain the original source-document text,
    but new authority records should also bind portable evidence roles and
    hashes. The package layout and validator input need approval.
-7. **Recovered BIFF and formula-origin enforcement:** on 2026-09-26 the user
+7. **Overall real-workbook eligibility composition:** on 2026-09-26 the user
    approved a recovery-evidence exception for only the 27 enumerated hashes and
    current-retained-file formula-origin sufficiency for all 33 enumerated
    hashes, subject to the evidence contract's complete fail-closed conditions.
-   No eligibility mechanism enforces those decisions yet. Changed or future
-   bytes remain outside scope, upstream formula history remains unverified, and
-   parser success alone is insufficient.
+   The pure evidence-gate evaluator now enforces those two decisions. It does
+   not combine them with normalization diagnostics or other eligibility gates.
+   Changed or future bytes remain outside scope, upstream formula history
+   remains unverified, and parser success alone is insufficient.
 8. **Real-source model zero semantics and anomaly dispositions:** approve
    whether the model-only compatibility projection may continue omitting
    numeric-zero metric observations, and approve occurrence-bound treatment of

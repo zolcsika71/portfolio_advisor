@@ -192,9 +192,12 @@ sub-decisions: the documented allocation-defect recovery exception for only
 the 27 enumerated full hashes, subject to every acceptance and rejection
 condition, and current-retained-file formula-origin sufficiency for all 33
 enumerated full hashes. The latter makes no claim about calculations, formulas,
-or pasted values before export. These approvals implement no enforcement,
-perform no admission, and do not approve the remaining consolidation,
-operational-authority, migration, or cutover decisions. No separate ADR is
+or pasted values before export. The pure
+`BIFF_XLS_EVIDENCE_GATE_EVALUATION` v1 evaluator now enforces only these two
+hash-bound decisions against the exact historical report and returns separate
+verdicts while always emitting `admission_approval = NOT_GRANTED`. It performs
+no current-workbook inspection or admission and does not approve the remaining
+consolidation, operational-authority, migration, or cutover decisions. No separate ADR is
 created because these bounded sub-decisions remain within this ADR's broader
 scope, whose overall status remains Proposed.
 

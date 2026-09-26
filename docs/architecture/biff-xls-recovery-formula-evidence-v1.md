@@ -14,8 +14,9 @@ fields as `NOT_GRANTED`. ADR-007 remains `Proposed`.
 
 Those fields record the verifier's audit-time state and remain unchanged. The
 subsequent explicit user approvals dated 2026-09-26 are recorded separately
-below; they do not modify the historical report, implement enforcement, or
-authorize admission.
+below. The pure `workbook_source.biff_evidence_approval` evaluator now enforces
+those two scopes against explicit in-memory report bytes and workbook identity;
+it does not modify the historical report or authorize admission.
 
 The expected inventory is
 `data/knowledge/biff_xls_processed_expected_inventory_v1.json`. It binds the
@@ -81,8 +82,9 @@ their cells, but that does not make the compound allocation graph valid. Every
 recovery-dependent result therefore remains
 `RECOVERY_EXCEPTION_APPROVAL_REQUIRED` in the historical evidence report. On
 2026-09-26 the user explicitly approved the hash-bound exception documented
-below for the 27 listed hashes only. No verifier or eligibility mechanism has
-been changed, and changed bytes or defect signatures still fail closed.
+below for the 27 listed hashes only. The verifier remains unchanged; the
+separate evidence-gate evaluator enforces the exact report, registry, defect,
+coverage, and comparison bindings, and changed bytes or signatures fail closed.
 
 ## Formula statement and limitation
 
@@ -98,15 +100,17 @@ formula and pasted its value, or any state not encoded in the retained bytes.
 On 2026-09-26 the user explicitly approved this current-retained-file finding
 as sufficient for the formula-origin evidence gate on the 33 listed hashes.
 That approval does not establish upstream authoring history, implement the
-gate, or authorize admission.
+gate by itself, or authorize admission. The separate evaluator described below
+now enforces the approved retained-byte scope.
 
 ## Approved evidence-gate sub-decisions
 
 The user explicitly approved both separately decidable proposals on
 2026-09-26, subject to every scope, acceptance, and rejection condition below.
-This is a documentation record of user authorization, not executable
-enforcement. It does not change the evidence report's historical
-`admission_approval`, `recovery_exception_approval`, or
+This is a documentation record of user authorization, not an executable
+approval embedded in the audit report. The separately implemented evaluator
+enforces the recorded conditions without changing the historical evidence
+report's `admission_approval`, `recovery_exception_approval`, or
 `formula_origin_approval` fields from `NOT_GRANTED`; it also does not grant
 admission approval. Each approval is independently scoped and neither implies
 the other.
@@ -204,10 +208,9 @@ filename/inventory disagreement, a different or additional allocation defect,
 a changed overlap signature, incomplete substreams, unsupported structures,
 an unreadable region, or any structural/value/type/format comparison mismatch.
 
-This approval authorizes only a future eligibility evaluator to mark the
+This approval authorizes the implemented evidence-gate evaluator to mark the
 recovery-evidence gate satisfied for an exact listed hash after enforcing every
-condition above. No such enforcement is implemented by this documentation
-change. The approval does not repair the malformed CFBF graph, approve
+condition above. The approval does not repair the malformed CFBF graph, approve
 formula-origin sufficiency, normalize or admit data, bind corrections,
 authorize a writer, change the watcher, transfer authority, or accept ADR-007.
 
@@ -264,12 +267,12 @@ who authored a value, or any state absent from these bytes. If upstream
 authoring history or proof of original literal entry is required, the approval
 is insufficient and must be rejected or supplemented with external evidence.
 
-This approval authorizes only a future eligibility evaluator to mark the
+This approval authorizes the implemented evidence-gate evaluator to mark the
 retained-file formula-origin evidence gate satisfied for an exact listed hash
-after enforcing every condition above. No such enforcement is implemented by
-this documentation change. The approval does not grant a recovery exception,
-validate financial semantics, normalize or admit data, bind corrections,
-authorize a writer, change the watcher, transfer authority, or accept ADR-007.
+after enforcing every condition above. The approval does not grant a recovery
+exception, validate financial semantics, normalize or admit data, bind
+corrections, authorize a writer, change the watcher, transfer authority, or
+accept ADR-007.
 
 Approved scope wording (explicit user authorization, 2026-09-26):
 
@@ -283,6 +286,42 @@ Approved scope wording (explicit user authorization, 2026-09-26):
 > evidence, or an unsupported structure fail closed. This approval satisfies
 > only this evidence gate and grants no recovery exception, admission,
 > operational-authority, correction, migration, or cutover approval.
+
+### Implemented evidence-gate enforcement
+
+`portfolio_advisor.workbook_source.biff_evidence_approval` implements
+`BIFF_XLS_EVIDENCE_GATE_EVALUATION` version 1 as a pure function over immutable
+report bytes plus an explicit workbook SHA-256 and source filename. It:
+
+- exposes no policy argument or alternate evaluator: callers cannot supply a
+  registry, report binding, approval identity, dependency identity, or expected
+  aggregate; synthetic tests replace the private fixed-policy constant only
+  inside their test process;
+- accepts only the exact historical report-file SHA-256 and recomputed
+  canonical fingerprint, report/verifier/parser versions, verifier-source and
+  inventory hashes, dependency versions, aggregate totals, and ordered 33-hash
+  registry recorded above;
+- inspects the underlying allocation, strict/recovery, sheet/EOF, cell/type,
+  XF/format, blank/absent, comparison, and formula fields instead of trusting a
+  report verdict or caller-supplied pass flag;
+- grants `BOUNDED_EXCEPTION_GRANTED` only to the 27 recovery rows reproducing
+  their exact permitted signature, and returns `NOT_REQUIRED_STRICT_OPEN` for
+  the six strict rows without granting them an exception;
+- returns formula outcome `SUFFICIENT_FOR_RETAINED_BYTES` only when complete
+  covered-record evidence remains zero, preserving the documented upstream-
+  history limitation; and
+- emits an immutable deterministic result whose `admission_approval` is always
+  `NOT_GRANTED`.
+
+Malformed, duplicated-key, non-finite, incomplete, contradictory, unsupported,
+tampered, unlisted, renamed, or mismatched evidence fails closed with stable
+gate-specific reason codes. The evaluator has no filesystem, workbook,
+database, writer, watcher, correction, or admission surface. It does not turn
+either evidence verdict into overall eligibility. A matching caller-supplied
+hash and filename select an entry in the bound historical report; the evaluator
+does not open, hash, or freshly inspect a current workbook. Every result records
+`fresh_workbook_inspection = NOT_PERFORMED` and scopes its verdicts to that
+historical report.
 
 ### Gates that remain unresolved
 

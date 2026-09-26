@@ -1,16 +1,18 @@
 @startuml
 ' Status: Phase 1, read-only Phase 3A, synthetic Phase 3B.1, parser-only
-' Phase 3B.2, read-only BIFF evidence verification, and candidate-only Phase
-' 3B.3 implemented; admission and cutover proposed
+' Phase 3B.2, read-only BIFF evidence verification, candidate-only Phase 3B.3,
+' and evidence-gate evaluation implemented; admission and cutover proposed
 ' Implemented sources:
 ' - src/portfolio_advisor/database/model_portfolio_phase3b.py
 ' - src/portfolio_advisor/workbook_source/biff_xls.py
 ' - src/portfolio_advisor/workbook_source/biff_evidence.py
+' - src/portfolio_advisor/workbook_source/biff_evidence_approval.py
 ' - src/portfolio_advisor/workbook_source/normalization.py
 ' Synthetic regressions:
 ' - tests/test_model_portfolio_consolidation_phase3b.py
 ' - tests/test_biff_xls_source.py
 ' - tests/test_biff_xls_evidence.py
+' - tests/test_biff_xls_evidence_approval.py
 ' - tests/test_biff_xls_normalization.py
 ' Verified current behavior against:
 ' - src/portfolio_advisor/main.py
@@ -34,7 +36,7 @@
 ' Normalization/admission boundary:
 ' - docs/architecture/biff-xls-normalization-admission-policy-v1.md
 ' Governing proposal: docs/decisions/ADR-007-consolidate-model-portfolio-workflows.md
-title Model-portfolio consolidation: parser + evidence verifier + normalization candidate + synthetic writer [Implemented], admission/cutover [Proposed]
+title Model-portfolio consolidation: parser + verifier + gate evaluator + normalization candidate + synthetic writer [Implemented], admission/cutover [Proposed]
 
 hide footbox
 skinparam sequenceMessageAlign center
@@ -51,7 +53,8 @@ participant "Temporary-only Phase 1\ncontract command/API" as Phase1
 participant "Phase 3A shadow runner\n(explicit opt-in)" as Shadow
 participant "BIFF-XLS source parser\n(no admission)" as Parser
 participant "Hash-bound BIFF evidence\nverifier (read-only)" as EvidenceVerifier
-participant "Normalization + eligibility\nadapter" as Normalizer
+participant "Evidence-gate evaluator\n(pure, no admission)" as GateEvaluator
+participant "Normalization candidate\nadapter (no admission)" as Normalizer
 database "Isolated schema-v3\ntemporary database" as Temporary
 database "portfolio_advisor.sqlite\nproposed operational authority" as Analytical
 participant "Model + provenance +\ncorrection validators" as Validators
@@ -161,7 +164,7 @@ note over Operator, Parser
   No SQLite write, file movement, watcher route, correction, or admission.
 end note
 
-== Recovery/formula verifier [Implemented]; bounded evidence approvals [Recorded, enforcement not implemented] ==
+== Recovery/formula verifier + bounded gate evaluator [Implemented, no admission] ==
 
 Operator -> EvidenceVerifier: provide processed directory, committed 33-hash\ninventory, and fresh external report path
 EvidenceVerifier -> EvidenceVerifier: independently inspect CFBF/FAT allocation,\nWorkbook chain, BIFF BOF/EOF, cells, XF, blanks, and formula records
@@ -172,12 +175,23 @@ else all exact hash-bound checks pass
     EvidenceVerifier --> Operator: deterministic evidence report\naudit-time recovery/formula/admission approval fields NOT_GRANTED
 end
 
-note over Parser, EvidenceVerifier
+Operator -> GateEvaluator: provide exact report bytes, declared workbook hash,\nand inventory-bound source filename
+GateEvaluator -> GateEvaluator: require fixed approved report/source/inventory/dependency bindings;\nvalidate registry, coverage, comparisons, allocation, and formula evidence\n(no policy override; no current workbook I/O)
+alt malformed, changed, unlisted, incomplete, contradictory, or mismatched evidence
+    GateEvaluator --> Operator: separate gate verdicts REJECTED\nadmission_approval NOT_GRANTED
+else approved recovery-dependent hash
+    GateEvaluator --> Operator: recovery BOUNDED_EXCEPTION_GRANTED;\nformula SUFFICIENT_FOR_RETAINED_BYTES; admission NOT_GRANTED
+else approved strict-readable hash
+    GateEvaluator --> Operator: recovery NOT_REQUIRED_STRICT_OPEN;\nformula SUFFICIENT_FOR_RETAINED_BYTES; admission NOT_GRANTED
+end
+
+note over Parser, GateEvaluator
   Six hashes open strictly. The 27 exact recovery hashes have a user-approved
   exception dated 2026-09-26, subject to every hash/signature/comparison condition;
-  no eligibility mechanism enforces it. The finding of zero covered formula records
+  the pure evaluator enforces only that evidence gate. The finding of zero covered formula records
   is approved as sufficient only for the current bytes of all 33 exact hashes, not
-  for upstream authoring history. Neither approval authorizes admission.
+  for upstream authoring history, and is enforced as a separate verdict. Neither
+  verdict authorizes admission or establishes overall eligibility.
 end note
 
 == Phase 3B.3 normalization candidate [Implemented, no admission] ==
@@ -190,9 +204,9 @@ Normalizer --> Operator: deterministic BIFF_XLS_NORMALIZATION_CANDIDATE_V1\nstat
 
 note over Parser, Normalizer
   Recovery/formula evidence sub-decisions are approved only for the exact
-  27/33 hash registries; eligibility enforcement is not implemented and
-  admission remains NOT_GRANTED. Proposed currency-risk translations are not
-  authorized. Shortlist numeric
+  27/33 hash registries and enforced only by the separate pure gate evaluator;
+  overall eligibility is not implemented and admission remains NOT_GRANTED.
+  Proposed currency-risk translations are not authorized. Shortlist numeric
   zero remains an original 0.0 and becomes effective NULL only through the
   exact existing ADR-003 correction binding. Model zero-to-absence is a
   separate legacy-compatible proposal requiring approval for real sources.

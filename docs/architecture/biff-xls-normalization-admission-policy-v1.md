@@ -11,8 +11,11 @@ ADR-007 remains `Proposed`.
 On 2026-09-26 the user explicitly approved two bounded evidence-gate
 sub-decisions: the exact 27-hash recovery exception and current-retained-file
 formula-origin sufficiency for the exact 33-hash registry. Their conditions
-are documented in the recovery/formula evidence contract. No eligibility or
-enforcement mechanism is implemented by that approval.
+are documented in the recovery/formula evidence contract. The implemented pure
+evidence-gate evaluator enforces those conditions only; it is not a general
+eligibility or admission mechanism. Its workbook hash and filename are declared
+lookup identities matched to the bound historical report, not proof of a fresh
+inspection of current workbook bytes.
 
 The source parser continues to return `NOT_EVALUATED_PARSER_ONLY`. The pure
 `BIFF_XLS_NORMALIZATION_CANDIDATE_V1` adapter returns a separate
@@ -267,13 +270,15 @@ authorize admission.
    admitted cell and coordinate. The user-approved 2026-09-26 exception covers
    only the 27 hashes in the evidence contract's normative registry and only
    under every documented acceptance and rejection condition. Current software
-   does not enforce that approval or turn the registry into a general allowlist.
+   enforces that bounded approval without turning the registry into a general
+   allowlist.
 6. **Formula origin:** cached-value equality does not prove a literal cell or
    formula absence. The user-approved 2026-09-26 sub-decision accepts the
    verifier's complete zero-formula-record finding as sufficient for this gate
    only for the current bytes of the exact 33-hash registry. It makes no claim
    about pre-export calculations, formulas, pasted values, or original literal
-   entry, and current software does not enforce the decision.
+   entry. The evidence-gate evaluator enforces this exact retained-byte scope
+   but cannot establish upstream authoring history.
 7. **Diagnostics:** every warning has an authorized occurrence-level
    disposition. Unknown warnings reject the candidate.
 8. **Dataset and correction state:** the before-state dataset fingerprint and
@@ -361,7 +366,8 @@ bindings. A later read-only
 independently confirmed the allocation-defect signature and zero worksheet
 formula records for the exact 33 hashes. The evidence report itself did not
 grant either evidence approval. The subsequent explicit user approvals
-recorded below do not install eligibility enforcement or a schema and do not
+recorded below are enforced only by the pure evidence-gate evaluator; they do
+not install overall eligibility, a schema, or an admission path and do not
 rehearse or authorize admission.
 
 ## Approved evidence sub-decisions and remaining decisions
@@ -377,9 +383,10 @@ The user explicitly approved these two independent evidence sub-decisions on
   [Proposal B](biff-xls-recovery-formula-evidence-v1.md#proposal-b-retained-file-formula-origin-sufficiency).
 
 The evidence report's `NOT_GRANTED` fields remain an unchanged record of its
-audit-time state. These subsequent documentation approvals do not implement
-an eligibility mechanism or authorize admission. The following decisions
-remain pending:
+audit-time state. The subsequent pure evidence-gate evaluator implements only
+the two approved checks and still emits `admission_approval = NOT_GRANTED`; it
+does not implement overall eligibility or authorize admission. The following
+decisions remain pending:
 
 1. Whether the real-source model adapter may reuse the existing model-only
    numeric-zero-to-absence compatibility rule, or whether typed original model
@@ -413,8 +420,12 @@ remain pending:
   success/failure, duplicate preservation, changed-source rejection,
   recovery/formula diagnostics, and deterministic serialization.
 
-No current writer consumes the candidate format. The smallest next slice is a
-separately authorized, non-writing eligibility evaluator and temporary
-rehearsal that reproduces exact correction bindings before any admission
-adapter is designed. It must not transfer authority or silently choose any
-unresolved admission semantics.
+No current writer consumes the candidate format. The two evidence approvals
+are now enforced by the separate pure
+`BIFF_XLS_EVIDENCE_GATE_EVALUATION` v1 boundary, but it deliberately does not
+combine them with normalization diagnostics or other eligibility gates. The
+smallest next slice is a separately authorized pure eligibility composition
+over the normalization candidate and evidence-gate result. Any later temporary
+rehearsal must reproduce exact correction bindings before an admission adapter
+is designed; neither step may transfer authority or silently choose unresolved
+semantics.
