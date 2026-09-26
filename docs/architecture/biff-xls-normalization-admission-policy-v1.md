@@ -8,6 +8,12 @@ pure normalization-candidate adapter, and a future database-admission workflow.
 The admission policy remains proposed and is not an admission authorization.
 ADR-007 remains `Proposed`.
 
+On 2026-09-26 the user explicitly approved two bounded evidence-gate
+sub-decisions: the exact 27-hash recovery exception and current-retained-file
+formula-origin sufficiency for the exact 33-hash registry. Their conditions
+are documented in the recovery/formula evidence contract. No eligibility or
+enforcement mechanism is implemented by that approval.
+
 The source parser continues to return `NOT_EVALUATED_PARSER_ONLY`. The pure
 `BIFF_XLS_NORMALIZATION_CANDIDATE_V1` adapter returns a separate
 `NOT_EVALUATED_NORMALIZATION_CANDIDATE_ONLY` result with
@@ -258,12 +264,16 @@ authorize admission.
 5. **Recovery:** separately probe the same bytes without compound-document
    recovery. A recovery-dependent source is ineligible unless its exact hash is
    covered by an approved exception and an independent reader agrees on every
-   admitted cell and coordinate. The 27 baseline files are observed evidence,
-   not an automatic allowlist.
+   admitted cell and coordinate. The user-approved 2026-09-26 exception covers
+   only the 27 hashes in the evidence contract's normative registry and only
+   under every documented acceptance and rejection condition. Current software
+   does not enforce that approval or turn the registry into a general allowlist.
 6. **Formula origin:** cached-value equality does not prove a literal cell or
-   formula absence. Admission requires either a formula-aware independent BIFF
-   inventory bound to the same bytes, or an explicitly approved hash-bound
-   baseline waiver. No such waiver is granted here.
+   formula absence. The user-approved 2026-09-26 sub-decision accepts the
+   verifier's complete zero-formula-record finding as sufficient for this gate
+   only for the current bytes of the exact 33-hash registry. It makes no claim
+   about pre-export calculations, formulas, pasted values, or original literal
+   entry, and current software does not enforce the decision.
 7. **Diagnostics:** every warning has an authorized occurrence-level
    disposition. Unknown warnings reject the candidate.
 8. **Dataset and correction state:** the before-state dataset fingerprint and
@@ -349,29 +359,39 @@ This validation demonstrates the proposed separation and current correction
 bindings. A later read-only
 [BIFF recovery and formula evidence verifier](biff-xls-recovery-formula-evidence-v1.md)
 independently confirmed the allocation-defect signature and zero worksheet
-formula records for the exact 33 hashes. That evidence still does not approve
-formula-origin sufficiency, grant recovery exceptions, install a schema, or
-rehearse admission.
+formula records for the exact 33 hashes. The evidence report itself did not
+grant either evidence approval. The subsequent explicit user approvals
+recorded below do not install eligibility enforcement or a schema and do not
+rehearse or authorize admission.
 
-## Decisions requiring approval
+## Approved evidence sub-decisions and remaining decisions
+
+The user explicitly approved these two independent evidence sub-decisions on
+2026-09-26:
+
+- The hash-bound recovery exception for exactly the 27 recovery-dependent
+  hashes and every acceptance and rejection condition in
+  [Proposal A](biff-xls-recovery-formula-evidence-v1.md#proposal-a-hash-bound-recovery-exception).
+- Current-retained-file formula-origin sufficiency for exactly all 33 hashes,
+  with the limitations and fail-closed conditions in
+  [Proposal B](biff-xls-recovery-formula-evidence-v1.md#proposal-b-retained-file-formula-origin-sufficiency).
+
+The evidence report's `NOT_GRANTED` fields remain an unchanged record of its
+audit-time state. These subsequent documentation approvals do not implement
+an eligibility mechanism or authorize admission. The following decisions
+remain pending:
 
 1. Whether the real-source model adapter may reuse the existing model-only
    numeric-zero-to-absence compatibility rule, or whether typed original model
    zero observations require an additive schema plus a separate effective
    compatibility view.
-2. Explicit approval or rejection of a hash-bound recovery exception for the
-   27 independently verified recovery-dependent baseline workbooks. The
-   implemented verifier supplies evidence but cannot grant the exception.
-3. Whether the verifier's zero-formula-record finding for the exact retained
-   bytes is sufficient formula-origin evidence. It cannot establish upstream
-   authoring history, and future workbooks must still be verified separately.
-4. The occurrence-bound disposition manifest for the 24 currency-risk and
+2. The occurrence-bound disposition manifest for the 24 currency-risk and
    three sustainability warnings.
-5. English currency-risk mappings. All candidates in this document are
+3. English currency-risk mappings. All candidates in this document are
    proposals, not approved transformations.
-6. Whether `3yr` and `5yr` returns are cumulative or annualized. No rescaling
+4. Whether `3yr` and `5yr` returns are cumulative or annualized. No rescaling
    is allowed until this is evidenced and approved.
-7. For a future real-workbook writer only, atomic dual-sheet Option A versus
+5. For a future real-workbook writer only, atomic dual-sheet Option A versus
    durable partial-state Option B, plus same-date supersession and post-commit
    publication policy. Phase 3B.1's bounded synthetic Option A approval remains
    implemented and is not pending.

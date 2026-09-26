@@ -161,7 +161,7 @@ note over Operator, Parser
   No SQLite write, file movement, watcher route, correction, or admission.
 end note
 
-== Recovery and formula evidence [Implemented, no approval] ==
+== Recovery/formula verifier [Implemented]; bounded evidence approvals [Recorded, enforcement not implemented] ==
 
 Operator -> EvidenceVerifier: provide processed directory, committed 33-hash\ninventory, and fresh external report path
 EvidenceVerifier -> EvidenceVerifier: independently inspect CFBF/FAT allocation,\nWorkbook chain, BIFF BOF/EOF, cells, XF, blanks, and formula records
@@ -169,14 +169,15 @@ EvidenceVerifier -> EvidenceVerifier: cross-check values with Calamine and\nprov
 alt hash, layout, record, value, type, format, or formula discrepancy
     EvidenceVerifier --> Operator: FAIL CLOSED; nonzero exit; no successful report
 else all exact hash-bound checks pass
-    EvidenceVerifier --> Operator: deterministic evidence report\nrecovery/formula/admission approvals NOT_GRANTED
+    EvidenceVerifier --> Operator: deterministic evidence report\naudit-time recovery/formula/admission approval fields NOT_GRANTED
 end
 
 note over Parser, EvidenceVerifier
-  Six hashes open strictly. Twenty-seven retain an independently verified
-  root-mini-stream/Workbook-chain overlap and still require explicit recovery
-  exception approval. Zero formula records proves only their absence from the
-  exact retained bytes, not upstream authoring history.
+  Six hashes open strictly. The 27 exact recovery hashes have a user-approved
+  exception dated 2026-09-26, subject to every hash/signature/comparison condition;
+  no eligibility mechanism enforces it. The finding of zero covered formula records
+  is approved as sufficient only for the current bytes of all 33 exact hashes, not
+  for upstream authoring history. Neither approval authorizes admission.
 end note
 
 == Phase 3B.3 normalization candidate [Implemented, no admission] ==
@@ -188,8 +189,10 @@ Normalizer -> Normalizer: reject invalid field normalization without coercion;\n
 Normalizer --> Operator: deterministic BIFF_XLS_NORMALIZATION_CANDIDATE_V1\nstatus NOT_EVALUATED_NORMALIZATION_CANDIDATE_ONLY\nadmission_approval NOT_GRANTED
 
 note over Parser, Normalizer
-  Recovery mode and formula origin remain unresolved admission evidence.
-  Proposed currency-risk translations are not authorized. Shortlist numeric
+  Recovery/formula evidence sub-decisions are approved only for the exact
+  27/33 hash registries; eligibility enforcement is not implemented and
+  admission remains NOT_GRANTED. Proposed currency-risk translations are not
+  authorized. Shortlist numeric
   zero remains an original 0.0 and becomes effective NULL only through the
   exact existing ADR-003 correction binding. Model zero-to-absence is a
   separate legacy-compatible proposal requiring approval for real sources.

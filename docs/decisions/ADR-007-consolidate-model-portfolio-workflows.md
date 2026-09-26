@@ -175,15 +175,28 @@ filesystem surface, emits `admission_approval = NOT_GRANTED`, and cannot
 authorize a write, correction rebinding, watcher route, authority transfer, or
 cutover. This bounded implementation does not accept this ADR.
 
-The subsequent read-only recovery/formula verifier independently inspects the
-CFBF allocation graph and BIFF record streams for a committed inventory of all
-33 retained hashes. It confirms six strict-open files, the exact root
+The subsequent read-only
+[recovery/formula verifier](../architecture/biff-xls-recovery-formula-evidence-v1.md)
+independently inspects the CFBF allocation graph and BIFF record streams for a
+committed inventory of all 33 retained hashes. It confirms six strict-open
+files, the exact root
 mini-stream/Workbook-chain overlap in 27 recovery-dependent files, complete
 two-sheet record coverage, and zero worksheet formula-related records in the
 retained bytes. Calamine and the published parser are explicit cross-checks,
 not the source of the independent allocation or formula findings. The verifier
 creates only a deterministic local evidence report, grants no recovery or
 formula-origin approval, performs no admission, and leaves this ADR Proposed.
+Its `NOT_GRANTED` fields remain the unchanged audit-time record. On 2026-09-26
+the user subsequently and explicitly approved two separately scoped evidence
+sub-decisions: the documented allocation-defect recovery exception for only
+the 27 enumerated full hashes, subject to every acceptance and rejection
+condition, and current-retained-file formula-origin sufficiency for all 33
+enumerated full hashes. The latter makes no claim about calculations, formulas,
+or pasted values before export. These approvals implement no enforcement,
+perform no admission, and do not approve the remaining consolidation,
+operational-authority, migration, or cutover decisions. No separate ADR is
+created because these bounded sub-decisions remain within this ADR's broader
+scope, whose overall status remains Proposed.
 
 ## Consequences
 

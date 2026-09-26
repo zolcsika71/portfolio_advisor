@@ -556,15 +556,21 @@ references, and stable unresolved/rejection diagnostics. It has no database or
 filesystem surface and always reports `admission_approval = NOT_GRANTED`.
 Model zero-to-absence remains unresolved; shortlist original zeros remain
 `0.0`, and the exact existing ADR-003 corrections are not inherited by new
-sources. Recovery/formula evidence, anomaly dispositions, eligibility, writer
-integration, and all admission decisions remain proposed.
+sources. Recovery/formula evidence is governed by the subsequently approved
+hash-bound sub-decisions described below; anomaly dispositions, executable
+eligibility, writer integration, and all admission decisions remain proposed.
 
 The read-only, hash-bound
 [BIFF recovery and formula evidence verifier](biff-xls-recovery-formula-evidence-v1.md)
 is now implemented. It independently inspects CFBF/FAT and BIFF records,
 cross-checks Calamine and the published parser, and reproduces the 33-workbook
 row/field inventory without exposing raw financial rows. Its evidence report
-keeps all recovery, formula-origin, and admission approvals `NOT_GRANTED`.
+keeps its audit-time recovery, formula-origin, and admission approval fields
+`NOT_GRANTED`. On 2026-09-26 the user subsequently approved two independently
+scoped evidence sub-decisions: the exact 27-hash recovery exception with every
+documented condition, and current-retained-file formula-origin sufficiency for
+the exact 33-hash registry. The documentation approval neither rewrites the
+historical report nor implements eligibility enforcement or admission.
 
 A later separately authorized admission rehearsal must use SQLite-backup-API
 copies and retained workbooks, compare the entire ordered receipt chain and all
@@ -674,10 +680,12 @@ removal.
 6. **MNB source-path portability:** retain the original source-document text,
    but new authority records should also bind portable evidence roles and
    hashes. The package layout and validator input need approval.
-7. **Recovered BIFF and formula-origin eligibility:** 27 retained workbooks
-   require compound-document recovery, and `xlrd` cannot prove literal-cell
-   origin or formula absence. Approve either a hash-bound baseline exception
-   plus independent cell comparison, or stronger formula-aware evidence;
+7. **Recovered BIFF and formula-origin enforcement:** on 2026-09-26 the user
+   approved a recovery-evidence exception for only the 27 enumerated hashes and
+   current-retained-file formula-origin sufficiency for all 33 enumerated
+   hashes, subject to the evidence contract's complete fail-closed conditions.
+   No eligibility mechanism enforces those decisions yet. Changed or future
+   bytes remain outside scope, upstream formula history remains unverified, and
    parser success alone is insufficient.
 8. **Real-source model zero semantics and anomaly dispositions:** approve
    whether the model-only compatibility projection may continue omitting
