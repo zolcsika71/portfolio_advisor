@@ -86,9 +86,11 @@ requires formula provenance.
 
 ## Deferred work
 
-Database admission, portable evidence packaging, normalized and legacy
-projections, correction disposition/rebinding, receipt-chain construction,
-watcher/manual coordination, outbox execution, artifact publication, and
-cutover remain separately gated. The proposed next boundary is documented in
+Database admission, portable evidence packaging, legacy/effective projections,
+correction disposition/rebinding, receipt-chain construction, watcher/manual
+coordination, outbox execution, artifact publication, and cutover remain
+separately gated. The implemented pure normalization-candidate boundary is
+documented in
 [BIFF-XLS normalization and admission policy v1](biff-xls-normalization-admission-policy-v1.md);
-it is not implemented by this parser. ADR-007 remains Proposed.
+it is not part of this parser and cannot approve admission. ADR-007 remains
+Proposed.

@@ -28,6 +28,7 @@ def write_biff_fixture(
     repeat_model_header: bool = False,
     extra_model_data: bool = False,
     include_formula: bool = False,
+    duplicate_shortlist_first_row: bool = False,
 ) -> Path:
     """Generate a small workbook containing no retained/private evidence."""
     workbook = xlwt.Workbook(encoding="utf-8")
@@ -44,11 +45,17 @@ def write_biff_fixture(
         shortlist = workbook.add_sheet(shortlist_sheet_name, cell_overwrite_ok=True)
         shortlist.visibility = 1 if hide_shortlist else 0
         _write_headers(shortlist, SHORTLIST_HEADERS)
-        _write_shortlist_rows(shortlist, include_formula=include_formula)
+        _write_shortlist_rows(
+            shortlist,
+            include_formula=include_formula,
+            duplicate_first_row=duplicate_shortlist_first_row,
+        )
     if duplicate_shortlist_variant:
         duplicate = workbook.add_sheet("shortlist", cell_overwrite_ok=True)
         _write_headers(duplicate, SHORTLIST_HEADERS)
-        _write_shortlist_rows(duplicate, include_formula=False)
+        _write_shortlist_rows(
+            duplicate, include_formula=False, duplicate_first_row=False
+        )
     if not include_model and not include_shortlist and not duplicate_shortlist_variant:
         workbook.add_sheet("unrelated")
     path = root / filename
@@ -106,7 +113,9 @@ def _write_model_rows(sheet: object, first_row: int, *, extra_model_data: bool) 
         sheet.write(first_row, len(MODEL_HEADERS), "outside")  # type: ignore[attr-defined]
 
 
-def _write_shortlist_rows(sheet: object, *, include_formula: bool) -> None:
+def _write_shortlist_rows(
+    sheet: object, *, include_formula: bool, duplicate_first_row: bool
+) -> None:
     text_format = xlwt.easyxf(num_format_str="@")
     percentage = xlwt.easyxf(num_format_str="0.000%")
     rows: list[list[object]] = [
@@ -155,17 +164,20 @@ def _write_shortlist_rows(sheet: object, *, include_formula: bool) -> None:
             -0.15,
         ],
     ]
+    if duplicate_first_row:
+        rows.insert(1, list(rows[0]))
     for row_index, values in enumerate(rows, start=1):
         for column, value in enumerate(values):
             header = SHORTLIST_HEADERS[column]
             style = xlwt.Style.default_style
-            if row_index == 1 and header == "YTD":
+            if header == "YTD" and value == "0":
                 style = text_format
-            if row_index == 2 and header == "YTD":
+            if header == "YTD" and value == 0.0:
                 style = percentage
             sheet.write(row_index, column, value, style)  # type: ignore[attr-defined]
     info_column = SHORTLIST_HEADERS.index("Info. ratio")
-    sheet.row(2).set_cell_error(info_column, 15)  # type: ignore[attr-defined]
+    error_row = 3 if duplicate_first_row else 2
+    sheet.row(error_row).set_cell_error(info_column, 15)  # type: ignore[attr-defined]
     if include_formula:
         one_year = SHORTLIST_HEADERS.index("1yr")
         sheet.write(1, one_year, xlwt.Formula("1+1"))  # type: ignore[attr-defined]

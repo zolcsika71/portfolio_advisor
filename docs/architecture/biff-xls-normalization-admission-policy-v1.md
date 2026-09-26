@@ -1,16 +1,19 @@
-# BIFF-XLS normalization and admission policy v1 (Proposed)
+# BIFF-XLS normalization and admission policy v1 (Admission Proposed)
 
 ## Status and authority
 
-This document specifies the proposed boundary between the implemented
-[BIFF-XLS source envelope v1](biff-xls-source-envelope-v1.md) and a future
-database-admission workflow. It is a review contract, not an implementation or
-an admission authorization. ADR-007 remains `Proposed`.
+This document specifies the boundary between the implemented
+[BIFF-XLS source envelope v1](biff-xls-source-envelope-v1.md), the implemented
+pure normalization-candidate adapter, and a future database-admission workflow.
+The admission policy remains proposed and is not an admission authorization.
+ADR-007 remains `Proposed`.
 
-The source parser continues to return `NOT_EVALUATED_PARSER_ONLY`. No result in
-this document changes that status. A future adapter must produce a separate
-normalization candidate and eligibility report; a separately authorized writer
-would then decide whether the candidate may be admitted.
+The source parser continues to return `NOT_EVALUATED_PARSER_ONLY`. The pure
+`BIFF_XLS_NORMALIZATION_CANDIDATE_V1` adapter returns a separate
+`NOT_EVALUATED_NORMALIZATION_CANDIDATE_ONLY` result with
+`admission_approval = NOT_GRANTED`; it does not rewrite the parser envelope or
+produce an eligibility approval. A separately authorized eligibility boundary
+and writer would still have to decide whether a candidate may be admitted.
 
 This policy does not change the operational importer, watcher, database schema,
 existing correction records, historical stages, or application defaults. It
@@ -65,8 +68,9 @@ The future workflow must keep five layers distinguishable:
 1. **Retained source:** immutable `.xls` bytes and their SHA-256.
 2. **Typed source envelope:** exact BIFF cell type, raw value, format,
    coordinate, row occurrence, exact sheet name, and parser diagnostics.
-3. **Normalized original candidate:** typed database values derived under the
-   field rules below, with no effective correction applied.
+3. **Normalized original candidate:** now implemented as immutable typed field
+   candidates under the field rules below, with no effective correction or
+   database operation applied.
 4. **Admitted original evidence:** immutable occurrence/raw-payload rows and
    metric observations, each bound to stable source provenance.
 5. **Effective projection:** only an already authorized, versioned correction
@@ -235,8 +239,10 @@ new warning values or future rows.
 
 ## Admission eligibility
 
-A future normalizer must emit `ELIGIBLE_CANDIDATE` only when every gate below
-passes. That status would still not perform or authorize admission.
+A future eligibility evaluator may emit `ELIGIBLE_CANDIDATE` only when every
+gate below passes. The implemented normalization adapter deliberately emits no
+eligibility status. Even a later eligibility result would not perform or
+authorize admission.
 
 1. **Exact source binding:** workbook bytes, parser envelope fingerprint,
    filename date, sheet fingerprints, row fingerprints, and header/coordinate
@@ -313,9 +319,11 @@ Current consumers intentionally see different layers:
 - historical constructed artifacts resolve the correction stage recorded in
   their own provenance.
 
-The future adapter must expose explicit `raw`, `normalized_original`, and
-`effective` fields to validation code. It must never make a consumer infer the
-layer from a nullable scalar alone.
+The implemented adapter exposes each immutable `source_cell` separately from
+its `normalized_value`; it never emits an effective value. A future eligibility
+or writer boundary must keep `raw`, `normalized_original`, and `effective`
+layers explicit and must never make a consumer infer the layer from a nullable
+scalar alone.
 
 ## Bounded validation evidence
 
@@ -362,21 +370,25 @@ install a schema, or rehearse admission.
    publication policy. Phase 3B.1's bounded synthetic Option A approval remains
    implemented and is not pending.
 
-## Smallest next implementation slice
+## Implemented candidate boundary and smallest next slice
 
-Implement a pure `BIFF_XLS_NORMALIZATION_CANDIDATE_V1` adapter only. It should:
+`portfolio_advisor.workbook_source.normalization` implements the pure
+`BIFF_XLS_NORMALIZATION_CANDIDATE_V1` adapter. It:
 
-- accept an in-memory v1 source envelope and expected source bytes/hash;
-- emit immutable field candidates, typed rejection/warning diagnostics, exact
+- accepts an in-memory v1 source envelope and expected workbook SHA-256;
+- emits immutable field candidates, typed rejection/warning diagnostics, exact
   target source references, and a deterministic candidate fingerprint;
-- implement no database connection, schema installation, correction mutation,
+- has no database connection, schema installation, correction mutation,
   file movement, watcher route, or operational default;
-- ship only synthetic fixtures for every truth-table row, approved pair-mapping
+- validates optional English projection bytes against the exact approved
+  shortlist mapping manifest while marking its existing dataset admission as
+  reference-only and not inherited by the candidate; and
+- ships only synthetic fixture tests for type/missingness boundaries, mapping
   success/failure, duplicate preservation, changed-source rejection,
-  recovery/formula ineligibility, and deterministic serialization; and
-- be followed by a separately authorized temporary rehearsal that uses a
-  SQLite-backup-API copy, reproduces the exact dataset fingerprint and
-  correction validators, and compares every affected consumer projection.
+  recovery/formula diagnostics, and deterministic serialization.
 
-That slice makes the policy executable without transferring authority or
-silently choosing any unresolved admission semantics.
+No current writer consumes the candidate format. The smallest next slice is a
+separately authorized, non-writing eligibility evaluator and temporary
+rehearsal that reproduces exact correction bindings before any admission
+adapter is designed. It must not transfer authority or silently choose any
+unresolved admission semantics.

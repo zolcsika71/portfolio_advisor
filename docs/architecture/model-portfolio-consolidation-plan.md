@@ -516,8 +516,8 @@ watcher wiring, default changes, MNB writer changes, artifact publication,
 prospective ledger writes, authority transfer, supersession, cutover, and
 retirement.
 
-The next bounded slice, **Phase 3B.2: BIFF-XLS parser/adapter**, is implemented
-as a pure source extractor with no admission surface. Its versioned contract is
+The bounded **Phase 3B.2: BIFF-XLS parser** is implemented as a pure source
+extractor with no admission surface. Its versioned contract is
 documented in the
 [BIFF-XLS dual-sheet source envelope v1](biff-xls-source-envelope-v1.md):
 
@@ -546,25 +546,27 @@ workbooks and preserves 5,283 model plus 10,833 shortlist occurrences. This is
 parser validation only: it creates no database, receipt, retained package,
 normalized projection, or correction binding.
 
-The proposed next boundary is specified in
+The bounded **Phase 3B.3: normalization candidate adapter** is now implemented
+as a pure in-memory transformation and is specified in
 [BIFF-XLS normalization and admission policy v1](biff-xls-normalization-admission-policy-v1.md).
-It defines a deterministic normalization candidate between the parser and any
-writer, including field types, unscaled metric units, role-scoped zero rules,
-approved shortlist classification mapping reuse, warning dispositions,
-recovery/formula eligibility, exact replay, and preservation of existing
-dataset-bound correction references. It does not implement that adapter or
-authorize admission. In particular, model zero-to-absence remains a proposed
-reuse of the legacy-compatible model rule; shortlist original zeros remain
-`0.0` and become effective `NULL` only through the exact existing ADR-003
-bindings.
+It emits deterministic field and occurrence candidates between the parser and
+any future writer, including exact source evidence, unscaled metric values,
+role-scoped zero handling, optional exact approved shortlist pair-mapping
+references, and stable unresolved/rejection diagnostics. It has no database or
+filesystem surface and always reports `admission_approval = NOT_GRANTED`.
+Model zero-to-absence remains unresolved; shortlist original zeros remain
+`0.0`, and the exact existing ADR-003 corrections are not inherited by new
+sources. Recovery/formula evidence, anomaly dispositions, eligibility, writer
+integration, and all admission decisions remain proposed.
 
 A later separately authorized admission rehearsal must use SQLite-backup-API
 copies and retained workbooks, compare the entire ordered receipt chain and all
 eight read workflows, exercise crash recovery, and leave all live stores and
 watcher configuration unchanged.
 
-**Gate:** Phase 3B does not pass merely because Phase 3B.1 and the parser-only
-Phase 3B.2 slice are implemented. A separately authorized retained-data
+**Gate:** Phase 3B does not pass merely because Phase 3B.1, the parser-only
+Phase 3B.2 slice, and the non-admitting Phase 3B.3 candidate adapter are
+implemented. A separately authorized retained-data
 admission rehearsal must prove the portable evidence package, correction
 disposition, and ordered receipts. The operational release must still
 prove a manual/watcher shared lock, authority transfer, correction disposition

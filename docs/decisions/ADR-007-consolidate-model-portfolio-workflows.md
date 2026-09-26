@@ -162,15 +162,18 @@ This implementation evidence leaves this ADR Proposed.
 
 The proposed
 [BIFF-XLS normalization and admission policy v1](../architecture/biff-xls-normalization-admission-policy-v1.md)
-now makes the next boundary reviewable without implementing it. It separates
+now governs an implemented pure `BIFF_XLS_NORMALIZATION_CANDIDATE_V1` adapter.
+The adapter separates
 typed raw cells, normalized originals, admitted originals, and effective
 values; retains exact shortlist source references and dataset-bound correction
 bindings; keeps model and shortlist zero rules scoped; and treats recovered
 parsing, uncertain formula origin, currency-risk translations, anomaly
 dispositions, and real-source model zero semantics as explicit approval gates.
-Its candidate status cannot authorize a write, correction rebinding, watcher
-route, authority transfer, or cutover. This design work does not accept this
-ADR.
+It accepts only an in-memory parser envelope, caller-supplied expected workbook
+hash, and optional exact approved mapping bytes. It has no database or
+filesystem surface, emits `admission_approval = NOT_GRANTED`, and cannot
+authorize a write, correction rebinding, watcher route, authority transfer, or
+cutover. This bounded implementation does not accept this ADR.
 
 ## Consequences
 
@@ -222,9 +225,9 @@ ADR.
   provenance only. It deliberately has no admission adapter and establishes no
   compatibility between the real shortlist sheet and Phase 3B.1's synthetic
   `terméklista` role.
-- The proposed normalization contract is a separate, non-writing boundary. It
-  requires exact source/correction provenance and an explicit eligibility
-  report; no current writer consumes its future candidate format.
+- The implemented normalization candidate is a separate, non-writing boundary.
+  It preserves exact source provenance and unresolved gates, produces no
+  eligibility approval, and is not consumed by any current writer.
 - The unresolved operational dual-sheet watcher policy, changed historical
   workbook contract, atomic artifact-generation publication, external
   consumers, compatibility lifetime, and MNB portable package layout must be

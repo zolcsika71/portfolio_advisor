@@ -1,12 +1,14 @@
 @startuml
-' Status: Phase 1, read-only Phase 3A, synthetic Phase 3B.1, and parser-only
-' Phase 3B.2 implemented; operational writer and cutover proposed
+' Status: Phase 1, read-only Phase 3A, synthetic Phase 3B.1, parser-only
+' Phase 3B.2, and candidate-only Phase 3B.3 implemented; admission and cutover proposed
 ' Implemented sources:
 ' - src/portfolio_advisor/database/model_portfolio_phase3b.py
 ' - src/portfolio_advisor/workbook_source/biff_xls.py
+' - src/portfolio_advisor/workbook_source/normalization.py
 ' Synthetic regressions:
 ' - tests/test_model_portfolio_consolidation_phase3b.py
 ' - tests/test_biff_xls_source.py
+' - tests/test_biff_xls_normalization.py
 ' Verified current behavior against:
 ' - src/portfolio_advisor/main.py
 ' - src/portfolio_advisor/DB_creation/database_create.py
@@ -26,10 +28,10 @@
 ' - tests/test_model_portfolio_consolidation_phase3a.py
 ' - tests/test_xls_import_watch.py
 ' Proposed contract: docs/architecture/model-portfolio-consolidation-plan.md
-' Proposed normalization boundary:
+' Normalization/admission boundary:
 ' - docs/architecture/biff-xls-normalization-admission-policy-v1.md
 ' Governing proposal: docs/decisions/ADR-007-consolidate-model-portfolio-workflows.md
-title Model-portfolio consolidation: parser + synthetic writer [Implemented], normalization/operations/cutover [Proposed]
+title Model-portfolio consolidation: parser + normalization candidate + synthetic writer [Implemented], admission/cutover [Proposed]
 
 hide footbox
 skinparam sequenceMessageAlign center
@@ -155,30 +157,23 @@ note over Operator, Parser
   No SQLite write, file movement, watcher route, correction, or admission.
 end note
 
-== Phase 3B.3 normalization candidate [Proposed, not implemented] ==
+== Phase 3B.3 normalization candidate [Implemented, no admission] ==
 
-Operator -> Normalizer: provide exact v1 envelope,\nsame source bytes/hash, and expected before-state
+Operator -> Normalizer: provide exact v1 envelope, expected workbook hash,\nand optional exact approved mapping bytes
 Normalizer -> Normalizer: bind every cell coordinate/type/value/format;\nderive original typed values without scaling
 Normalizer -> Normalizer: keep model and shortlist zero rules separate;\npreserve duplicate occurrences and exact sheet names
-Normalizer -> Validators: verify installed correction identities,\ndataset fingerprint, and target source references
-
-alt recovery-dependent bytes lack approved hash-bound disposition
-    Normalizer --> Operator: INELIGIBLE; recovered parse is not admission evidence
-else formula origin remains unverified and lacks approved evidence/waiver
-    Normalizer --> Operator: INELIGIBLE; cached value is not literal-cell proof
-else warning occurrence lacks an approved exact disposition
-    Normalizer --> Operator: INELIGIBLE; preserve raw anomaly
-else source, field, mapping, and correction gates pass
-    Normalizer --> Operator: deterministic normalization candidate
-    Normalizer --> Operator: eligibility report only; no database mutation
-end
+Normalizer -> Normalizer: reject invalid field normalization without coercion;\nemit occurrence-specific unresolved policy diagnostics
+Normalizer --> Operator: deterministic BIFF_XLS_NORMALIZATION_CANDIDATE_V1\nstatus NOT_EVALUATED_NORMALIZATION_CANDIDATE_ONLY\nadmission_approval NOT_GRANTED
 
 note over Parser, Normalizer
+  Recovery mode and formula origin remain unresolved admission evidence.
   Proposed currency-risk translations are not authorized. Shortlist numeric
   zero remains an original 0.0 and becomes effective NULL only through the
   exact existing ADR-003 correction binding. Model zero-to-absence is a
   separate legacy-compatible proposal requiring approval for real sources.
-  No implemented writer currently consumes this candidate format. Phase
+  Exact approved English mapping bytes may produce reference-only candidates;
+  their existing dataset admission is not inherited. No implemented writer
+  consumes this format. Phase
   3B.1's approved synthetic atomic behavior is not reopened; only a future
   real-workbook admission policy remains undecided.
 end note
