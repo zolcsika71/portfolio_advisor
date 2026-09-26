@@ -40,6 +40,7 @@ exposed by those two pages.
 | `admit_shortlist_zero_null_corrections.py` | Back up an explicit schema-v3 target and atomically admit the authorized, provenance-bound shortlist zero-to-NULL correction set. |
 | `admit_shortlist_classification_correction.py` | Back up an explicit schema-v3 target and atomically admit an authorized, provenance-bound shortlist classification correction, including ordered sub-asset replacements and reviewed asset/sub-asset pair manifests. |
 | `admit_model_portfolio_phase1.py` | Exercise the non-operational consolidation Phase 1 contracts on an existing database below the system temporary directory; it cannot target a retained project database or change application defaults. |
+| `verify_biff_xls_evidence.py` | Verify the exact 33-hash processed BIFF inventory through independent CFBF/FAT and BIFF inspection plus Calamine/parser cross-checks; write only one fresh report outside the repository and grant no recovery exception or admission. |
 
 The shortlist correction command is an explicit operator-only write. It
 requires all admission bindings and `--apply`; see

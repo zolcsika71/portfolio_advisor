@@ -175,6 +175,16 @@ filesystem surface, emits `admission_approval = NOT_GRANTED`, and cannot
 authorize a write, correction rebinding, watcher route, authority transfer, or
 cutover. This bounded implementation does not accept this ADR.
 
+The subsequent read-only recovery/formula verifier independently inspects the
+CFBF allocation graph and BIFF record streams for a committed inventory of all
+33 retained hashes. It confirms six strict-open files, the exact root
+mini-stream/Workbook-chain overlap in 27 recovery-dependent files, complete
+two-sheet record coverage, and zero worksheet formula-related records in the
+retained bytes. Calamine and the published parser are explicit cross-checks,
+not the source of the independent allocation or formula findings. The verifier
+creates only a deterministic local evidence report, grants no recovery or
+formula-origin approval, performs no admission, and leaves this ADR Proposed.
+
 ## Consequences
 
 - Model source authority becomes explicit and portable instead of being

@@ -346,8 +346,12 @@ The design was checked without modifying retained evidence:
   The temporary copy was then removed.
 
 This validation demonstrates the proposed separation and current correction
-bindings. It does not demonstrate formula origin, approve recovery exceptions,
-install a schema, or rehearse admission.
+bindings. A later read-only
+[BIFF recovery and formula evidence verifier](biff-xls-recovery-formula-evidence-v1.md)
+independently confirmed the allocation-defect signature and zero worksheet
+formula records for the exact 33 hashes. That evidence still does not approve
+formula-origin sufficiency, grant recovery exceptions, install a schema, or
+rehearse admission.
 
 ## Decisions requiring approval
 
@@ -355,10 +359,12 @@ install a schema, or rehearse admission.
    numeric-zero-to-absence compatibility rule, or whether typed original model
    zero observations require an additive schema plus a separate effective
    compatibility view.
-2. A hash-bound disposition for the 27 recovery-dependent baseline workbooks,
-   including the independent reader and exact comparison evidence required.
-3. Formula-origin evidence: a formula-aware verifier versus an explicit
-   baseline waiver, and the treatment of future workbooks.
+2. Explicit approval or rejection of a hash-bound recovery exception for the
+   27 independently verified recovery-dependent baseline workbooks. The
+   implemented verifier supplies evidence but cannot grant the exception.
+3. Whether the verifier's zero-formula-record finding for the exact retained
+   bytes is sufficient formula-origin evidence. It cannot establish upstream
+   authoring history, and future workbooks must still be verified separately.
 4. The occurrence-bound disposition manifest for the 24 currency-risk and
    three sustainability warnings.
 5. English currency-risk mappings. All candidates in this document are

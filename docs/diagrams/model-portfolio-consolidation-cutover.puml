@@ -1,13 +1,16 @@
 @startuml
 ' Status: Phase 1, read-only Phase 3A, synthetic Phase 3B.1, parser-only
-' Phase 3B.2, and candidate-only Phase 3B.3 implemented; admission and cutover proposed
+' Phase 3B.2, read-only BIFF evidence verification, and candidate-only Phase
+' 3B.3 implemented; admission and cutover proposed
 ' Implemented sources:
 ' - src/portfolio_advisor/database/model_portfolio_phase3b.py
 ' - src/portfolio_advisor/workbook_source/biff_xls.py
+' - src/portfolio_advisor/workbook_source/biff_evidence.py
 ' - src/portfolio_advisor/workbook_source/normalization.py
 ' Synthetic regressions:
 ' - tests/test_model_portfolio_consolidation_phase3b.py
 ' - tests/test_biff_xls_source.py
+' - tests/test_biff_xls_evidence.py
 ' - tests/test_biff_xls_normalization.py
 ' Verified current behavior against:
 ' - src/portfolio_advisor/main.py
@@ -31,7 +34,7 @@
 ' Normalization/admission boundary:
 ' - docs/architecture/biff-xls-normalization-admission-policy-v1.md
 ' Governing proposal: docs/decisions/ADR-007-consolidate-model-portfolio-workflows.md
-title Model-portfolio consolidation: parser + normalization candidate + synthetic writer [Implemented], admission/cutover [Proposed]
+title Model-portfolio consolidation: parser + evidence verifier + normalization candidate + synthetic writer [Implemented], admission/cutover [Proposed]
 
 hide footbox
 skinparam sequenceMessageAlign center
@@ -47,6 +50,7 @@ participant "Generated-artifact\npublisher" as Publisher
 participant "Temporary-only Phase 1\ncontract command/API" as Phase1
 participant "Phase 3A shadow runner\n(explicit opt-in)" as Shadow
 participant "BIFF-XLS source parser\n(no admission)" as Parser
+participant "Hash-bound BIFF evidence\nverifier (read-only)" as EvidenceVerifier
 participant "Normalization + eligibility\nadapter" as Normalizer
 database "Isolated schema-v3\ntemporary database" as Temporary
 database "portfolio_advisor.sqlite\nproposed operational authority" as Analytical
@@ -155,6 +159,24 @@ note over Operator, Parser
   xlrd exposes cached formula results only when present; formula text and
   reliable formula presence are unavailable, and nothing is evaluated.
   No SQLite write, file movement, watcher route, correction, or admission.
+end note
+
+== Recovery and formula evidence [Implemented, no approval] ==
+
+Operator -> EvidenceVerifier: provide processed directory, committed 33-hash\ninventory, and fresh external report path
+EvidenceVerifier -> EvidenceVerifier: independently inspect CFBF/FAT allocation,\nWorkbook chain, BIFF BOF/EOF, cells, XF, blanks, and formula records
+EvidenceVerifier -> EvidenceVerifier: cross-check values with Calamine and\nprovenance/types with the published parser
+alt hash, layout, record, value, type, format, or formula discrepancy
+    EvidenceVerifier --> Operator: FAIL CLOSED; nonzero exit; no successful report
+else all exact hash-bound checks pass
+    EvidenceVerifier --> Operator: deterministic evidence report\nrecovery/formula/admission approvals NOT_GRANTED
+end
+
+note over Parser, EvidenceVerifier
+  Six hashes open strictly. Twenty-seven retain an independently verified
+  root-mini-stream/Workbook-chain overlap and still require explicit recovery
+  exception approval. Zero formula records proves only their absence from the
+  exact retained bytes, not upstream authoring history.
 end note
 
 == Phase 3B.3 normalization candidate [Implemented, no admission] ==

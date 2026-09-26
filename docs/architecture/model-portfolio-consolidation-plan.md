@@ -559,6 +559,13 @@ Model zero-to-absence remains unresolved; shortlist original zeros remain
 sources. Recovery/formula evidence, anomaly dispositions, eligibility, writer
 integration, and all admission decisions remain proposed.
 
+The read-only, hash-bound
+[BIFF recovery and formula evidence verifier](biff-xls-recovery-formula-evidence-v1.md)
+is now implemented. It independently inspects CFBF/FAT and BIFF records,
+cross-checks Calamine and the published parser, and reproduces the 33-workbook
+row/field inventory without exposing raw financial rows. Its evidence report
+keeps all recovery, formula-origin, and admission approvals `NOT_GRANTED`.
+
 A later separately authorized admission rehearsal must use SQLite-backup-API
 copies and retained workbooks, compare the entire ordered receipt chain and all
 eight read workflows, exercise crash recovery, and leave all live stores and

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import struct
 from pathlib import Path
 
 import xlwt  # type: ignore[import-untyped]
@@ -27,6 +28,7 @@ def write_biff_fixture(
     malformed_model_header: bool = False,
     repeat_model_header: bool = False,
     extra_model_data: bool = False,
+    extra_model_blank: bool = False,
     include_formula: bool = False,
     duplicate_shortlist_first_row: bool = False,
 ) -> Path:
@@ -40,7 +42,12 @@ def write_biff_fixture(
             first_data_row = 2
         else:
             first_data_row = 1
-        _write_model_rows(model, first_data_row, extra_model_data=extra_model_data)
+        _write_model_rows(
+            model,
+            first_data_row,
+            extra_model_data=extra_model_data,
+            extra_model_blank=extra_model_blank,
+        )
     if include_shortlist:
         shortlist = workbook.add_sheet(shortlist_sheet_name, cell_overwrite_ok=True)
         shortlist.visibility = 1 if hide_shortlist else 0
@@ -63,6 +70,27 @@ def write_biff_fixture(
     return path
 
 
+def write_root_ministream_overlap_fixture(
+    root: Path,
+    *,
+    filename: str = "Synthetic_Recovery_20260115.xls",
+) -> Path:
+    """Generate a workbook whose root mini-stream claims the Workbook chain."""
+    path = write_biff_fixture(root, filename=filename)
+    payload = bytearray(path.read_bytes())
+    sector_size = 1 << struct.unpack_from("<H", payload, 30)[0]
+    first_directory_sector = struct.unpack_from("<I", payload, 48)[0]
+    directory_offset = (first_directory_sector + 1) * sector_size
+    workbook_entry_offset = directory_offset + 128
+    workbook_start_sector = struct.unpack_from(
+        "<I", payload, workbook_entry_offset + 116
+    )[0]
+    struct.pack_into("<I", payload, directory_offset + 116, workbook_start_sector)
+    struct.pack_into("<I", payload, directory_offset + 120, sector_size)
+    path.write_bytes(payload)
+    return path
+
+
 def _write_headers(
     sheet: object,
     headers: tuple[str, ...],
@@ -75,7 +103,13 @@ def _write_headers(
         sheet.write(row, column, value)  # type: ignore[attr-defined]
 
 
-def _write_model_rows(sheet: object, first_row: int, *, extra_model_data: bool) -> None:
+def _write_model_rows(
+    sheet: object,
+    first_row: int,
+    *,
+    extra_model_data: bool,
+    extra_model_blank: bool,
+) -> None:
     percentage = xlwt.easyxf(num_format_str="0.00%")
     values: list[object] = [
         "PB Szintetikus",
@@ -111,6 +145,11 @@ def _write_model_rows(sheet: object, first_row: int, *, extra_model_data: bool) 
             sheet.write(first_row + offset, column, value, style)  # type: ignore[attr-defined]
     if extra_model_data:
         sheet.write(first_row, len(MODEL_HEADERS), "outside")  # type: ignore[attr-defined]
+    if extra_model_blank:
+        text_format = xlwt.easyxf(num_format_str="@")
+        sheet.write(  # type: ignore[attr-defined]
+            first_row, len(MODEL_HEADERS), None, text_format
+        )
 
 
 def _write_shortlist_rows(

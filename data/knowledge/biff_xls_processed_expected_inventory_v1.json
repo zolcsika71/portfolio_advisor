@@ -1,0 +1,380 @@
+{
+  "contract": {
+    "name": "BIFF_XLS_PROCESSED_EXPECTED_INVENTORY",
+    "version": 1
+  },
+  "expected_aggregate": {
+    "data_fields": 327603,
+    "formula_records": 0,
+    "model_rows": 5283,
+    "recovery_required": 27,
+    "shortlist_rows": 10833,
+    "strict_open": 6,
+    "workbooks": 33
+  },
+  "workbooks": [
+    {
+      "data_fields": 9905,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20240702.xls",
+      "formula_record_count": 0,
+      "model_rows": 165,
+      "overlap_sector_count": 396,
+      "sha256": "4643359b2693764ce24d3ed8dc985b2ee40d104e25a27ebed852d94ff82e0004",
+      "shortlist_rows": 322,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9905,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20240718.xls",
+      "formula_record_count": 0,
+      "model_rows": 165,
+      "overlap_sector_count": 396,
+      "sha256": "1162ad9340eae704cbaa059c54de41cf2dace581236cc5b78fd110362c0634a5",
+      "shortlist_rows": 322,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9905,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20240809.xls",
+      "formula_record_count": 0,
+      "model_rows": 165,
+      "overlap_sector_count": 396,
+      "sha256": "c051421872b63fe73fd87f29087d9dcf2c938a55df6b369fc5a65a92581e84db",
+      "shortlist_rows": 322,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9925,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20240823.xls",
+      "formula_record_count": 0,
+      "model_rows": 165,
+      "overlap_sector_count": 397,
+      "sha256": "b299cc7b3aed7ed4c8d7cb21fc2ef1dff5dc36deba455c671f0e3970ce920021",
+      "shortlist_rows": 323,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9925,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20240902.xls",
+      "formula_record_count": 0,
+      "model_rows": 165,
+      "overlap_sector_count": 397,
+      "sha256": "dfa41fb6dc1c9a9c659161226ae53dd741c6a678a155b807db74151ec973cca5",
+      "shortlist_rows": 323,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9925,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20240917.xls",
+      "formula_record_count": 0,
+      "model_rows": 165,
+      "overlap_sector_count": 397,
+      "sha256": "4ece94b61d396a861745032251eb85990ca84dff42f24622124834635c83235a",
+      "shortlist_rows": 323,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9902,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20240930.xls",
+      "formula_record_count": 0,
+      "model_rows": 162,
+      "overlap_sector_count": 396,
+      "sha256": "f8318124002feb7804364eb68fcba6a74a9788d52bb223ec134f29bb814d6faf",
+      "shortlist_rows": 325,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 10109,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20241007.xls",
+      "formula_record_count": 0,
+      "model_rows": 169,
+      "overlap_sector_count": 0,
+      "sha256": "646b0b323e1f8523b5e6fa466c7b89a608bc96576e70014b9e9d9d01f3d030f7",
+      "shortlist_rows": 328,
+      "strict_error": null,
+      "strict_open": true
+    },
+    {
+      "data_fields": 10109,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20241017.xls",
+      "formula_record_count": 0,
+      "model_rows": 169,
+      "overlap_sector_count": 405,
+      "sha256": "fadecf0acb478cb4ab4596d1cd509390f0a1d221ee811e05528e5ad6cc173abe",
+      "shortlist_rows": 328,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 10109,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20241105.xls",
+      "formula_record_count": 0,
+      "model_rows": 169,
+      "overlap_sector_count": 404,
+      "sha256": "b5ff8fef0b4ea778ed4e6ffc661100fdea82b656f03d7b5c58a5f58cff9ec560",
+      "shortlist_rows": 328,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 10169,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20241122.xls",
+      "formula_record_count": 0,
+      "model_rows": 169,
+      "overlap_sector_count": 406,
+      "sha256": "1fe00c6e2c52778cb16b3fd3a698224c672a835ae918c556a2add1c8b51a9ecf",
+      "shortlist_rows": 331,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 10106,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20241203.xls",
+      "formula_record_count": 0,
+      "model_rows": 166,
+      "overlap_sector_count": 404,
+      "sha256": "a294fac8c5fd0f4021203484fc1f5b2bf5c67f03ff7346689d716c8e60eb891e",
+      "shortlist_rows": 331,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 10106,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20241220.xls",
+      "formula_record_count": 0,
+      "model_rows": 166,
+      "overlap_sector_count": 0,
+      "sha256": "5b0bbd39c85fcb5982a901ff929f4d0698086aff64dd531b4309e80d2a0bfd13",
+      "shortlist_rows": 331,
+      "strict_error": null,
+      "strict_open": true
+    },
+    {
+      "data_fields": 10206,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250115.xls",
+      "formula_record_count": 0,
+      "model_rows": 166,
+      "overlap_sector_count": 409,
+      "sha256": "8a8023a9aa962506c5f5af7e7e89e0f35bfe7ea2c81b7bd3cc8f4b5ec6ab2008",
+      "shortlist_rows": 336,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 10206,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250203.xls",
+      "formula_record_count": 0,
+      "model_rows": 166,
+      "overlap_sector_count": 0,
+      "sha256": "996916e943b50076a3e31ce7d4d58f9c395f79c4f44bc52eb14cd7a8a5c83e1f",
+      "shortlist_rows": 336,
+      "strict_error": null,
+      "strict_open": true
+    },
+    {
+      "data_fields": 9706,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250303.xls",
+      "formula_record_count": 0,
+      "model_rows": 166,
+      "overlap_sector_count": 0,
+      "sha256": "2d8bba121219fbcf63d128dcc474915d94e63dfbeb4432f487eb9eeaaa4ffcea",
+      "shortlist_rows": 311,
+      "strict_error": null,
+      "strict_open": true
+    },
+    {
+      "data_fields": 9415,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250307.xls",
+      "formula_record_count": 0,
+      "model_rows": 155,
+      "overlap_sector_count": 0,
+      "sha256": "3d372d7bba9f7c51ebabdbafe186bf48da876c334dfec9101e3e39417320fb5d",
+      "shortlist_rows": 308,
+      "strict_error": null,
+      "strict_open": true
+    },
+    {
+      "data_fields": 9355,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250401.xls",
+      "formula_record_count": 0,
+      "model_rows": 155,
+      "overlap_sector_count": 374,
+      "sha256": "dc62ee8f966be6f16dc6063a0d49f1d8db15ef280ac28d4c6d9dcb1d61cd998f",
+      "shortlist_rows": 305,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9455,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250414.xls",
+      "formula_record_count": 0,
+      "model_rows": 155,
+      "overlap_sector_count": 379,
+      "sha256": "b6c58dd7b731e92c3b452a9b761f86653349b3ab6b209b7000fd3cf663a3625f",
+      "shortlist_rows": 310,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9475,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250509.xls",
+      "formula_record_count": 0,
+      "model_rows": 155,
+      "overlap_sector_count": 382,
+      "sha256": "a74151e567b5a4b095f302e19411ffac1d191d794a0a1de5898a85f2268ebbed",
+      "shortlist_rows": 311,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9495,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250519.xls",
+      "formula_record_count": 0,
+      "model_rows": 155,
+      "overlap_sector_count": 380,
+      "sha256": "867096ed3ee82283c267cda3ec49f02caa4f0f96144c3faaeb11ed620344374f",
+      "shortlist_rows": 312,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9495,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250603.xls",
+      "formula_record_count": 0,
+      "model_rows": 155,
+      "overlap_sector_count": 380,
+      "sha256": "7959bac98498473fd7c29e7647945e50b2a78e20d18ed93cf0c79ebc8fd320e8",
+      "shortlist_rows": 312,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9595,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250604.xls",
+      "formula_record_count": 0,
+      "model_rows": 155,
+      "overlap_sector_count": 0,
+      "sha256": "4e691f2afeac69b2ba63e8803840d5bcd7890a476c41b87b0afb624b30867c67",
+      "shortlist_rows": 317,
+      "strict_error": null,
+      "strict_open": true
+    },
+    {
+      "data_fields": 9595,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250613.xls",
+      "formula_record_count": 0,
+      "model_rows": 155,
+      "overlap_sector_count": 385,
+      "sha256": "b7f2d9f8346dabbda3ff0facbb136fdee92e90845f50002ea447b2de5020db8c",
+      "shortlist_rows": 317,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9635,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250703.xls",
+      "formula_record_count": 0,
+      "model_rows": 155,
+      "overlap_sector_count": 386,
+      "sha256": "c636586a06f2e7862ce2af33b8f810b6759a1dc50def440ac7094afa38a3bc9e",
+      "shortlist_rows": 319,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9635,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250812.xls",
+      "formula_record_count": 0,
+      "model_rows": 155,
+      "overlap_sector_count": 386,
+      "sha256": "ff49b7244b1c5c8eecbc935fd00922ce8bbbf9df10d87676aefe6182d096b825",
+      "shortlist_rows": 319,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9635,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250825.xls",
+      "formula_record_count": 0,
+      "model_rows": 155,
+      "overlap_sector_count": 387,
+      "sha256": "c5f5b1bd0945942cfd42b8f4c4b99b8e16554c754bbd8f681f76269be027b69e",
+      "shortlist_rows": 319,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9672,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20250910.xls",
+      "formula_record_count": 0,
+      "model_rows": 152,
+      "overlap_sector_count": 388,
+      "sha256": "08d7d242b0965ad8b166f5a545853d9598ad6cf8b7e43500c004d10d3b32e583",
+      "shortlist_rows": 324,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 9712,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20260119.xls",
+      "formula_record_count": 0,
+      "model_rows": 152,
+      "overlap_sector_count": 390,
+      "sha256": "239a564d4afd17f9ad7a78d13923b4f508214db54957e532466be912899b3d98",
+      "shortlist_rows": 326,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 10394,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20260401.xls",
+      "formula_record_count": 0,
+      "model_rows": 154,
+      "overlap_sector_count": 419,
+      "sha256": "6b244e04ccb4efd1830cddf188008e7e7ec7e200f169fd1583dd0993908b36cb",
+      "shortlist_rows": 358,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 10894,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20260706.xls",
+      "formula_record_count": 0,
+      "model_rows": 154,
+      "overlap_sector_count": 441,
+      "sha256": "fea2ca91d597c520d45cee2de8767be96e32b38f6e5720843f1b0c8b4701cc76",
+      "shortlist_rows": 383,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 10954,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20260818.xls",
+      "formula_record_count": 0,
+      "model_rows": 154,
+      "overlap_sector_count": 443,
+      "sha256": "646940a4447fc9287097b8ee1705886b0040fc7af2e488c0054960bcf9d99be5",
+      "shortlist_rows": 386,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    },
+    {
+      "data_fields": 10974,
+      "filename": "PB_Modell_Portfoliok_es_Shortlist_20260826.xls",
+      "formula_record_count": 0,
+      "model_rows": 154,
+      "overlap_sector_count": 444,
+      "sha256": "852f697d73112a53fcd75946c16dbc71c5505eea3f35c43d4681f7fbabd34c73",
+      "shortlist_rows": 387,
+      "strict_error": "CompDocError: Workbook corruption: seen[2] == 4",
+      "strict_open": false
+    }
+  ]
+}

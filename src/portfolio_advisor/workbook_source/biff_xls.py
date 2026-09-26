@@ -14,6 +14,7 @@ and records that limitation in every envelope.
 from __future__ import annotations
 
 import hashlib
+import io
 import re
 import struct
 from dataclasses import dataclass
@@ -357,6 +358,7 @@ def parse_biff_xls(path: Path) -> BiffXlsEnvelope:
             file_contents=source_bytes,
             formatting_info=True,
             ignore_workbook_corruption=True,
+            logfile=io.StringIO(),
             on_demand=False,
         )
     except (

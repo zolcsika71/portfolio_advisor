@@ -84,6 +84,13 @@ whether a non-formula cell produced the same cached representation. This limit
 is recorded in every envelope and must be resolved before any workflow that
 requires formula provenance.
 
+The separately implemented read-only
+[recovery and formula evidence verifier](biff-xls-recovery-formula-evidence-v1.md)
+now inventories formula-related BIFF records independently for the exact 33
+retained hashes. It does not change this parser contract: parser output alone
+still cannot establish formula presence, and the verifier grants neither a
+formula-origin approval nor a recovery exception.
+
 ## Deferred work
 
 Database admission, portable evidence packaging, legacy/effective projections,
