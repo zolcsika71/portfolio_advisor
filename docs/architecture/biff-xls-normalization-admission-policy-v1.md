@@ -17,6 +17,16 @@ eligibility or admission mechanism. Its workbook hash and filename are declared
 lookup identities matched to the bound historical report, not proof of a fresh
 inspection of current workbook bytes.
 
+On 2026-09-26 the user also explicitly approved
+`MODEL_METRIC_ZERO_HANDLING_POLICY_V1`: preserve finite numeric zeros as
+original observations for the exact twelve model metrics and expose legacy
+omission only through the separately identified, explicitly selected,
+provenance-bound `MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1` projection.
+The approval covers the 33 inventoried workbooks and future workbooks that
+independently satisfy the same v1 typed-source contract. It records policy
+decision only; neither the projection nor consumer selection is implemented,
+and no admission or operational authority is granted.
+
 The source parser continues to return `NOT_EVALUATED_PARSER_ONLY`. The pure
 `BIFF_XLS_NORMALIZATION_CANDIDATE_V1` adapter returns a separate
 `NOT_EVALUATED_NORMALIZATION_CANDIDATE_ONLY` result with
@@ -189,7 +199,7 @@ envelope. No current metric cell is empty text or text `"0"`.
 | --- | --- | --- | --- |
 | BIFF `number`, finite and non-zero | Same unscaled binary64 value | Same unless an exact authorized correction says otherwise | Eligible |
 | BIFF `number` equal to zero, shortlist | `0.0` observation | `NULL` only for the 23,979 exact ADR-003 correction bindings; otherwise `0.0` | Eligible only under exact dataset/correction binding |
-| BIFF `number` equal to zero, model | No metric observation in the existing model-only legacy-compatible projection; typed zero remains in the source envelope | `NULL`/absent for compatibility consumers | **Proposed reuse requires approval.** It is not a statement that the source failed cleaning and must never apply to shortlist or allocation |
+| BIFF `number` equal to zero, model | `0.0` observation plus the adapter's still-current `UNRESOLVED_MODEL_ZERO_SEMANTICS` diagnostic | Approved compatibility policy specifies omission; original remains `0.0` | **Policy approved 2026-09-26; implementation pending.** It is not a statement that the source failed cleaning and must never apply to shortlist or allocation |
 | BIFF `blank` | No observation / SQL `NULL` | `NULL` | Eligible; retain `blank` source type |
 | BIFF `empty` | No observation / SQL `NULL` | `NULL` | Eligible; retain `empty` source type |
 | Text empty string | No observation / SQL `NULL` | `NULL` | Eligible only with an explicit `EMPTY_TEXT_AS_MISSING` diagnostic; retain text source type |
@@ -197,6 +207,155 @@ envelope. No current metric cell is empty text or text `"0"`.
 | BIFF error or error-like text | None | None | Reject metric candidate; preserve raw/error text |
 | BIFF boolean or date serial | None | None | Reject metric candidate even if the payload is numerically representable |
 | Non-finite number | None | None | Reject metric candidate |
+
+### Approved model-zero policy; implementation pending
+
+**Decision status: explicitly approved by the user on 2026-09-26; not
+implemented.** The approved policy is
+`MODEL_METRIC_ZERO_HANDLING_POLICY_V1`. It has two outputs that must never be
+collapsed into one nullable scalar:
+
+1. `MODEL_METRIC_ORIGINAL_V1` preserves every accepted finite BIFF number as
+   the normalized original, including numeric zero; the typed raw value retains
+   any signed-zero representation. The typed cell, raw value, format,
+   coordinate, field occurrence, workbook hash, sheet/row reference, and
+   normalization-candidate fingerprint remain the evidence authority.
+2. `MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1` is a separately named
+   projection. For an original numeric zero it emits disposition
+   `OMITTED_NUMERIC_ZERO_FOR_LEGACY_COMPATIBILITY` and no metric observation;
+   for a finite non-zero number it emits the identical unscaled number. It does
+   not modify the original observation or claim that the provider meant
+   “missing.”
+
+The policy applies only to `MODEL_PORTFOLIO` fields with these exact header and
+metric-identity pairs: `YTD`/`YTD`, `1yr`/`RETURN_1Y`,
+`3yr`/`RETURN_3Y`, `5yr`/`RETURN_5Y`,
+`1Y Sharpe`/`SHARPE_RATIO_1Y`, `3Y Sharpe`/`SHARPE_RATIO_3Y`,
+`5Y Sharpe`/`SHARPE_RATIO_5Y`, `1Y Vol.`/`VOLATILITY_1Y`,
+`3Y Vol.`/`VOLATILITY_3Y`, `Down. risk`/`DOWNSIDE_RISK`,
+`Info. ratio`/`INFORMATION_RATIO`, and
+`Max. drawd.`/`MAXIMUM_DRAWDOWN`. The legacy English column labels are target
+aliases, not additional source headers. `Hányad (%)`, every descriptive field,
+and the entire shortlist role are outside scope.
+
+The earlier retained-corpus audit—not a measurement made by this approval
+record—found 12,072 numeric-zero cells in this exact model metric scope across
+5,283 rows and 33 workbooks. That count supports the approved scope but does not
+establish that any provider zero means unavailable data.
+
+#### Projection states and provenance
+
+The compatibility projection must record its name and version, the input
+normalization contract and candidate fingerprint, workbook SHA-256, exact sheet
+name and role, row and field occurrence IDs, source coordinate and header,
+metric identity, original type and value, output disposition/value, and a
+deterministic projection fingerprint. Its states are:
+
+| Normalized-original state | Original output | Compatibility output |
+| --- | --- | --- |
+| Finite BIFF number, non-zero | Same unscaled number | Same unscaled number, `PRESENT` |
+| Finite BIFF number, numeric zero | `0.0`, `PRESENT` | No observation, `OMITTED_NUMERIC_ZERO_FOR_LEGACY_COMPATIBILITY` |
+| BIFF `blank` or `empty` | No observation with exact source-missing type | No observation, `SOURCE_MISSING`; never relabel as omitted zero |
+| Empty text | No observation plus `EMPTY_TEXT_AS_MISSING` | No observation with that diagnostic; never relabel as omitted zero |
+| Text `"0"` or numeric-looking text | Rejected | Rejected; no compatibility coercion |
+| Error, error-like text, boolean, date, or non-finite number | Rejected | Rejected; no compatibility output |
+
+An implementation may serialize a compatibility omission as SQL `NULL` or as
+an absent metric row, but it must retain the disposition and original binding.
+`NULL`, no observation, source-missing, omitted zero, and rejected input are
+therefore distinct contract states even where an existing reader represents
+more than one of them as Python `None`. No state removes the source occurrence
+or holding: a compatibility omission excludes only that metric observation
+from a metric-specific consumer calculation.
+
+#### Consumer selection and traced effects
+
+Selection must be explicit and provenance-bearing:
+
+- an evidence or research consumer selects `MODEL_METRIC_ORIGINAL_V1`;
+- a separately approved legacy-compatible reader may select
+  `MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1`; and
+- absence of a supported selector, silent fallback, schema auto-detection, or
+  mixing both projections in one result fails closed.
+
+The operational importer currently calls
+`DB_creation/excel_processing.py::replace_numeric_zeros` before its flat SQLite
+insert, so every numeric zero in that prepared row becomes `None`. That helper
+is broader than the approved policy because it also reaches non-metric numeric
+fields; the approved compatibility rule intentionally does not copy that
+breadth. Phase 1 `database/model_portfolio_phase1.py::_parsed_number` and the
+synthetic Phase 3B.1 model writer's `_number_or_none(..., zero_is_null=True)`
+also turn zero into no model metric observation, while the Phase 3B.1 shortlist
+path explicitly passes `zero_is_null=False`. The flat
+`database/repository.py::ModelPortfolioRepository` and schema-v3 reader adapters
+then represent SQL `NULL` or a missing metric observation as
+`HoldingObservation` `None`.
+
+Current ranking reads only five of the twelve identities: `RETURN_1Y`,
+`SHARPE_RATIO_1Y`, `VOLATILITY_1Y`, `DOWNSIDE_RISK`, and
+`MAXIMUM_DRAWDOWN`. `metrics/portfolio.py::_weighted_metric` excludes `None`
+holdings and reduces coverage; if every allocated holding is absent, the
+portfolio metric is unavailable. The active ranking requires at least 70%
+coverage for volatility and maximum drawdown, while an unavailable optional
+scoring metric is excluded for all eligible portfolios with a warning. The
+other seven scoped fields do not enter the current `HoldingObservation`
+ranking contract.
+
+For example, for 60% and 40% holdings with source volatility values `0.0` and
+`0.10`, the original projection would produce `0.04` at 100% coverage. The
+compatibility projection would omit the zero, produce `0.10` at 40% coverage,
+and the current eligibility rule would reject the portfolio for insufficient
+volatility coverage. A single 100%-weight zero would be an available `0.0` in
+the original projection but unavailable in the compatibility projection. A
+blank cell and text `"0"` would not follow either numeric-zero path: the former
+is source-missing and the latter is rejected.
+
+These effects follow directly from the current parser, Phase 1/3B.1, reader,
+metric, eligibility, and scoring code. This task did not run retained data or a
+ranking comparison. Exact compatibility of the approved projection with all
+33 retained workbooks and every ranking result is therefore **unproven** and
+would require a separately authorized, bounded rehearsal.
+
+#### Scope, acceptance, and rejection conditions
+
+The approved scope is the twelve exact model fields both for the 33 inventoried
+workbook hashes and for future workbooks that independently satisfy the same
+`BIFF_XLS_V1` model-role, exact-header, typed-cell, and normalization contracts.
+The corpus count is not projected onto future data. Changed or future bytes
+inherit no recovery exception, formula decision, correction binding, anomaly
+disposition, eligibility, or admission approval.
+
+Any implementation conforms to the approved policy only when original zero
+evidence is durable before any compatibility projection, the explicit
+projection identity and provenance are available to every consumer, and
+invalid or unsupported typed states fail closed. It is rejected if a zero is
+rewritten in the original layer, a projection is selected implicitly, the
+original and compatibility states cannot be distinguished, a field outside the
+twelve-field model scope is changed, or a text/missing/error state is coerced
+into the numeric-zero rule.
+
+Alternatives considered are: preserve originals without a compatibility view,
+which would not preserve the code-traced legacy consumer behavior; rewrite
+originals to `NULL`, which destroys evidence; infer zero meaning per financial
+metric, for which no provider evidence exists; reuse shortlist corrections,
+whose exact dataset and authority do not cover model rows; or limit the rule to
+the 33 hashes, which is more conservative but would force the same typed
+decision for each future workbook. The approved two-output contract preserves
+evidence while making legacy behavior explicit and selectable.
+
+Recorded approval wording (explicit user authorization, 2026-09-26):
+
+> I approve `MODEL_METRIC_ZERO_HANDLING_POLICY_V1` for the twelve enumerated
+> `MODEL_PORTFOLIO` metrics on the 33 inventoried workbook hashes and future
+> workbooks that independently satisfy the same v1 typed source contract. A
+> finite BIFF numeric zero must remain an original `0.0` observation. The
+> separately identified
+> `MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1` projection may omit that
+> observation only when explicitly selected and fully provenance-bound. This
+> does not assert that provider zeros mean missing data, does not apply to
+> allocation, shortlist, text zero, missing, error, or non-finite cells, and
+> does not authorize implementation, admission, correction rebinding, ranking
+> or default changes, migration, or cutover.
 
 The current analytical model stage has typed observations for only five metric
 identities (`RETURN_1Y`, `SHARPE_RATIO_1Y`, `VOLATILITY_1Y`, `DOWNSIDE_RISK`,
@@ -360,8 +519,8 @@ The design was checked without modifying retained evidence:
   the zero-correction validator fail with missing/ambiguous metric provenance.
   The temporary copy was then removed.
 
-This validation demonstrates the proposed separation and current correction
-bindings. A later read-only
+This validation demonstrates the separation that the user later approved and
+the current correction bindings. A later read-only
 [BIFF recovery and formula evidence verifier](biff-xls-recovery-formula-evidence-v1.md)
 independently confirmed the allocation-defect signature and zero worksheet
 formula records for the exact 33 hashes. The evidence report itself did not
@@ -370,7 +529,7 @@ recorded below are enforced only by the pure evidence-gate evaluator; they do
 not install overall eligibility, a schema, or an admission path and do not
 rehearse or authorize admission.
 
-## Approved evidence sub-decisions and remaining decisions
+## Approved sub-decisions and remaining decisions
 
 The user explicitly approved these two independent evidence sub-decisions on
 2026-09-26:
@@ -382,23 +541,31 @@ The user explicitly approved these two independent evidence sub-decisions on
   with the limitations and fail-closed conditions in
   [Proposal B](biff-xls-recovery-formula-evidence-v1.md#proposal-b-retained-file-formula-origin-sufficiency).
 
+On the same date, the user separately approved:
+
+- `MODEL_METRIC_ZERO_HANDLING_POLICY_V1` for the exact twelve model metrics on
+  the 33 inventoried workbooks and future workbooks independently satisfying
+  the same v1 typed-source contract. Original numeric zero remains `0.0`; only
+  the separately identified, explicitly selected, provenance-bound
+  `MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1` projection may omit that
+  metric observation, never its source occurrence or holding.
+
 The evidence report's `NOT_GRANTED` fields remain an unchanged record of its
 audit-time state. The subsequent pure evidence-gate evaluator implements only
 the two approved checks and still emits `admission_approval = NOT_GRANTED`; it
 does not implement overall eligibility or authorize admission. The following
-decisions remain pending:
+model-zero implementation work also remains pending: the current normalization
+adapter still emits `UNRESOLVED_MODEL_ZERO_SEMANTICS`, no projection consumer
+exists, and retained-corpus ranking equivalence has not been rehearsed. The
+following unrelated decisions remain pending:
 
-1. Whether the real-source model adapter may reuse the existing model-only
-   numeric-zero-to-absence compatibility rule, or whether typed original model
-   zero observations require an additive schema plus a separate effective
-   compatibility view.
-2. The occurrence-bound disposition manifest for the 24 currency-risk and
+1. The occurrence-bound disposition manifest for the 24 currency-risk and
    three sustainability warnings.
-3. English currency-risk mappings. All candidates in this document are
+2. English currency-risk mappings. All candidates in this document are
    proposals, not approved transformations.
-4. Whether `3yr` and `5yr` returns are cumulative or annualized. No rescaling
+3. Whether `3yr` and `5yr` returns are cumulative or annualized. No rescaling
    is allowed until this is evidenced and approved.
-5. For a future real-workbook writer only, atomic dual-sheet Option A versus
+4. For a future real-workbook writer only, atomic dual-sheet Option A versus
    durable partial-state Option B, plus same-date supersession and post-commit
    publication policy. Phase 3B.1's bounded synthetic Option A approval remains
    implemented and is not pending.
@@ -424,8 +591,10 @@ No current writer consumes the candidate format. The two evidence approvals
 are now enforced by the separate pure
 `BIFF_XLS_EVIDENCE_GATE_EVALUATION` v1 boundary, but it deliberately does not
 combine them with normalization diagnostics or other eligibility gates. The
-smallest next slice is a separately authorized pure eligibility composition
-over the normalization candidate and evidence-gate result. Any later temporary
-rehearsal must reproduce exact correction bindings before an admission adapter
-is designed; neither step may transfer authority or silently choose unresolved
-semantics.
+smallest next slice is a separately authorized pure implementation of the
+approved model-zero projection with synthetic type/provenance/selector tests.
+A later eligibility composition may consume that projection and the
+evidence-gate result only after its own authorization. Any temporary rehearsal
+must reproduce exact correction bindings before an admission adapter is
+designed; none of these steps may transfer authority or silently choose
+unresolved semantics.

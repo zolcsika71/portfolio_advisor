@@ -166,9 +166,11 @@ now governs an implemented pure `BIFF_XLS_NORMALIZATION_CANDIDATE_V1` adapter.
 The adapter separates
 typed raw cells, normalized originals, admitted originals, and effective
 values; retains exact shortlist source references and dataset-bound correction
-bindings; keeps model and shortlist zero rules scoped; and treats recovered
-parsing, uncertain formula origin, currency-risk translations, anomaly
-dispositions, and real-source model zero semantics as explicit approval gates.
+bindings; keeps model and shortlist zero rules scoped; and emits diagnostics for
+recovered parsing, uncertain formula origin, currency-risk translations,
+anomaly dispositions, and real-source model zero semantics. The adapter
+predates the subsequent model-zero policy approval and still emits
+`UNRESOLVED_MODEL_ZERO_SEMANTICS`; no compatibility projection is implemented.
 It accepts only an in-memory parser envelope, caller-supplied expected workbook
 hash, and optional exact approved mapping bytes. It has no database or
 filesystem surface, emits `admission_approval = NOT_GRANTED`, and cannot
@@ -200,6 +202,27 @@ no current-workbook inspection or admission and does not approve the remaining
 consolidation, operational-authority, migration, or cutover decisions. No separate ADR is
 created because these bounded sub-decisions remain within this ADR's broader
 scope, whose overall status remains Proposed.
+
+On 2026-09-26 the user explicitly approved the separate
+`MODEL_METRIC_ZERO_HANDLING_POLICY_V1` sub-decision. It preserves finite numeric
+zero as original evidence for exactly `YTD`, `1yr`, `3yr`, `5yr`, `1Y Sharpe`,
+`3Y Sharpe`, `5Y Sharpe`, `1Y Vol.`, `3Y Vol.`, `Down. risk`, `Info. ratio`,
+and `Max. drawd.`, and defines legacy omission only through the separately
+named, explicitly selected, provenance-bound
+`MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1` projection. Omission applies
+only to that metric observation and never drops its source occurrence or
+holding. Allocation, shortlist fields, text `"0"`, missing cells, errors, dates,
+booleans, and non-finite values are excluded.
+
+The approval covers the 33 inventoried workbooks and future workbooks that
+independently satisfy the same v1 typed-source contract. The earlier corpus
+audit attributed 12,072 numeric-zero cells to the retained scope; this approval
+record does not freshly measure them or claim they mean missing data. Future
+bytes inherit no recovery, formula, correction, eligibility, or admission
+authority. Projection implementation, consumer activation, retained-corpus
+ranking equivalence, and any operational default change remain pending. This
+approved sub-decision does not accept ADR-007 or authorize admission,
+migration, authority transfer, or cutover.
 
 ## Consequences
 
