@@ -33,8 +33,10 @@ On 2026-10-07 the user explicitly approved the three independently reviewed
 model currency-risk policy sub-decisions below: lexical translation, the exact
 24-occurrence anomaly disposition, and the historical comparison-profile
 definition. The subsequent authorized synthetic-only slice implements their
-pure, explicitly selected projection; comparison execution, consumer activation,
-and admission remain unauthorized.
+pure, explicitly selected projection. A separately authorized read-only
+currency-risk comparison now supplies the bounded evidence below; consumer
+activation and admission remain unauthorized. Neither the policies nor that
+completed comparison authorize further comparison execution.
 
 The source parser continues to return `NOT_EVALUATED_PARSER_ONLY`. The pure
 `BIFF_XLS_NORMALIZATION_CANDIDATE_V1` adapter returns a separate
@@ -371,8 +373,8 @@ the required fresh layout. These limitations do not extend the comparison's scop
 
 This establishes only the exercised twelve-metric comparison and five-metric
 ranking bridge on the bound inputs/configuration. Full candidate-native
-descriptive/reader equivalence, future-workbook equivalence, implementation of
-the subsequently approved model currency-risk policies, shortlist translations,
+descriptive/reader equivalence, future-workbook equivalence, integrated use of
+the separately implemented model currency-risk projection, shortlist translations,
 sustainability dispositions, `3yr`/`5yr` interpretation, consumer activation, correction
 preservation, overall eligibility/admission and authority/cutover remain pending.
 The comparison neither applied shortlist corrections nor composed recovery/formula
@@ -450,7 +452,7 @@ to a single-column mapping or the model parser's translation dictionary.
 
 | Original source value | Model rows | Shortlist rows | English category / candidate | Authority / disposition |
 | --- | ---: | ---: | --- | --- |
-| `Nincs fedezve` | 3,345 | 7,917 | `Unhedged` | Model-only lexical policy approved 2026-10-07, unimplemented; shortlist/cross-workflow mapping remains unapproved |
+| `Nincs fedezve` | 3,345 | 7,917 | `Unhedged` | Model-only lexical policy approved 2026-10-07, implemented in the pure projection only; shortlist/cross-workflow mapping remains unapproved |
 | `nincs fedezve` | 6 | 11 | `Unhedged` after case-normalized match | Same model-only approval; preserve original case; shortlist remains unapproved |
 | `Fedezve` | 1,515 | 1,556 | `Hedged` | Same model-only approval; does not establish target currency, hedge ratio, or coverage period |
 | `Részben fedezve` | 102 | 289 | `Partially Hedged` | Same model-only approval; degree and period remain unknown |
@@ -481,9 +483,10 @@ The independently approved identities are
 `MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1`. The user stated:
 “Approve all three within their reviewed scopes.” The approval defines only
 these policy boundaries. The subsequent implementation task authorizes only
-the pure projection and synthetic validation described below. Comparison
-execution, consumer activation, and admission remain unauthorized; no eligibility
-decision is granted.
+the pure projection and synthetic validation described below. The separately
+authorized bounded comparison is recorded below; further comparison execution,
+consumer activation, and admission remain unauthorized. No consolidation
+eligibility decision is granted.
 They concern only `MODEL_PORTFOLIO` / `Devizakockázat`, not
 shortlist currency risk, sustainability, classification pairs or metric policy.
 
@@ -784,8 +787,80 @@ are declared provenance, not newly inspected current bytes. No retained workbook
 database, filesystem evidence, reader or ranking is accessed by the API; this
 slice establishes neither retained-corpus projection equivalence nor complete
 currency-risk information. Historical evidence and its `NOT_GRANTED` fields
-remain unchanged. Comparison execution, active selection, eligibility composition
+remain unchanged. Further comparison execution, active selection, eligibility composition
 and admission still require separate authority.
+
+#### Bounded currency-risk compatibility comparison evidence
+
+The subsequent read-only comparison used published revision
+`5a092ebc4fe68849c41fe6befbe38af6b002cc0b`. Recovery package
+`model-currency-risk-comparison-v1.5VCBFa` preserves the actual
+`compare_currency_risk.py` harness, imported `acceptance_support.py`, reports,
+source/input fingerprints, execution-time dependency versions and
+`REPRODUCE.md` outside Git. Its unchanged `evaluated/comparison.json`
+(`MODEL_CURRENCY_RISK_LEGACY_COMPATIBILITY_COMPARISON_EVIDENCE` v1) has SHA-256
+`4f4d53f5971dba80c58c0765f7208e214a90c15eb07d8186459a41d7d0ec71b6`
+and canonical report fingerprint
+`9809c0abcec2f2a97c0f70da3f70507a517b66ddbe4f30d7c7c207471c4a72af`.
+The package's `SHA256SUMS` has SHA-256
+`d5ca8de946dbbeb92b8a7fe2f56a7b9dea5b75e97bab4825ef9d6a61777f0432`;
+all 63 entries, saved outcomes and source/input bindings were verified without
+rerunning the comparison. Private row-level results are not committed here.
+
+Historical candidate construction used the published parser and normalizer
+with the verified workbook hash and **`approved_shortlist_mapping_manifest=None`**.
+Every candidate went through the public `project_model_currency_risk` API with
+explicit `MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1`, its actual candidate
+fingerprint and the unchanged production anomaly registry. Actual legacy
+`read_target_worksheet`/`prepare_rows` bound source occurrences to the actual
+read-only `ModelPortfolioRepository`, preserving multiplicity and reader order.
+The temporary injected reader changed **only `currency_risk`**; metrics,
+allocations and every other descriptive input stayed fixed to legacy values.
+Actual `CapitalPreservationAdvisor.evaluate` and production metric/eligibility/
+scoring/ranking functions used approved ranking policy v1.0.1, not an approximation.
+
+- All 33 workbooks/dates and 408 date/portfolio identities matched: 5,283
+  model occurrences accounted for as 4,968 approved translations, 291 preserved
+  source-missing states (255 formatted blanks and 36 empty cells), and all 24
+  exact anomaly dispositions to reason-bearing `None`. There were zero public-API
+  rejections, reader value/type mismatches, advisor discrepancies or blocked dates.
+- Currency-risk indicators and coverage, eligibility/reasons, score
+  contributions/totals, ordering, warnings, alternatives, winners and four
+  observed tie groups matched exactly. Four representative in-memory projection
+  and advisor repeats (2024-07-02, 2024-10-17, 2025-05-09, 2026-08-26) were
+  deterministic; no second corpus run was performed.
+- Both exact leading-space sheet identities, original candidates/cells,
+  diagnostics, holdings and occurrence multiplicity stayed intact, including
+  all 10,833 shortlist occurrences and 327,603 typed source data fields.
+- The legacy indicator reported full coverage for **160 date/portfolio
+  identities with missing labels** and **102 with partially hedged labels**.
+  These groups may overlap and must not be summed as distinct identities.
+  Neither matching historical calculations nor that coverage flag establishes
+  complete currency-risk information, hedging of missing/partially hedged
+  holdings, hedge fractions, or numeric-code meanings.
+
+Reproduction requires a clean checkout at the exact source revision, its own
+imports and recorded configuration, all external retained workbooks and the
+legacy database at their recorded hashes, and the unchanged prior acceptance
+package `model-currency-risk-retained-acceptance-v1.G7hAUB`. The package includes
+hashes, not workbook/database bytes. The actual harness requires a fresh output
+directory and its adjacent support module; production-source paths and Git
+blobs are checked. Complete installed-dependency versions describe this
+execution, not earlier audits. The harness matched full legacy holdings using
+source-order queues; individually permuting indistinguishable duplicates cannot
+be proven without legacy source coordinates, although multiplicity is preserved
+and no identical `HoldingObservation` duplicate groups were observed here.
+This is published-parser evidence, not a new independent BIFF/formula/recovery
+inspection or waiver of historical diagnostics.
+
+This result is separate from the
+[earlier twelve-metric comparison](#bounded-retained-corpus-comparison-evidence),
+which held legacy descriptive inputs fixed. Neither result alone nor the two
+together proves an integrated candidate-native reader or joint projection
+composition. Full candidate-native reader equivalence, consumer activation,
+consolidation eligibility composition, remaining policy gates and admission
+remain pending. Observed eligibility is existing production-ranking eligibility
+only. All results retain admission `NOT_GRANTED`; ADR-007 remains `Proposed`.
 
 ## Admission eligibility
 
@@ -936,9 +1011,11 @@ On 2026-10-07 the user explicitly approved all three model currency-risk
 sub-decisions within the [reviewed scopes](#model-currency-risk-translation-and-anomaly-policy):
 `MODEL_CURRENCY_RISK_TRANSLATION_POLICY_V1`,
 `MODEL_CURRENCY_RISK_ANOMALY_DISPOSITION_V1`, and
-`MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1`. Only the subsequent pure
-projection/synthetic implementation is authorized; comparison execution,
-consumer activation, and admission remain unauthorized. The typed
+`MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1`. The subsequent pure
+projection implementation and separately authorized
+[bounded currency-risk comparison](#bounded-currency-risk-compatibility-comparison-evidence)
+are completed; further comparison execution, consumer activation, and admission
+remain unauthorized. The typed
 inspection manifest's `NOT_GRANTED` fields remain its unchanged audit-time
 record; the subsequent approval is recorded only here, not backfilled into
 historical evidence.

@@ -256,8 +256,9 @@ On 2026-10-07 the user explicitly approved all three
 [model currency-risk policy sub-decisions](../architecture/biff-xls-normalization-admission-policy-v1.md#model-currency-risk-translation-and-anomaly-policy):
 “Approve all three within their reviewed scopes.” These are independent policy
 approvals only. The subsequent synthetic-only task authorizes the separate pure
-projection described below; comparison execution, consumer activation, and
-admission remain unauthorized. `MODEL_CURRENCY_RISK_TRANSLATION_POLICY_V1`
+projection described below. A separately authorized bounded currency-risk
+comparison is now recorded below; further comparison execution, consumer
+activation, and admission remain unauthorized. `MODEL_CURRENCY_RISK_TRANSLATION_POLICY_V1`
 defines only declared Hungarian BIFF text keys mapped to `Hedged`, `Unhedged` and
 `Partially Hedged`, preserving originals and the explicit lookup/projection
 identity through text-only NFC/trim/casefold lookup. Shortlist, numeric-code
@@ -325,6 +326,46 @@ override is exposed; these tests do not prove complete retained-candidate
 acceptance or reader equivalence. No consumer, database, ranking,
 eligibility or operational default is changed. Future lexical inputs inherit
 no evidence/admission authority; future anomalies inherit no exception.
+
+The subsequently completed
+[bounded currency-risk comparison](../architecture/biff-xls-normalization-admission-policy-v1.md#bounded-currency-risk-compatibility-comparison-evidence)
+used published revision `5a092ebc4fe68849c41fe6befbe38af6b002cc0b` and the
+unchanged public projection/production registry. Historical candidates omitted
+the optional shortlist mapping manifest (`approved_shortlist_mapping_manifest=None`).
+Actual legacy parsing/read-only reader and production advisor/ranking functions
+matched all 33 workbooks/dates and 408 date/portfolio identities, with only
+currency-risk values substituted and metrics, allocations and all other
+descriptive inputs held fixed. All 5,283 model occurrences were accounted for:
+4,968 translations, 291 preserved missing states and 24 exact anomaly
+dispositions; public-API rejections and reader/advisor discrepancies were zero.
+Coverage, eligibility/reasons, scores, ordering, warnings, winners and four
+observed ties matched; four representative repeats were deterministic.
+Original candidates, diagnostics, occurrence multiplicity, 10,833 shortlist
+occurrences and 327,603 typed source fields remained intact.
+
+Recovery package `model-currency-risk-comparison-v1.5VCBFa` preserves the
+actual harness/support, report, fingerprints, execution-time dependency versions
+and reproduction instructions outside Git. `evaluated/comparison.json` SHA-256
+is `4f4d53f5971dba80c58c0765f7208e214a90c15eb07d8186459a41d7d0ec71b6`;
+`SHA256SUMS` SHA-256 is
+`d5ca8de946dbbeb92b8a7fe2f56a7b9dea5b75e97bab4825ef9d6a61777f0432`.
+All 63 entries and source/input/result bindings were verified without executing
+the comparison again. Reproduction requires the exact clean source revision,
+recorded configuration, external hash-bound retained inputs, prior acceptance
+package, adjacent support module and fresh outputs. Dependencies describe this
+execution, not older audits; legacy rows lack individual source coordinates
+for tracing indistinguishable duplicate permutations.
+
+The legacy indicator reported full coverage for 160 identities with missing
+labels and 102 with partially hedged labels. These groups may overlap; their
+counts must not be summed as distinct identities. Matching historical
+calculations does not prove complete currency-risk information or hedging of
+missing/partially hedged holdings. This is separate from the earlier metric
+comparison: neither individually nor together proves an integrated
+candidate-native reader or joint projection composition. Full candidate-native
+reader equivalence, consumer activation, consolidation eligibility composition
+and admission remain pending. No approval, policy, default or operational
+authority is expanded; ADR-007 remains `Proposed` and admission `NOT_GRANTED`.
 
 ## Consequences
 

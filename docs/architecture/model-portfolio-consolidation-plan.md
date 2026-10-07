@@ -578,7 +578,7 @@ consumer is integrated, and full candidate-native reader equivalence remains
 unproven. Shortlist original zeros remain `0.0`,
 and the exact existing ADR-003 corrections are not inherited by new sources.
 Recovery/formula evidence is governed by the subsequently approved hash-bound
-sub-decisions described below; anomaly dispositions, executable overall
+sub-decisions described below; remaining anomaly dispositions, executable overall
 eligibility, writer integration, and all admission decisions remain proposed.
 
 The completed [bounded model-metric comparison](biff-xls-normalization-admission-policy-v1.md#bounded-retained-corpus-comparison-evidence)
@@ -602,8 +602,9 @@ as detailed in the linked comparison record and package instructions.
 The [model currency-risk policies](biff-xls-normalization-admission-policy-v1.md#model-currency-risk-translation-and-anomaly-policy)
 were explicitly approved by the user on 2026-10-07: “Approve all three within
 their reviewed scopes.” A subsequent synthetic-only slice now implements the
-separate pure projection; comparison execution, consumer activation, and
-admission remain unauthorized. The policies separate
+separate pure projection. A separately authorized bounded currency-risk
+comparison is now recorded below; further comparison execution, consumer
+activation, and admission remain unauthorized. The policies separate
 three lexical
 Hungarian-to-English mappings (`Fedezve` → `Hedged`, `Nincs fedezve` →
 `Unhedged`, `Részben fedezve` → `Partially Hedged`) from a disposition for only
@@ -640,15 +641,14 @@ this evidence in an immutable executable 24-entry registry; it does not alter
 the manifest or extend its exception scope.
 The manifest's `NOT_GRANTED` fields retain its historical audit-time state;
 the later policy approvals are recorded separately, without evidence mutation.
-Comparison execution and consumer activation remain unauthorized; admission remains
+Further comparison execution and consumer activation remain unauthorized; admission remains
 `NOT_GRANTED`.
 
 The active indicator counts only exact English `Unhedged`; with positive total
 allocation it reports full coverage even when currency risk is missing, and
 partial hedging is not a numerical fraction. Missing and partially hedged labels
-do not prove hedging or complete currency-risk information. A faithful comparison
-would retain
-that historical calculation explicitly, not claim complete FX-risk measurement.
+do not prove hedging or complete currency-risk information. The bounded comparison
+retains that historical calculation explicitly, not a claim of complete FX-risk measurement.
 Mapping, exact anomaly dispositions and acceptance of this comparison profile
 are independently approved policy prerequisites, not proof of candidate-native
 reader
@@ -667,6 +667,45 @@ Other descriptive-field contracts and candidate-native comparison remain
 pending. No shortlist or sustainability decision, classification mapping,
 model-zero policy, ranking/default, consumer activation, eligibility composition
 or admission authority changes; future inputs inherit no evidence exceptions.
+
+The completed [bounded currency-risk compatibility comparison](biff-xls-normalization-admission-policy-v1.md#bounded-currency-risk-compatibility-comparison-evidence)
+at published revision `5a092ebc4fe68849c41fe6befbe38af6b002cc0b` matched all
+33 workbooks/dates and 408 date/portfolio identities. All 5,283 model fields
+were accounted for: 4,968 translations, 291 preserved missing states and
+24 exact anomaly dispositions; there were zero public-API rejections or
+reader/advisor discrepancies. Actual legacy parsing/read-only reader and
+production advisor/ranking functions were exercised through a temporary reader
+that substituted only projected currency risk. Metrics, allocations and all
+other descriptive inputs stayed fixed. Candidate construction omitted the
+optional shortlist mapping manifest (`approved_shortlist_mapping_manifest=None`)
+and used the unchanged production registry. Indicators/coverage,
+eligibility/reasons, scores, ordering, warnings, winners and four observed ties
+matched; four representative repeats were deterministic. Original candidates,
+diagnostics, occurrence multiplicity, all 10,833 shortlist occurrences and
+327,603 typed source fields stayed intact.
+
+Recovery package `model-currency-risk-comparison-v1.5VCBFa` preserves the
+actual harness/support module, evidence, fingerprints, execution dependency
+versions and reproduction instructions outside Git. `evaluated/comparison.json`
+SHA-256 is `4f4d53f5971dba80c58c0765f7208e214a90c15eb07d8186459a41d7d0ec71b6`;
+`SHA256SUMS` SHA-256 is
+`d5ca8de946dbbeb92b8a7fe2f56a7b9dea5b75e97bab4825ef9d6a61777f0432`.
+All 63 package entries and source/input/result bindings were verified without
+a corpus rerun. Reproduction needs the exact clean source revision/configuration,
+external hash-bound XLS files and legacy database, the prior acceptance package,
+adjacent harness support and a fresh output directory. Execution-time versions
+are not claims about older audit environments; indistinguishable legacy
+duplicates lack individual stored source coordinates.
+
+Full legacy indicator coverage occurred for 160 identities with missing labels
+and 102 with partially hedged labels; these groups may overlap and must not be
+summed as distinct identities. Compatibility proves neither complete risk
+information nor hedging of those holdings. This currency-risk-only result is
+separate from the earlier twelve-metric comparison; neither independently nor
+together proves an integrated candidate-native reader or joint projection
+composition. Full candidate-native reader equivalence, consumer activation,
+consolidation eligibility composition and admission remain pending. ADR-007
+stays `Proposed`; admission stays `NOT_GRANTED`.
 
 The read-only, hash-bound
 [BIFF recovery and formula evidence verifier](biff-xls-recovery-formula-evidence-v1.md)
@@ -810,11 +849,14 @@ removal.
    bridge match legacy with descriptive inputs fixed; full candidate-native
    reader equivalence remains unproven and no consumer is activated.
    Projection success retains admission `NOT_GRANTED`.
-9. **Currency-risk implementation and remaining anomaly policy:** the user
+9. **Currency-risk consumer integration and remaining anomaly policy:** the user
    approved the model-only lexical mapping, exact 24-occurrence disposition and
    historical-reader comparison-profile definition on 2026-10-07. Their
-   implementation, comparison execution and consumer activation remain
-   unauthorized; no executable mapping/disposition artifact is installed.
+   pure projection is implemented and its separately authorized bounded
+   currency-risk-only comparison matches legacy with other inputs fixed.
+   Further comparison execution and consumer activation remain unauthorized;
+   no admission mapping/disposition artifact is installed. Neither this result
+   nor the separate metric comparison proves an integrated candidate-native reader.
    The three sustainability warnings, shortlist mappings and unlisted anomalies
    remain separate pending decisions. No numeric/string anomaly handling
    extends to changed or future sources, and admission remains `NOT_GRANTED`.
