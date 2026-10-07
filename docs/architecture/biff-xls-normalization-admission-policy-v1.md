@@ -29,6 +29,12 @@ established metric/ranking equivalence with legacy descriptive inputs fixed;
 full candidate-native reader equivalence and active consumer integration remain
 pending. No admission or operational authority is granted.
 
+On 2026-10-07 the user explicitly approved the three independently reviewed
+model currency-risk policy sub-decisions below: lexical translation, the exact
+24-occurrence anomaly disposition, and the historical comparison-profile
+definition. They are policy approvals only. Their implementation, comparison
+execution, consumer activation, and admission remain unauthorized.
+
 The source parser continues to return `NOT_EVALUATED_PARSER_ONLY`. The pure
 `BIFF_XLS_NORMALIZATION_CANDIDATE_V1` adapter returns a separate
 `NOT_EVALUATED_NORMALIZATION_CANDIDATE_ONLY` result with
@@ -151,7 +157,7 @@ for BIFF type or format evidence.
 | `Aleszközosztály` | Both | Original trimmed Hungarian text plus optional separate projection | Raw payload always; current model observed field is a legacy-compatible projection, current shortlist observed field is original Hungarian | Apply mappings as an asset/sub-asset pair, never as independent guesses |
 | `Termék típus` | Shortlist | Nullable trimmed original text | Currently raw JSON only | No approved canonical mapping; preserve or `NULL` when source-missing |
 | `Deviza` | Both | Nullable trimmed original text | Observed currency field and raw payload | Preserve exact source evidence; a future code validator must be separately specified rather than silently upper-casing |
-| `Devizakockázat` | Both | Nullable original text; non-text anomaly remains a diagnostic, not a coerced label | Model currently has legacy-compatible English/`NULL`; shortlist is currently raw JSON only | No approved cross-workflow English mapping. Unknown/anomalous present values make admission ineligible without an occurrence-level disposition |
+| `Devizakockázat` | Both | Nullable original text; non-text anomaly remains a diagnostic, not a coerced label | Model currently has legacy-compatible English/`NULL`; shortlist is currently raw JSON only | Model-only lexical and exact 24-occurrence disposition policies approved 2026-10-07, unimplemented. No approved cross-workflow or shortlist mapping. Unknown/anomalous present values remain ineligible without the required occurrence-level disposition |
 | `Fenntarthatóság` | Both | Nullable original text | Model is raw JSON today and has a temporary Phase 1 extension contract; shortlist is raw JSON only | Existing model translation is compatibility-only. No shortlist correction is authorized; the three misplaced labels require explicit disposition |
 | Any duplicate row | Both | Separate occurrence in original source order | Separate source occurrence and lineage | Never deduplicate. A membership projection may group an ISIN only while retaining every occurrence and conflict status |
 
@@ -364,8 +370,9 @@ the required fresh layout. These limitations do not extend the comparison's scop
 
 This establishes only the exercised twelve-metric comparison and five-metric
 ranking bridge on the bound inputs/configuration. Full candidate-native
-descriptive/reader equivalence, future-workbook equivalence, translations,
-anomaly dispositions, `3yr`/`5yr` interpretation, consumer activation, correction
+descriptive/reader equivalence, future-workbook equivalence, implementation of
+the subsequently approved model currency-risk policies, shortlist translations,
+sustainability dispositions, `3yr`/`5yr` interpretation, consumer activation, correction
 preservation, overall eligibility/admission and authority/cutover remain pending.
 The comparison neither applied shortlist corrections nor composed recovery/formula
 approvals into eligibility. All results retain admission `NOT_GRANTED`;
@@ -438,14 +445,14 @@ An unknown pair, changed count, changed snapshot effect, new occurrence, or
 changed dataset fingerprint rejects reuse of the mapping. It must not fall back
 to a single-column mapping or the model parser's translation dictionary.
 
-### Currency-risk inventory and proposed translations
+### Currency-risk inventory and translation authority
 
-| Original source value | Model rows | Shortlist rows | Proposed English candidate | Authority / disposition |
+| Original source value | Model rows | Shortlist rows | English category / candidate | Authority / disposition |
 | --- | ---: | ---: | --- | --- |
-| `Nincs fedezve` | 3,345 | 7,917 | `Unhedged` | Proposal only; legacy model parser already uses it, but no cross-workflow effective mapping is approved |
-| `nincs fedezve` | 6 | 11 | `Unhedged` after case-normalized match | Proposal only; preserve original case |
-| `Fedezve` | 1,515 | 1,556 | `Hedged` | Proposal only; does not establish target currency, hedge ratio, or coverage period |
-| `Részben fedezve` | 102 | 289 | `Partially Hedged` | Proposal only; degree and period remain unknown |
+| `Nincs fedezve` | 3,345 | 7,917 | `Unhedged` | Model-only lexical policy approved 2026-10-07, unimplemented; shortlist/cross-workflow mapping remains unapproved |
+| `nincs fedezve` | 6 | 11 | `Unhedged` after case-normalized match | Same model-only approval; preserve original case; shortlist remains unapproved |
+| `Fedezve` | 1,515 | 1,556 | `Hedged` | Same model-only approval; does not establish target currency, hedge ratio, or coverage period |
+| `Részben fedezve` | 102 | 289 | `Partially Hedged` | Same model-only approval; degree and period remain unknown |
 | Source-missing | 291 | 1,060 | `NULL` / unknown | Preserve BIFF blank versus empty in the envelope |
 | Numeric `2`, `3`, or `4` | 18 | 0 | None | Known model anomaly; raw value plus diagnostic required; no coercion |
 | Text `VALUE!` | 6 | 0 | None | Known model anomaly; raw value plus diagnostic required; it is not a BIFF error cell |
@@ -455,10 +462,266 @@ have no authorized repair. They remain original text plus
 `ANOMALOUS_SUSTAINABILITY_VALUE`; they must not be moved into classification or
 discarded.
 
-A future baseline exception could admit the exact known 24 and three warning
-occurrences only through a reviewed, hash/row/coordinate-bound disposition
-manifest. That manifest is proposed, does not yet exist, and must not authorize
-new warning values or future rows.
+The model-only disposition policy for the exact 24 currency-risk occurrences
+is approved below, but no executable disposition manifest or admission path
+is installed. Typed occurrence evidence is not such an artifact. The three
+sustainability warnings still require separate policy approval. Any future
+admission would independently require a reviewed, hash/row/coordinate-bound
+disposition artifact and all other gates; these approvals authorize neither
+new warning values nor future anomaly occurrences.
+
+### Model currency-risk translation and anomaly policy
+
+**Policy approved by explicit user authorization on 2026-10-07; not implemented.**
+The independently approved identities are
+`MODEL_CURRENCY_RISK_TRANSLATION_POLICY_V1`,
+`MODEL_CURRENCY_RISK_ANOMALY_DISPOSITION_V1`, and the separately selected
+`MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1`. The user stated:
+“Approve all three within their reviewed scopes.” The approval defines only
+these policy boundaries; implementation, comparison execution, consumer
+activation, and admission remain unauthorized. No executable mapping or
+disposition artifact is installed and no eligibility decision is granted.
+They concern only `MODEL_PORTFOLIO` / `Devizakockázat`, not
+shortlist currency risk, sustainability, classification pairs or metric policy.
+
+#### Evidence and implemented behavior
+
+The inventory above is attributed to the earlier typed-source audit, not a new
+workbook run. The preserved [bounded comparison](#bounded-retained-corpus-comparison-evidence)
+records 24 model `ANOMALOUS_CURRENCY_RISK_VALUE` diagnostics across all 33
+hashes, but deliberately held legacy currency-risk descriptors fixed. It does
+not establish candidate-native translation or anomaly equivalence.
+
+The existing local `data/audit/milestone_4_current_data_audit.json` (SHA-256
+`0852aca0a2979346f1d4ed9cf804419d0e9684d1458cc0a08a8603a2bb5952db`)
+provides a recorded row/header index for all 24 anomalies. It covers only 32
+workbooks, omitting 2026-08-26; the 33-workbook comparison records no model
+currency-risk anomaly in that omitted file. Its `source_values` are trimmed
+strings and do **not** prove BIFF types. Their two workbook hashes and per-file
+anomaly counts agree with the preserved comparison and published inventory.
+The bounded typed inspection on 2026-10-07 parsed **only these two hash-bound
+workbooks** with the published parser at revision
+`f7d196373ac911b45952896693446a96f7bb766e`. All 24 coordinates below reconcile
+with the older index: three on 2024-10-17 and 21 on 2025-05-09, with no
+discrepancies. Six cells expose BIFF text (xlrd type code 1), raw `VALUE!`;
+eighteen expose BIFF numbers (code 2), raw parser floats `2.0`/`3.0`/`4.0`
+(9/3/6), rather than the older index's strings `"2"`/`"3"`/`"4"`.
+No type is inferred from that index and no value is coerced or repaired.
+
+The actual extraction harness, typed occurrence manifest, reconciliation and
+reproduction instructions are preserved outside Git in recovery package
+`model-currency-risk-typed-v1.FyqXIB`. Manifest
+`inspection/typed-occurrence-manifest-v1.json` has SHA-256
+`c4d678e0c90abac49337bf1f7547816b45134b6e6e7886ab4aacf1ee594f123a`.
+Each entry binds the exact hash, leading-space sheet name/index, header,
+coordinate, parser source reference, occurrence/field IDs, row/envelope
+fingerprints, exposed type/raw value and format metadata. Duplicate occurrences
+remain separate. These are parser/xlrd-exposed types, not a new independent
+raw-BIFF scan; the parser's recovery and formula-origin limitations remain.
+No strict-open test, evidence-gate evaluation, normalizer, projection, ranking
+comparison or admission ran. Historical candidate fingerprints in the manifest
+are reference-only, not newly evaluated candidate bindings.
+
+Code tracing at revision `f7d196373ac911b45952896693446a96f7bb766e` establishes:
+
+- `DB_creation/excel_processing.py::VALUE_TRANSLATIONS["Currency Risk"]`
+  translates three Hungarian keys and accepts their three English outputs.
+  `text_normalization.py::normalized_key` applies string conversion, trimming,
+  NFC and casefold for this legacy lookup. `_translate_value` passes through
+  `None`/pandas-missing values, returns `None` for lookup keys `2`, `3`, `4`,
+  `value!`, and raises `ValueError` for other labels. `prepare_rows` ultimately
+  turns pandas missing values into `None`, used for SQL `NULL` by the legacy
+  importer. This is implemented compatibility behavior, not an approved meaning
+  for provider codes. Its string-based lookup is not a typed-source rule:
+  numeric `2.0` stringifies differently from integer `2`; blindly passing BIFF
+  values into this helper is not evidence of equivalence.
+- `workbook_source/normalization.py::_normalize_governed_text` preserves raw
+  cells. Blank/empty cells yield `SOURCE_MISSING`; whitespace-only text adds
+  `EMPTY_TEXT_AS_MISSING`. Non-text cells retain their source evidence but yield
+  normalized `None` and an anomaly diagnostic. Nonempty text remains trimmed
+  original text: unknown text such as `VALUE!` receives the anomaly diagnostic,
+  and every nonempty currency-risk text also receives
+  `UNAPPROVED_CURRENCY_RISK_TRANSLATION`. No English field is produced. The
+  current comparison/projection does not resolve these diagnostics. That
+  diagnostic identifier predates this approval and remains unchanged in the
+  unmodified implementation; it does not revoke the subsequent policy approval.
+- `database/repository.py::load_holdings` reads the stored English/NULL value
+  into `HoldingObservation.currency_risk`. The schema-v3 model reader in
+  `database/migrations/model_portfolio_dry_run.py` similarly reads
+  `observed_currency_risk`, which the historical migration populated from the
+  legacy holding; immutable raw JSON retains the separate source evidence.
+  No current candidate-native descriptive reader exists.
+
+#### Approved mapping and typed-state requirements
+
+For a future explicitly selected projection, the approved lookup is only on
+BIFF text,
+using NFC, trim and casefold while preserving the exact original text and type.
+The allowed Hungarian keys are exactly `fedezve`, `nincs fedezve`, and
+`részben fedezve`; no synonyms, numeric codes, accent removal or fuzzy matching.
+Case/Unicode/outer-whitespace normalization is a declared lookup operation, not
+a rewrite of original evidence. The English labels name only the reported
+category; none establishes investor base currency, hedge target, hedge ratio,
+instrument-level exposure, effectiveness or observation period.
+
+A future mapping artifact must pin the policy name/version, model role/header,
+the three key/output pairs, declared lookup operations, approval reference and
+manifest fingerprint. Each projected field must retain its original candidate
+binding, raw cell and occurrence identity, chosen projection/version, mapping
+fingerprint and disposition reason. Policy approval does not install or validate
+that executable artifact; none is installed today.
+The current normalizer does not apply NFC to this field; a translation match
+must not silently clear an existing anomaly diagnostic caused by a Unicode
+variant. Any additional anomaly disposition remains outside the exact 24-cell
+scope and requires its own review. English output is a separately bound
+consumer attribute, not replacement of `original_currency_risk`.
+
+| Source evidence / type | Earlier model count | Implemented legacy behavior | Approved policy output / unresolved state | Decision or limitation |
+| --- | ---: | --- | --- | --- |
+| Text `Nincs fedezve`; text `nincs fedezve` | 3,345; 6 | `Unhedged` after legacy lookup | `Unhedged`, with translation identity | Lexical category mapping approved only; implementation unauthorized |
+| Text `Fedezve` | 1,515 | `Hedged` | `Hedged`, with translation identity | Does not establish complete hedging against an investor's currency |
+| Text `Részben fedezve` | 102 | `Partially Hedged` | `Partially Hedged`, with translation identity | Hedge fraction and period remain unknown; never assign a numerical fraction |
+| Blank or absent BIFF cell | 291 source-missing cells in aggregate | Reader may collapse blank/empty into missing; prepared value is `None` | No English value; `SOURCE_MISSING`, retain exact missing type | Not an anomaly and not evidence of hedging |
+| Empty or whitespace-only BIFF text | No separately reported count | If empty text survives reading, categorical lookup raises; pandas reader representation must not be inferred | No English value; existing `EMPTY_TEXT_AS_MISSING` semantics | Preserve raw text; no claim of retained-data equivalence for this state |
+| BIFF number `2`, `3`, `4` | 9; 3; 6 | The exercised retained legacy path produces `None`; string-key matching is representation-sensitive | No English meaning; `KNOWN_ANOMALY_UNINTERPRETED` only for the exact occurrences below | Approved scope permits a separately selected reason-bearing compatibility `None`; implementation unauthorized; no numeric/string coercion |
+| BIFF text `VALUE!` | 6 | `None` for legacy key `value!` | No English meaning; exact-occurrence anomaly state | Text, not the BIFF error `#VALUE!`; no repair or error-type relabelling |
+| Other nonempty text, including numeric-looking text `"2"`/`"3"`/`"4"` | Not reported in retained model scope | Legacy lookup discards those numeric-looking keys; other unknown labels raise | `UNKNOWN_LABEL`; no authorized English or consumer fallback | Do not broaden the 18 numeric-cell dispositions to text codes |
+| Already-English text `Hedged`, `Unhedged`, `Partially Hedged` | Not reported in retained model scope | Accepted and canonicalized | Not included in the approved Hungarian-input policy; unresolved unless separately approved as identity inputs | Future English-input support is an optional scope extension, not assumed |
+| Other numbers, booleans, dates, BIFF errors or non-finite values | Not reported in this model-field inventory | No general typed exception; unsupported lookup usually raises | Preserve evidence and anomaly; no English value or compatibility output | The approved reader-profile definition rejects unsupported typed states; do not infer code meaning |
+
+An unknown label or malformed binding must fail the future reader-projection
+request visibly; it must not become `Hedged`, `Unhedged`, `NULL`, or a silently
+excluded holding. All originals and diagnostic records remain available even
+when a projection cannot be produced. The policy does not generalize legacy
+invalid-string suppression, repair errors, fill missing values, or borrow the
+approved classification or model-zero authorities.
+
+#### Approved exact anomaly disposition scope
+
+Only these two full workbook hashes are approved for the known-anomaly
+disposition, on exact sheet ` modell portfóliók`, header `Devizakockázat`:
+
+- `PB_Modell_Portfoliok_es_Shortlist_20241017.xls`:
+  `fadecf0acb478cb4ab4596d1cd509390f0a1d221ee811e05528e5ad6cc173abe`.
+- `PB_Modell_Portfoliok_es_Shortlist_20250509.xls`:
+  `a74151e567b5a4b095f302e19411ffac1d191d794a0a1de5898a85f2268ebbed`.
+
+| Workbook date / bound hash above | Original type/value | Recorded coordinates | Approved policy disposition (unimplemented) |
+| --- | --- | --- | --- |
+| 2024-10-17 | Text `VALUE!` | `H42`, `H90`, `H143` | Retain original; uninterpreted anomaly; optional explicit legacy-reader `None` |
+| 2025-05-09 | Text `VALUE!` | `H33`, `H80`, `H132` | Same; no formula/error inference |
+| 2025-05-09 | Number `2` | `H4`, `H27`, `H37`, `H47`, `H75`, `H89`, `H102`, `H130`, `H143` | Same; no meaning assigned to code `2` |
+| 2025-05-09 | Number `3` | `H30`, `H82`, `H137` | Same; no meaning assigned to code `3` |
+| 2025-05-09 | Number `4` | `H17`, `H28`, `H68`, `H77`, `H120`, `H131` | Same; no meaning assigned to code `4` |
+
+The typed occurrence evidence is complete for this approved 24-occurrence
+policy scope, **not an approved or installed executable disposition manifest or an
+admission exception**. Before use, an independently reviewed disposition
+manifest must reference the typed evidence and bind every entry to the workbook
+SHA-256, source filename/date,
+role, exact sheet name/index, header and cell coordinate, physical source row,
+actual occurrence index/ID, row fingerprint, field occurrence ID, original BIFF
+type/raw value and format, envelope/candidate fingerprint, policy/projection
+identity, and `LEGACY_ANOMALY_AS_NONE_WITHOUT_INTERPRETATION` reason. Matching
+only an ISIN, date, value, row count or caller-supplied approval flag is
+insufficient. Changed bytes, wrong cell type/value, missing/extra/duplicate
+entries, unsupported records or mismatched provenance fail closed. Each source
+occurrence and holding is retained; only its projected currency-risk attribute
+may be `None`. No correction record or admitted original is overwritten.
+
+The eighteen numeric meanings and the cause of the six text values remain
+unknown. A later provider-supported repair would require a separately reviewed
+decision, evidence and transformation, not replacement of this original layer.
+
+#### Consumer compatibility boundary and temporal scope
+
+`metrics/portfolio.py::calculate_portfolio_metrics` computes
+`unhedged_allocation` using only
+`(currency_risk or "").casefold() == "unhedged"`. For a positive allocation
+total, `_allocation_indicator` uses **all** allocations in the denominator and
+reports coverage `1.0`/available, including holdings with missing or anomalous
+currency risk. `Partially Hedged`, `Hedged` and `None` do not contribute to the
+unhedged numerator; this is not proof they have zero FX risk. Passing untranslated
+Hungarian text directly would fail to count `Nincs fedezve`. The active
+`CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1 gives this indicator weight 0.15,
+lower-is-better, so changing labels or unknown handling can change normalized
+scores, ties, ordering and winners, even without a metric-zero change.
+
+By code tracing only, a 60% `Unhedged` holding plus a 40% missing-risk holding
+produces legacy unhedged allocation `0.60` at reported full coverage; replacing
+the first label with untranslated `Nincs fedezve` would produce `0.0`.
+These are explanatory examples, not executed tests. Neither result measures
+complete economic currency exposure. The recommendation for future truthful
+reporting is to keep unknown exposure explicit rather than call it hedged;
+choosing a coverage-aware financial measure or changing ranking behavior is a
+separate policy decision, excluded here. For a faithful historical comparison,
+the approved explicitly selected reader-profile definition would supply
+canonical English
+labels or reason-bearing `None` and use the existing calculation unchanged.
+Policy approval does not authorize executing that comparison or activating the
+profile operationally. Missing and partially hedged labels do not prove hedging
+or complete currency-risk information.
+
+Other consumers require separate validation: `features/dataset.py::portfolio_structure`
+makes unhedged exposure unavailable if **any** currency-risk label is missing,
+but otherwise counts the same exact English label without validating its meaning.
+`prospective/validation.py::_holding_payload` retains currency-risk values in
+source snapshot lineage. The separate construction path's `_currency_risk`
+uses the legacy dictionary and rejects unsupported labels; it does not inherit
+these model-only anomaly dispositions. No feature, prospective, construction,
+shortlist, ranking or historical-reader behavior is changed by these policy
+approvals.
+
+Approved temporal scope: the three Hungarian text mappings may apply to the
+33 inventoried model workbooks and future model sheets independently satisfying
+the same v1 typed-source/provenance contract and the declared lookup rules.
+Unknown/future labels remain unresolved. The 24 anomaly-to-`None` compatibility
+dispositions apply **only** to the enumerated occurrences in the two exact
+hashes, never to future numeric codes or text `VALUE!` cells. Future bytes gain
+no recovery/formula exception, correction binding, eligibility or admission
+authority. Full candidate-native reader equivalence remains unperformed; it
+also depends on other descriptive-field contracts, not currency risk alone.
+
+#### Recorded independent policy approvals (2026-10-07)
+
+The explicit user authorization “Approve all three within their reviewed scopes”
+adopts the following reviewed scope wording. It also expressly leaves
+implementation, comparison execution, consumer activation, and admission
+unauthorized. The three decisions remain independent; the comparison-profile
+definition must use the approved mapping/disposition versions, not bypass them.
+
+1. **Translation scope:** “Approve `MODEL_CURRENCY_RISK_TRANSLATION_POLICY_V1`
+   for model `Devizakockázat` only: BIFF text keys `fedezve`, `nincs fedezve`,
+   `részben fedezve`, matched by NFC/trim/casefold, yield `Hedged`, `Unhedged`,
+   `Partially Hedged` respectively in a separate provenance-bound projection.
+   Preserve exact originals. Cover the inventoried and independently conforming
+   future model sheets; approve no hedge ratio, synonym, numeric-code meaning,
+   shortlist translation or English-input extension.”
+2. **Known anomalies:** “Approve `MODEL_CURRENCY_RISK_ANOMALY_DISPOSITION_V1`
+   only for the 24 typed occurrences enumerated above, conditional on the full
+   reviewed occurrence-bound manifest and fail-closed checks. Retain them as
+   uninterpreted anomalies, preserving originals and diagnostics. Permit a
+   separately selected legacy-reader attribute `None` with the stated reason;
+   do not remove any occurrence/holding, repair a value, waive other gates or
+   extend this disposition to changed/future bytes.”
+3. **Comparison profile:** “Approve the definition of the explicit
+   `MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1` profile for a separately
+   authorized future candidate-native comparison, acknowledging the current
+   indicator's treatment of missing/partial labels. It must bind the approved
+   mapping/disposition versions and preserve unresolved diagnostics. This is
+   not approval of complete FX-risk measurement, a ranking-policy change,
+   implementation, test execution, consumer activation or admission.”
+
+Alternatives considered were to keep translation entirely
+unresolved, block all anomalous projections until provider clarification, or
+approve additional identity inputs such as already-English labels separately.
+Such identity-input extensions still require separate approval. Unsupported
+anomaly dispositions must not be bypassed by reusing the global legacy
+dictionary. These three approvals define only their policy boundaries;
+implementation and a bounded reader-equivalence
+test require later authorization. Sustainability, metric interpretation,
+eligibility composition, admission, migration and cutover remain outside scope;
+ADR-007 stays `Proposed`, and admission stays `NOT_GRANTED`.
 
 ## Admission eligibility
 
@@ -605,6 +868,16 @@ On the same date, the user separately approved:
   `MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1` projection may omit that
   metric observation, never its source occurrence or holding.
 
+On 2026-10-07 the user explicitly approved all three model currency-risk
+sub-decisions within the [reviewed scopes](#model-currency-risk-translation-and-anomaly-policy):
+`MODEL_CURRENCY_RISK_TRANSLATION_POLICY_V1`,
+`MODEL_CURRENCY_RISK_ANOMALY_DISPOSITION_V1`, and
+`MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1`. Implementation, comparison
+execution, consumer activation, and admission remain unauthorized. The typed
+inspection manifest's `NOT_GRANTED` fields remain its unchanged audit-time
+record; the subsequent approval is recorded only here, not backfilled into
+historical evidence.
+
 The evidence report's `NOT_GRANTED` fields remain an unchanged record of its
 audit-time state. The subsequent pure evidence-gate evaluator implements only
 the two approved checks and still emits `admission_approval = NOT_GRANTED`; it
@@ -614,13 +887,15 @@ still emits `UNRESOLVED_MODEL_ZERO_SEMANTICS`, whose input record is preserved
 by the separate projection. No active projection consumer exists. The
 [bounded comparison](#bounded-retained-corpus-comparison-evidence) establishes
 metric/ranking equivalence only with legacy descriptive inputs fixed; full
-candidate-native reader equivalence remains pending. The following unrelated
-decisions remain pending:
+candidate-native reader equivalence remains pending. The following
+implementation and unrelated policy decisions remain pending:
 
-1. The occurrence-bound disposition manifest for the 24 currency-risk and
-   three sustainability warnings.
-2. English currency-risk mappings. All candidates in this document are
-   proposals, not approved transformations.
+1. Separately authorized implementation and validation of the approved
+   model-only mapping, exact 24-occurrence disposition artifact and historical
+   comparison profile, plus policy approval for the three sustainability warnings.
+2. Shortlist English currency-risk mappings, already-English model inputs and
+   any additional anomaly dispositions. The model-only lexical approval does
+   not cover these extensions.
 3. Whether `3yr` and `5yr` returns are cumulative or annualized. No rescaling
    is allowed until this is evidenced and approved.
 4. For a future real-workbook writer only, atomic dual-sheet Option A versus

@@ -209,12 +209,17 @@ note over Parser, Normalizer
   Recovery/formula evidence sub-decisions are approved only for the exact
   27/33 hash registries and enforced only by the separate pure gate evaluator;
   overall eligibility is not implemented and admission remains NOT_GRANTED.
-  Proposed currency-risk translations are not authorized. Shortlist numeric
+  Model-only currency-risk mapping, exact 24-occurrence anomaly disposition,
+  and historical comparison-profile definition were user-approved on 2026-10-07.
+  Their implementation, comparison execution, consumer activation and admission
+  remain unauthorized; the normalizer's pre-approval diagnostics are unchanged.
+  Missing/partial labels do not establish hedging or complete currency-risk information.
+  Shortlist currency-risk mapping remains unapproved. Shortlist numeric
   zero remains an original 0.0 and becomes effective NULL only through the
   exact existing ADR-003 correction binding. Model zero policy was approved
   on 2026-09-26; the separate pure projection implements explicit selection.
-  Exact approved English mapping bytes may produce reference-only candidates;
-  their existing dataset admission is not inherited. No implemented writer
+  Exact approved shortlist classification mapping bytes may produce reference-only
+  candidates; their existing dataset admission is not inherited. No implemented writer
   consumes this format. Phase
   3B.1's approved synthetic atomic behavior is not reopened; only a future
   real-workbook admission policy remains undecided.

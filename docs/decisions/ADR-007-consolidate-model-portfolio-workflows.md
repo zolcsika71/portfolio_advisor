@@ -252,6 +252,63 @@ anomaly dispositions, metric interpretation, correction preservation or remainin
 eligibility/admission gates; it grants no additional authority. ADR-007 remains
 `Proposed` and admission remains `NOT_GRANTED`.
 
+On 2026-10-07 the user explicitly approved all three
+[model currency-risk policy sub-decisions](../architecture/biff-xls-normalization-admission-policy-v1.md#model-currency-risk-translation-and-anomaly-policy):
+“Approve all three within their reviewed scopes.” These are independent policy
+approvals only; implementation, comparison execution, consumer activation, and
+admission remain unauthorized. `MODEL_CURRENCY_RISK_TRANSLATION_POLICY_V1`
+defines only declared Hungarian BIFF text keys mapped to `Hedged`, `Unhedged` and
+`Partially Hedged`, preserving originals and the explicit lookup/projection
+identity through text-only NFC/trim/casefold lookup. Shortlist, numeric-code
+translation, synonyms and already-English input extensions are excluded.
+Approved `MODEL_CURRENCY_RISK_ANOMALY_DISPOSITION_V1` concerns only
+the enumerated 24 occurrences in two exact workbook hashes: six text `VALUE!`
+values, nine numeric `2`, three numeric `3`, six numeric `4`. Their meanings
+remain unknown. A reviewed, fail-closed disposition manifest would be required
+before an explicitly selected `MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1`
+could expose `None` with reason `LEGACY_ANOMALY_AS_NONE_WITHOUT_INTERPRETATION`;
+no original, diagnostic, duplicate occurrence or holding is dropped. The
+artifact must bind exact hashes, coordinates, types, raw values, formats,
+occurrence/candidate fingerprints and policy identities. Changed bytes,
+missing/extra entries, unsupported types or mismatched provenance fail closed.
+Blank/empty states remain distinct, unknown labels and unlisted typed anomalies
+have no fallback, and already-English inputs require a separate scope choice.
+
+The 2026-10-07 bounded inspection now supplies typed occurrence evidence for
+all 24 coordinates in those two hashes, reconciling three/21 cells by workbook
+with the older textual index without discrepancies. Parser-exposed types are
+six text `VALUE!` cells and eighteen numeric floats `2.0`/`3.0`/`4.0` (9/3/6);
+the older strings do not establish those types. Recovery package
+`model-currency-risk-typed-v1.FyqXIB` preserves the actual harness and manifest
+`inspection/typed-occurrence-manifest-v1.json` (SHA-256
+`c4d678e0c90abac49337bf1f7547816b45134b6e6e7886ab4aacf1ee594f123a`).
+Exact provenance and parser recovery/formula limitations are documented in the
+linked policy. This is not an independent raw-BIFF reinspection, newly
+evaluated candidate binding, installed executable disposition artifact or
+implemented projection.
+The manifest's `NOT_GRANTED` fields remain its unchanged audit-time record;
+the later approvals are recorded separately in documentation. Policy approval
+does not install an executable artifact, prove consumer equivalence or grant
+admission authority.
+
+The translation approval covers inventoried and independently v1-conforming
+future model sheets; the anomaly dispositions never extend beyond their exact
+hash/coordinate/type/value bindings. Future files inherit no evidence exception,
+correction, eligibility or admission authority. The third approved sub-decision
+is the definition of a faithful historical comparison profile, bound to the
+approved mapping/disposition versions: current ranking counts
+only English `Unhedged` and reports full indicator coverage even for missing
+risk labels when total allocation is positive. Keeping that behavior for a
+comparison is not endorsement of complete FX-risk measurement or new ranking
+semantics. Full candidate-native reader equivalence is still unperformed and
+depends on other descriptive contracts too. Missing and partially hedged labels
+do not prove hedging or complete currency-risk information. None of these
+approvals authorizes
+implementation, test execution, consumer activation or admission, changes the
+approved classification/model-zero decisions, or decides shortlist translation,
+sustainability, metric interpretation, eligibility composition or cutover.
+This ADR remains `Proposed`; admission remains `NOT_GRANTED`.
+
 ## Consequences
 
 - Model source authority becomes explicit and portable instead of being
