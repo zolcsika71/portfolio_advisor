@@ -226,9 +226,31 @@ provenance, and field omission reasons. Both modes preserve all input rows,
 shortlist fields, original values, and diagnostics; only eligible model numeric
 zero observations are omitted in compatibility mode. Results remain
 `NOT_EVALUATED_PROJECTION_ONLY` with admission `NOT_GRANTED`. Consumer activation,
-retained-corpus ranking equivalence, and any operational default change remain
-pending. This approved sub-decision does not accept ADR-007 or authorize admission,
+full candidate-native reader equivalence, and any operational default change
+remain pending. This approved sub-decision does not accept ADR-007 or authorize admission,
 migration, authority transfer, or cutover.
+
+The subsequent [bounded retained-corpus comparison](../architecture/biff-xls-normalization-admission-policy-v1.md#bounded-retained-corpus-comparison-evidence)
+at revision `c0e3d51cc3d46cfc3c0ee29746e51c87e3ca5b0c` covers 33
+workbooks/dates and 408 date/portfolio identities, preserving 5,283 model rows
+and 10,833 shortlist occurrences. All twelve model fields (63,396 metric cells)
+match legacy after 12,072 scoped zero omissions. Actual production ranking
+uses only five of those metrics; with legacy descriptive inputs held fixed,
+compatibility matches availability, coverage, eligibility, scores, ordering,
+warnings, winners and four observed ties. Original mode intentionally adds
+49 eligible identities, changes 405 scores, all 33 dates' ordering and 11 winners.
+The original report SHA-256 is
+`4155b6d70e0bfae04202d680ab497ec7fd64372c0624f85342f370204b2a5493`;
+the actual successful harness and evidence are preserved outside Git in
+recovery package `model-metric-comparison-v1-preserved.YHDm4b`. Preservation
+verifies existing evidence, not a new corpus run. Reproduction requires external
+retained inputs; the original complete dependency freeze was not recorded, and
+the unchanged analysis script assumes a fixed output layout. Preservation-time
+versions are not a complete historical environment record. This bounded result does not
+establish full candidate-native reader equivalence or resolve translations,
+anomaly dispositions, metric interpretation, correction preservation or remaining
+eligibility/admission gates; it grants no additional authority. ADR-007 remains
+`Proposed` and admission remains `NOT_GRANTED`.
 
 ## Consequences
 

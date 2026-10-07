@@ -149,7 +149,7 @@ dataset, but not yet an operational typed interface for every field.
 | Field group | Current analytical representation | Verified coverage | Required action |
 | --- | --- | --- | --- |
 | Date, portfolio, product, ISIN, allocation, asset/sub-asset class, currency, currency risk | Typed snapshot/source-occurrence columns plus raw payload | All 5,283 rows; no missing portfolio, product, or ISIN | Preserve both typed and original values. Define stable identity from source-file SHA-256, sheet, source row, snapshot date, portfolio, and ISIN rather than SQLite row IDs. |
-| Ranking metrics: 1-year return, 1-year Sharpe, 1-year volatility, downside risk, maximum drawdown | `instrument_metric_observation` with occurrence-bound references | 5,021; 4,720; 5,139; 18; and 4,299 non-NULL legacy-compatible observations respectively | Preserve codes and occurrence multiplicity. The approved zero policy requires original zero observations; the pure compatibility projection is implemented, while storage/consumer integration and retained-data equivalence remain pending. |
+| Ranking metrics: 1-year return, 1-year Sharpe, 1-year volatility, downside risk, maximum drawdown | `instrument_metric_observation` with occurrence-bound references | 5,021; 4,720; 5,139; 18; and 4,299 non-NULL legacy-compatible observations respectively | Preserve codes and occurrence multiplicity. The approved zero policy requires original zero observations; the pure compatibility projection is implemented. Bounded metric/ranking equivalence with legacy descriptive inputs fixed is established; storage/consumer integration and full candidate-native reader equivalence remain pending. |
 | Sustainability | Raw payload only | 5,217 non-NULL parsed legacy values | Add a typed nullable occurrence attribute while retaining the original payload text and translation version. |
 | YTD, 3-year return, 5-year return | Raw payload only | 5,195; 4,731; and 4,127 non-NULL parsed legacy-compatible values | The approved zero policy preserves every valid original number, including zero, in the in-memory candidate; the pure named compatibility projection is implemented, storage integration pending. |
 | 3-year Sharpe, 5-year Sharpe, 3-year volatility, information ratio | Raw payload only | 4,394; 3,962; 4,717; and 4,453 non-NULL parsed legacy-compatible values | The approved zero policy preserves every valid original number, including zero; the pure projection is implemented, and absence is never inferred in the original layer. Storage integration remains pending. |
@@ -574,12 +574,30 @@ candidate fingerprint, preserves the complete input candidate, and emits
 versioned metric dispositions with original provenance. The adapter still
 reports its pre-approval unresolved diagnostic; the projection preserves it
 as input evidence and records eligible zero resolutions separately. No active
-consumer is integrated, and retained-corpus ranking equivalence remains
+consumer is integrated, and full candidate-native reader equivalence remains
 unproven. Shortlist original zeros remain `0.0`,
 and the exact existing ADR-003 corrections are not inherited by new sources.
 Recovery/formula evidence is governed by the subsequently approved hash-bound
 sub-decisions described below; anomaly dispositions, executable overall
 eligibility, writer integration, and all admission decisions remain proposed.
+
+The completed [bounded model-metric comparison](biff-xls-normalization-admission-policy-v1.md#bounded-retained-corpus-comparison-evidence)
+at revision `c0e3d51cc3d46cfc3c0ee29746e51c87e3ca5b0c` covers all 33
+workbooks/dates, 408 date/portfolio identities, 5,283 model rows and 10,833
+shortlist occurrences. It reproduces 12,072 scoped zero omissions with zero
+mismatches across all twelve metrics' 63,396 cells. With legacy descriptive
+inputs held fixed, actual production ranking on its five consumed metrics
+matches availability, coverage, eligibility, scores, order, warnings, winners
+and four observed ties. This is not full candidate-native reader equivalence.
+Original mode intentionally adds 49 eligible identities, changes 405 scores,
+all 33 dates' ordering and 11 winners. The private report SHA-256 is
+`4155b6d70e0bfae04202d680ab497ec7fd64372c0624f85342f370204b2a5493`;
+the unchanged report and actual harness are durably preserved in recovery
+package `model-metric-comparison-v1-preserved.YHDm4b`, not committed evidence.
+Preservation performs no corpus rerun, consumer activation or admission.
+Reproduction still requires external retained inputs, lacks an original complete
+dependency freeze, and must respect the analysis script's fixed output layout,
+as detailed in the linked comparison record and package instructions.
 
 The read-only, hash-bound
 [BIFF recovery and formula evidence verifier](biff-xls-recovery-formula-evidence-v1.md)
@@ -714,13 +732,15 @@ removal.
    not combine them with normalization diagnostics or other eligibility gates.
    Changed or future bytes remain outside scope, upstream formula history
    remains unverified, and parser success alone is insufficient.
-8. **Approved model-zero policy—consumer integration and equivalence pending:** the
+8. **Approved model-zero policy—consumer integration and full reader equivalence pending:** the
    user approved `MODEL_METRIC_ZERO_HANDLING_POLICY_V1` on 2026-09-26 for the
    twelve model metrics on the 33 inventoried workbooks and future
    v1-conforming model sheets. Original zero preservation and the separate pure
    `MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1` projection are implemented
-   in memory; no consumer is activated, and retained-corpus ranking equivalence
-   remains unproven. Projection success retains admission `NOT_GRANTED`.
+   in memory. The bounded twelve-metric comparison and five-metric ranking
+   bridge match legacy with descriptive inputs fixed; full candidate-native
+   reader equivalence remains unproven and no consumer is activated.
+   Projection success retains admission `NOT_GRANTED`.
 9. **Anomaly dispositions:** approve occurrence-bound treatment of the 24
    currency-risk and three sustainability warnings. No proposed English
    currency-risk mapping is currently authorized.

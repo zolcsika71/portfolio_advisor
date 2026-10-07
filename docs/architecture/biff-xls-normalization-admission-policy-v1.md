@@ -24,9 +24,10 @@ omission only through the separately identified, explicitly selected,
 provenance-bound `MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1` projection.
 The approval covers the 33 inventoried workbooks and future workbooks that
 independently satisfy the same v1 typed-source contract. The pure, explicitly
-selected projection is now implemented; active consumer integration and
-retained-corpus equivalence remain pending. No admission or operational
-authority is granted.
+selected projection is now implemented. A bounded retained-corpus comparison
+established metric/ranking equivalence with legacy descriptive inputs fixed;
+full candidate-native reader equivalence and active consumer integration remain
+pending. No admission or operational authority is granted.
 
 The source parser continues to return `NOT_EVALUATED_PARSER_ONLY`. The pure
 `BIFF_XLS_NORMALIZATION_CANDIDATE_V1` adapter returns a separate
@@ -312,10 +313,63 @@ blank cell and text `"0"` would not follow either numeric-zero path: the former
 is source-missing and the latter is rejected.
 
 These effects follow directly from the current parser, Phase 1/3B.1, reader,
-metric, eligibility, and scoring code. This task did not run retained data or a
-ranking comparison. Exact compatibility of the approved projection with all
-33 retained workbooks and every ranking result is therefore **unproven** and
-would require a separately authorized, bounded rehearsal.
+metric, eligibility, and scoring code. The original policy-design task did not
+run retained data. A subsequent bounded comparison established the narrower
+metric/ranking result below; full candidate-native reader equivalence remains
+unproven.
+
+#### Bounded retained-corpus comparison evidence
+
+The completed read-only comparison evaluated published revision
+`c0e3d51cc3d46cfc3c0ee29746e51c87e3ca5b0c`. Its unchanged private
+`comparison.json` has SHA-256
+`4155b6d70e0bfae04202d680ab497ec7fd64372c0624f85342f370204b2a5493`
+and canonical payload fingerprint
+`0f4e3d634f9c15c84694ce5870aa88af230ca43fbbd98496ffc9cd0bac28e749`.
+The durable recovery package `model-metric-comparison-v1-preserved.YHDm4b`
+preserves the actual successful harness, reports, input/source fingerprints,
+dependency records, reproduction instructions, and relative checksums outside
+Git. Preservation verified their bindings without rerunning the corpus.
+
+Reproduction requires the external retained workbooks and two databases at
+their recorded hashes. The original complete dependency freeze was not
+recorded: the preserved lock and separately labelled preservation-time package
+versions must not be presented as the full historical execution environment.
+The unchanged analysis script assumes a fixed adjacent output layout and must
+not be rerun into the preserved package; its reproduction instructions describe
+the required fresh layout. These limitations do not extend the comparison's scope.
+
+- All 33 workbooks/dates and 408 date/portfolio identities were evaluated:
+  5,283 model rows and 10,833 shortlist occurrences, with no skipped sheet or
+  occurrence. The exact leading-space sheet names and duplicate multiplicity
+  remain preserved.
+- All twelve model metrics matched actual legacy prepared values/availability:
+  zero mismatches across 63,396 cells after exactly 12,072 scoped numeric-zero
+  omissions. Nonzero values, allocation, shortlist fields, original evidence
+  and diagnostics remained unchanged. The exclusions absent from this corpus
+  are not newly validated by this retained-data comparison.
+- The temporary in-memory bridge used the five fields consumed by current
+  ranking (`1yr`, `1Y Sharpe`, `1Y Vol.`, `Down. risk`, `Max. drawd.`), with
+  **legacy descriptive inputs held fixed** through actual `prepare_rows`.
+  Production readers and `CapitalPreservationAdvisor` exercised actual metric,
+  eligibility, scoring and ranking functions. Compatibility matched availability,
+  coverage thresholds, eligibility/reasons, scores, ordering, warnings, winners
+  and four observed tie groups exactly. The other seven fields were compared
+  for value/availability, not exercised as ranking inputs. The existing
+  analytical model-only reader also matched legacy results at all 33 dates.
+- Original mode intentionally produced 49 additional ranking-eligible
+  portfolio/date identities, 405 changed scores, changed ordering on all 33
+  dates, and 11 changed winners. These are explained projection effects, not
+  compatibility mismatches or proof that provider zeros mean missing data.
+
+This establishes only the exercised twelve-metric comparison and five-metric
+ranking bridge on the bound inputs/configuration. Full candidate-native
+descriptive/reader equivalence, future-workbook equivalence, translations,
+anomaly dispositions, `3yr`/`5yr` interpretation, consumer activation, correction
+preservation, overall eligibility/admission and authority/cutover remain pending.
+The comparison neither applied shortlist corrections nor composed recovery/formula
+approvals into eligibility. All results retain admission `NOT_GRANTED`;
+ADR-007 remains `Proposed`.
 
 #### Scope, acceptance, and rejection conditions
 
@@ -557,9 +611,11 @@ the two approved checks and still emits `admission_approval = NOT_GRANTED`; it
 does not implement overall eligibility or authorize admission. The following
 model-zero integration work remains pending: the current normalization adapter
 still emits `UNRESOLVED_MODEL_ZERO_SEMANTICS`, whose input record is preserved
-by the separate projection. No active projection consumer exists, and
-retained-corpus ranking equivalence has not been rehearsed. The
-following unrelated decisions remain pending:
+by the separate projection. No active projection consumer exists. The
+[bounded comparison](#bounded-retained-corpus-comparison-evidence) establishes
+metric/ranking equivalence only with legacy descriptive inputs fixed; full
+candidate-native reader equivalence remains pending. The following unrelated
+decisions remain pending:
 
 1. The occurrence-bound disposition manifest for the 24 currency-risk and
    three sustainability warnings.
@@ -628,7 +684,9 @@ determinism, provenance, input non-mutation, and compatibility of adjacent APIs.
 
 The smallest next slice requires separate authorization for consumer selection
 or eligibility composition using this result and the evidence-gate result.
-Retained-corpus ranking equivalence remains unproven. Any temporary rehearsal
+Full candidate-native reader equivalence remains unproven despite the
+[bounded metric/ranking comparison](#bounded-retained-corpus-comparison-evidence).
+Any temporary rehearsal
 must reproduce exact correction bindings before an admission adapter is
 designed; none of these steps may transfer authority or silently choose
 unresolved semantics.
