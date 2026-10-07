@@ -10,6 +10,12 @@
 ' - src/portfolio_advisor/workbook_source/normalization.py
 ' - src/portfolio_advisor/workbook_source/model_metric_projection.py
 ' - src/portfolio_advisor/workbook_source/model_currency_risk_projection.py
+' Proposed reader composition traced against:
+' - src/portfolio_advisor/database/repository.py
+' - src/portfolio_advisor/advisor/service.py
+' - src/portfolio_advisor/metrics/portfolio.py
+' - src/portfolio_advisor/ranking/ranking.py
+' - docs/architecture/biff-xls-normalization-admission-policy-v1.md
 ' Synthetic regressions:
 ' - tests/test_model_portfolio_consolidation_phase3b.py
 ' - tests/test_biff_xls_source.py
@@ -45,7 +51,7 @@ title Model-portfolio consolidation: parser + verifier + gate evaluator + normal
 hide footbox
 skinparam sequenceMessageAlign center
 skinparam responseMessageBelowArrow true
-skinparam maxMessageSize 120
+skinparam maxMessageSize 360
 
 actor Operator
 actor "Phase 1 developer" as Developer
@@ -61,6 +67,8 @@ participant "Evidence-gate evaluator\n(pure, no admission)" as GateEvaluator
 participant "Normalization candidate\nadapter (no admission)" as Normalizer
 participant "Explicit model metric\nprojection (pure)" as MetricProjection
 participant "Explicit model currency-risk\nprojection (pure)" as CurrencyProjection
+participant "Candidate-native reader\ncomposition [Proposed]" as CandidateReader
+participant "Injected advisor/ranking\n(existing interface)" as Advisor
 database "Isolated schema-v3\ntemporary database" as Temporary
 database "portfolio_advisor.sqlite\nproposed operational authority" as Analytical
 participant "Model + provenance +\ncorrection validators" as Validators
@@ -214,8 +222,10 @@ note over Parser, Normalizer
   overall eligibility is not implemented and admission remains NOT_GRANTED.
   Model-only currency-risk mapping, exact 24-occurrence anomaly disposition,
   and historical comparison-profile definition were user-approved on 2026-10-07.
-  The separate pure projection is implemented; comparison execution, consumer
-  activation and admission remain unauthorized. Normalizer diagnostics are unchanged.
+  The separate pure projection is implemented. Its bounded comparison held
+  other legacy inputs fixed; further comparison execution, consumer activation
+  and admission remain unauthorized.
+  Normalizer diagnostics are unchanged; joint reader equivalence is unproven.
   Missing/partial labels do not establish hedging or complete currency-risk information.
   Shortlist currency-risk mapping remains unapproved. Shortlist numeric
   zero remains an original 0.0 and becomes effective NULL only through the
@@ -240,10 +250,11 @@ end
 MetricProjection --> Operator: immutable versioned result + projection fingerprint;\nall source occurrences retained; admission NOT_GRANTED
 note over Operator, MetricProjection
   Allocation and shortlist are outside this rule. No active consumer selects it.
-  Retained-corpus ranking equivalence remains unproven; no admission authority.
+  Bounded metric/ranking comparison passed with legacy descriptors fixed;
+  integrated candidate-native reader equivalence remains unproven. No admission authority.
 end note
 
-== Model currency-risk projection [Implemented; comparison/consumers pending] ==
+== Model currency-risk projection [Implemented; integrated reader/consumers pending] ==
 
 Operator -> CurrencyProjection: provide v1 candidate, expected fingerprint,\nand explicit LEGACY_READER_PROJECTION_V1 selection
 CurrencyProjection -> CurrencyProjection: validate immutable typed provenance and field semantics;\npreserve both sheets, diagnostics and duplicate occurrences
@@ -263,6 +274,30 @@ note over Operator, CurrencyProjection
   No policy/registry override, retained-byte inspection, active reader or ranking wiring.
   Missing/partial labels do not prove complete risk information. Synthetic checks
   do not establish retained candidate-native equivalence or overall eligibility.
+end note
+
+== Integrated candidate-native reader [Proposed, not authorized] ==
+
+Operator -> CandidateReader: future explicit same-candidate inputs + expected fingerprints;\nmetric, currency-risk, descriptor and order selections (no defaults)
+CandidateReader -> MetricProjection: project the complete same validated candidate C
+MetricProjection --> CandidateReader: pinned v1 result + immutable C + ordered metric ledger
+CandidateReader -> CurrencyProjection: project that same C; fixed production anomaly registry
+CurrencyProjection --> CandidateReader: pinned v1 result + immutable C + ordered risk attributes
+CandidateReader -> CandidateReader: verify exact identities + every source occurrence/field;\npreserve both sheets, originals, allocation and diagnostics
+alt projection failure, mismatch, rejected reader field or unresolved profile choice
+    CandidateReader --> Operator: fail complete snapshot visibly; no DB fallback or dropped holding
+else separately reviewed descriptor/order profiles satisfied
+    CandidateReader --> Operator: proposed ModelPortfolioReader + immutable provenance sidecar;\nadmission NOT_GRANTED (not ranking or admission eligibility)
+    Operator -> Advisor: future separately authorized explicit reader injection only
+end
+note over CandidateReader, Advisor
+  Historical candidates omit the optional shortlist mapping manifest;
+  two exact anomaly-candidate identities cannot be rebound to mapped variants.
+  Model-English classification authority and descriptor/order choices remain pending.
+  Source-order preservation is not legacy SQL order or float-score equivalence.
+  Separate metric/risk comparisons held other legacy inputs fixed: no joint proof.
+  Missing/partial risk labels do not establish hedging or complete risk information.
+  No implementation, comparison execution, activation or admission is authorized here.
 end note
 
 == Phase 3B.1 synthetic temporary writer [Implemented, non-operational] ==

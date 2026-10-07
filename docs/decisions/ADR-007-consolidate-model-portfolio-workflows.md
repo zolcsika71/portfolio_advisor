@@ -367,6 +367,38 @@ reader equivalence, consumer activation, consolidation eligibility composition
 and admission remain pending. No approval, policy, default or operational
 authority is expanded; ADR-007 remains `Proposed` and admission `NOT_GRANTED`.
 
+## Proposed candidate-native reader composition
+
+The [integrated field-level reader contract](../architecture/biff-xls-normalization-admission-policy-v1.md#proposed-integrated-candidate-native-model-reader-contract)
+defines a documentation-only next boundary, traced at revision
+`66b29b0bc6078169d72deddf20513adeb72ad871`. Reuse the existing
+`ModelPortfolioReader` injection interface, without fabricating a database path.
+Both explicitly selected public projections must use the same validated complete
+candidate and align every occurrence/field in source order. A deterministic
+immutable sidecar binds source, policies, projection fingerprints, dispositions
+and the unchanged diagnostics; admission remains `NOT_GRANTED`.
+Legacy data belongs only on an independent comparison side, never as a fallback
+for candidate-native descriptors.
+
+The proposed original-descriptor/source-order profiles still need review before
+implementation. Original Hungarian model classifications are available, but the
+shortlist's approved English mapping and dataset-bound corrections do not
+authorize model translation. A legacy-English model descriptor profile remains
+unresolved. Candidate text/weight validation and source order are not identical
+to legacy ordinary text, broad numeric-zero handling or SQL holding order;
+float-order and tie effects must not be waived. Historical candidates must still
+omit the optional shortlist mapping manifest; the two anomaly-bound candidate
+identities cannot be replaced by mapped variants or silently rebound.
+
+The smallest separately authorizable slice is a synthetic-only immutable
+composition ledger, not active reader integration. The contract describes later
+complete field/occurrence and actual advisor/ranking comparisons across all dates;
+none are executed or authorized by this design. Separate metric/currency-risk
+comparisons do not prove joint reader equivalence. Matching legacy FX-risk
+coverage is not complete currency-risk information. Reader construction,
+consolidation eligibility composition and ranking eligibility are independent;
+consumer activation and admission remain pending. This ADR stays `Proposed`.
+
 ## Consequences
 
 - Model source authority becomes explicit and portable instead of being

@@ -795,6 +795,47 @@ separate deletion decision is authorized:
 Meeting these criteria makes retirement reviewable; it does not authorize
 removal.
 
+## Proposed integrated candidate-native model reader
+
+The [field-level composition contract](biff-xls-normalization-admission-policy-v1.md#proposed-integrated-candidate-native-model-reader-contract)
+is documentation-only, traced at revision
+`66b29b0bc6078169d72deddf20513adeb72ad871`. It proposes an explicit in-memory
+`ModelPortfolioReader`, not a file-backed repository or operational authority.
+Both public projections must consume the same validated complete candidate,
+with mandatory profile selections, pinned v1 identities, projection fingerprints
+and exact source-ordered occurrence/field alignment. Originals, allocation,
+duplicates, both sheets and diagnostics survive in an immutable provenance
+sidecar; scoped policy resolutions do not erase historical diagnostics.
+No candidate-native field may be borrowed from the legacy database.
+
+Historical candidates continue to omit the optional shortlist mapping manifest.
+The exact two anomaly-candidate bindings reject a changed mapping variant; an
+integration layer must not rebind those fingerprints or inherit shortlist
+classification authority. Model-English classification requires its own reviewed
+mapping decision: the normalizer supplies original Hungarian labels and explicitly
+does not apply the approved shortlist mapping to model rows.
+
+The proposed original-descriptor and source-order profiles are **not approved**.
+Candidate text trimming/required fields and preserved allocation zero differ
+from some legacy preparation semantics. Source order also differs from the
+legacy SQL portfolio/ISIN/product order; float aggregation and equal-key ordering
+need explicit comparison, not an assumed permutation-invariant result. A full
+reader facade requires these descriptive/order choices to be reviewed first.
+The smallest separately authorizable implementation is a pure same-candidate
+composition ledger plus synthetic integration tests, without consumer activation.
+
+The contract specifies later date/portfolio comparisons of every reader field,
+all 21 model source fields/twelve metrics, missing states, duplicate/order and
+provenance accounting, then actual advisor coverage, eligibility, contributions,
+scores, ordering, ties, warnings, winners and alternatives. No such integrated
+checks are executed or authorized here. The separate metric and currency-risk
+comparisons held different legacy inputs fixed; neither alone nor together proves
+an integrated candidate-native reader. Historical full currency-risk coverage
+does not prove complete risk information or hedging of missing/partial labels.
+Reader construction, consolidation eligibility and ranking eligibility remain
+distinct. Consumer activation, eligibility composition and admission remain
+pending; proposed reader results must retain admission `NOT_GRANTED`.
+
 ## Unresolved decisions and blockers
 
 1. **Dual-sheet watcher policy — operational approval still required.** Option

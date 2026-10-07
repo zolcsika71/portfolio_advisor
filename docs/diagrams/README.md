@@ -94,7 +94,8 @@ change tooling merely to validate documentation.
   shadow comparison, the implemented parser-only BIFF envelope, hash-bound
   recovery/formula verifier, bounded pure evidence-gate evaluator, pure
   normalization candidate, explicit pure model metric and currency-risk
-  projections, and synthetic writer, plus the proposed overall
+  projections, and synthetic writer, plus the proposed same-candidate reader
+  composition without legacy fallback, overall
   eligibility, single-writer admission, cutover, and post-cutover recovery
   boundaries.
 

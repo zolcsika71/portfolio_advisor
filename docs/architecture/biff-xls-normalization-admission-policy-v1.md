@@ -109,6 +109,251 @@ The future workflow must keep five layers distinguishable:
 `NULL` at layer 3 or 4 does not rewrite a source cell. A shortlist source zero,
 normalized `0.0`, and corrected effective `NULL` are three different states.
 
+## Proposed integrated candidate-native model reader contract
+
+This is a **Proposed, unimplemented** composition contract, traced at revision
+`66b29b0bc6078169d72deddf20513adeb72ad871`. It grants no implementation,
+comparison-execution, consumer-activation or admission authority. The separate
+[metric comparison](#bounded-retained-corpus-comparison-evidence) and
+[currency-risk comparison](#bounded-currency-risk-compatibility-comparison-evidence)
+held different legacy inputs fixed; neither separately nor together proves this
+reader. The composition boundary is shown in the
+[existing diagram](../diagrams/model-portfolio-consolidation-cutover.puml).
+
+### Verified reader and consumer boundary
+
+[`ModelPortfolioReader` and `HoldingObservation`](../../src/portfolio_advisor/database/repository.py)
+provide three methods and twelve holding fields. The legacy repository returns
+stored values, not fresh normalization, and orders holdings by SQL
+`Portfolio Name`, `ISIN`, `Product`. Its optional absent `Asset Class` column
+produces `None`; that schema compatibility branch is not permission to hide an
+unmapped classification in a candidate with a required source header.
+[`CapitalPreservationAdvisor`](../../src/portfolio_advisor/advisor/service.py)
+already accepts an explicitly injected reader. It invokes the actual
+[reported-indicator calculations](../../src/portfolio_advisor/metrics/portfolio.py)
+and [ranking functions](../../src/portfolio_advisor/ranking/ranking.py).
+An in-memory adapter would implement `ModelPortfolioReader`, **not**
+`FileBackedModelPortfolioReader`; it must not invent a `database_path`.
+Proposed `observation_dates()` returns the ascending unique `tuple[date, ...]`
+of accepted input snapshots; `latest_observation_date()` returns its greatest
+date; `load_holdings(date)` returns that complete snapshot's fresh
+`list[HoldingObservation]` in the explicitly selected order. Empty/conflicting
+inputs and an unavailable date fail visibly, without nearest-date substitution.
+
+### Field-level reader contract
+
+In this table, **C** is the same validated immutable normalization candidate,
+**M** its explicitly selected public model-metric projection, and **R** its
+explicitly selected public currency-risk projection. Every field has a sidecar
+binding to C's workbook hash/date/envelope/candidate fingerprints, exact model
+sheet name/index/fingerprint, row occurrence/reference/fingerprint and original
+header/cell coordinate/type/raw value/XF/format. Projected fields additionally
+bind the projection fingerprint, version, policy and disposition/reason.
+The proposed DTO may collapse a missing value to `None`; the sidecar must retain
+blank versus absent versus empty text, rejection versus omission, and originals.
+
+| Reader field / method input | Candidate source and proposed transformation | Type / unit | Authority, missing/error behavior and remaining gap |
+| --- | --- | --- | --- |
+| Observation date | C.`source_binding.snapshot_date`; strict ISO date conversion, tied to the validated filename and workbook identity | `date` | Existing source v1 date contract; never choose a DB date, nearest date or latest file arrival |
+| `portfolio_name` | `Portfólió neve` → `portfolio_name`; C's trimmed normalized text | Required `str` | Existing normalization requires nonempty BIFF text; rejected field blocks construction. No casefold/alias/group merging. Legacy ordinary text is not categorically translated; trim-induced identity differences remain to compare |
+| `product` | `Termék` → `product_name`; C's trimmed normalized text | DTO `str \| None`, candidate requires text | Do not exploit DTO optionality to accept rejected/missing required candidate text; no product aliases or legacy lookup. Text preservation differences remain to compare |
+| `isin` | `ISIN` → `isin`; exact validated uppercase source form after existing trim | DTO `str \| None`, candidate requires text | Existing 12-character regex, not inferred share-class identity or check-digit proof; no repair/fallback. Rejected/missing field blocks construction |
+| `allocation` | `Hányad (%)` → `reported_weight`; C's finite nonnegative number unchanged | `float`, percentage points | Existing normalizer rejects missing/non-number/negative/non-finite weight. Preserve numeric zero; no `/100`, renormalization or model-metric omission rule. Legacy broad zero replacement also affected allocation: a zero-to-`None` reader extension is **not approved** |
+| `currency` | `Deviza` → `original_currency`; C's trimmed normalized text unchanged | `str \| None`, reported label | Existing blank/absent/empty-text missing semantics; invalid non-text blocks construction. No ISO correction, conversion or investor base-currency inference. Legacy raw label/whitespace differences may change currency concentration |
+| `currency_risk` | `Devizakockázat` → R's separately projected attribute | Canonical English `str \| None` | Approved three text mappings and exact 24-occurrence exception only; preserve R's missing/anomaly reasons. Unknown labels/types or changed bindings reject the whole R request; no hedge fraction, English-input extension or future anomaly exception |
+| `return_1y` | `1yr` → `RETURN_1Y` in M | `float \| None`, unscaled ratio | Approved explicit original/compatibility selection; present number unchanged, source missing → `None`, eligible compatibility zero → `None` with omission reason. `REJECTED` is not missing and blocks the proposed reader |
+| `sharpe_ratio_1y` | `1Y Sharpe` → `SHARPE_RATIO_1Y` in M | `float \| None`, unscaled ratio | Same scoped metric rule; do not recompute, annualize or coerce text `"0"` |
+| `volatility_1y` | `1Y Vol.` → `VOLATILITY_1Y` in M | `float \| None`, unscaled ratio | Same scoped rule. Consumer's reported-annualized label is existing compatibility terminology, not independently established methodology |
+| `downside_risk` | `Down. risk` → `DOWNSIDE_RISK` in M | `float \| None`, unscaled ratio | Same scoped rule; no inferred target return or risk methodology |
+| `maximum_drawdown` | `Max. drawd.` → `MAXIMUM_DRAWDOWN` in M | `float \| None`, unscaled ratio | Same scoped rule; no absolute-value/sign repair or reconstructed drawdown |
+| `asset_class` | `Eszközosztály` → C.`original_asset_class` | DTO `str \| None` | Original Hungarian text preserved. An original-label reader profile is proposed; a legacy-English model profile requires separately reviewed mapping authority. C has `NOT_APPLICABLE_TO_MODEL_ROLE`, no English model mapping. Never use the shortlist reference mapping, correction admission, or `None` to conceal this gap |
+
+The remaining seven model metrics are still accounted for in M's complete
+twelve-field ledger: `YTD` → `YTD`, `3yr` → `RETURN_3Y`, `5yr` → `RETURN_5Y`,
+`3Y Sharpe` → `SHARPE_RATIO_3Y`, `5Y Sharpe` → `SHARPE_RATIO_5Y`,
+`3Y Vol.` → `VOLATILITY_3Y`, and `Info. ratio` → `INFORMATION_RATIO`.
+They have no `HoldingObservation` slot and must not be fabricated into the five
+active source metrics. Preserve their dispositions and unresolved 3yr/5yr
+interpretation. `Aleszközosztály` and `Fenntarthatóság` remain original fields in
+the sidecar, not silently discarded or translated. No sustainability decision
+is made here. Both entire sheets, including shortlist diagnostics, remain in C.
+
+The advisor also needs an explicitly supplied reviewed rules path, observation
+date/latest-date selection, `allow_proposed_rules` and `alternative_count`;
+these are caller/ranking controls, not candidate financial fields. The reader
+must not synthesize rules or enable proposed rules. Portfolio totals, weighted
+indicator values/coverage/warnings, unhedged allocation and currency concentration
+are calculated by the existing metric functions, not stored substitutes.
+Eligibility/reasons, score contributions, scores, name-based tie-breaking,
+ordering, winners and alternatives come from the existing advisor/ranking.
+This contract authorizes no change to those functions or the active policy.
+
+### Same-candidate composition and fail-closed behavior
+
+Propose a pure `CANDIDATE_NATIVE_MODEL_READER_V1` construction boundary:
+
+1. Require C and its expected candidate fingerprint, exact source/envelope/
+   normalization v1 identities, and mandatory metric and currency-risk choices.
+   Invoke **both published public projection APIs on C**, not on independently
+   reconstructed, model-only or differently mapped candidates. Reuse their
+   substantive immutable typed/provenance validation; a recomputed fingerprint
+   alone is insufficient. No caller-approved registry or policy override.
+2. Pin `MODEL_METRIC_PROJECTION` v1 and `MODEL_CURRENCY_RISK_PROJECTION` v1,
+   their selected profile names, approved policy identities/dates, and R's
+   captured mapping/anomaly-registry identity. Record both result fingerprints.
+   Both `original_candidate` bindings must equal C's complete identity and
+   unchanged canonical content. These are in-memory consistency bindings,
+   not a fresh inspection of current workbook bytes.
+3. Align one M row and one R row to **every** source-ordered model row using
+   occurrence ID/index, source row/reference and row fingerprint. Check exact
+   sheet/header/cell and field-occurrence identities too. Never join only by
+   date, portfolio, ISIN or product, zip without checks, aggregate duplicates,
+   drop a holding, or substitute a legacy field. Missing, extra, reordered,
+   duplicated or mismatched projection rows fail the complete snapshot visibly.
+4. Preserve the immutable source-ordered ledger, allocation and all non-target
+   fields, full C, and its exact diagnostics. Carry scoped zero/translation/
+   anomaly resolutions separately; do not delete historical unresolved messages
+   or waive unrelated recovery, formula, classification, sustainability or
+   metric-interpretation gates. Required reader fields with `REJECTED` status
+   block the DTO boundary, rather than masquerade as `None`. Unused-field
+   diagnostics stay explicit; reader construction is not a blanket eligibility
+   verdict on them or on the shortlist.
+5. Reject empty input, unsupported contracts/choices, stale expected identity,
+   date conflicts, and requests for an unavailable date. A proposed multi-date
+   reader accepts one complete candidate per date, sorts date keys, returns the
+   greatest for `latest_observation_date`, and rejects duplicate date inputs
+   (even equal fingerprints) rather than silently merge/replay/deduplicate.
+   This is a reader-input proposal, not an admission replay/supersession policy.
+   Return a fresh holdings list with immutable entries and stable positional
+   sidecar bindings; mutating the list must not mutate the reader or C.
+
+Historical construction **must remain**
+`approved_shortlist_mapping_manifest=None`, as in the verified comparisons.
+For the two anomaly-bearing hashes the production registry pins the complete
+candidate/envelope, both sheet fingerprints/counts and parser-library version
+`2.0.2`. Adding the optional approved shortlist manifest changes the candidate
+fingerprint and must trigger `APPROVED_ANOMALY_WORKBOOK_BINDING_MISMATCH`;
+model-only reconstruction or rebinding is not permitted. Preserving no mapping
+for this historical reader does not approve shortlist admission or remove its
+diagnostics. A different mapped historical variant would need new authorization,
+not a composition-layer bypass. Future v1 candidates receive lexical/metric
+policy scope only, never historical anomaly or evidence-gate authority.
+
+### Proposed opt-in surface and unresolved descriptive choices
+
+The following illustrates a future interface, **not implemented code**:
+
+```python
+reader = CandidateNativeModelPortfolioReader(
+    candidates=explicit_candidates,
+    expected_candidate_fingerprints=explicit_fingerprints,
+    metric_projection=MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1,
+    currency_risk_projection=MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1,
+    descriptor_profile="ORIGINAL_MODEL_DESCRIPTORS_V1",  # Proposed
+    holding_order="SOURCE_ORDER_V1",  # Proposed, not legacy order equivalence
+)
+```
+
+No selection has a default. The original metric choice remains available only
+when explicitly requested; it is intentionally not the historical compatibility
+claim. The proposed descriptor profile exposes existing normalized original
+portfolio/product/ISIN/currency fields and Hungarian asset class. It is not a
+legacy-English profile and remains a decision to review before implementation.
+A later separately authorized harness could inject the reader into
+`CapitalPreservationAdvisor(reader, explicit_rules_path)` without changing any
+default. No database is an input or fallback; legacy data belongs exclusively
+on the comparator's independent expected-results side. A deterministic sidecar
+must fingerprint all candidates, projections, selected profiles/order and every
+DTO-to-occurrence field binding. Proposed reader results always retain
+`admission_approval = NOT_GRANTED`; constructing them is neither consolidation
+eligibility composition nor ranking eligibility.
+
+These integration choices remain unresolved:
+
+- **Model classifications:** legacy
+  [`excel_processing.VALUE_TRANSLATIONS`](../../src/portfolio_advisor/DB_creation/excel_processing.py)
+  independently translates model asset/sub-asset text, including historical
+  question-mark spellings, and accepts configured English values. That is code
+  behavior, not approval to reuse the shortlist's pair corrections or authority.
+  The proposed original-label profile is truthful but cannot claim full English
+  reader equivalence. Any model-English mapping needs its own scope, original/
+  effective provenance, unknown-label behavior and approval. Asset class is not
+  read by the current advisor metric/ranking functions, but it is a reader DTO
+  field and other workflows use classifications; ranking equality cannot waive it.
+  For example, the legacy model dictionary maps `részvény` to `Equity`,
+  `kötvény` to `Bond`, and `pénzpiaci` to `Money Market`; its independent
+  sub-asset dictionary maps `globál` to `Global` and the literal historical
+  `fejl?d? piacok` to `Emerging Markets`. Legacy categorical NFC/trim/casefold
+  lookup precedes flat storage; the repository reads that stored English text.
+  C instead preserves normalized Hungarian originals plus exact source cells,
+  with no model English classification candidate. The shortlist's original,
+  composed and English pair-mapping correction stages are a different lineage,
+  not authority to install either model dictionary as an effective mapping.
+- **Descriptive identity/weight compatibility:** candidate text is trimmed and
+  required fields are stricter; legacy ordinary portfolio/product/ISIN/currency
+  text is not passed through those categorical mappings. Legacy numeric-zero
+  replacement includes allocation, outside the approved twelve-metric policy.
+  Compare these states explicitly; reject invalid candidate weights rather than
+  invent missing allocation or broaden zero handling to force equivalence.
+- **Holding order:** proposed `SOURCE_ORDER_V1` preserves the source ledger and
+  DTO order. Legacy SQL sorts by portfolio/ISIN/product and has no explicit
+  source-occurrence tie-break for equal keys. Metric float sums follow holding
+  order, so even a value-equivalent permutation can affect exact scores/ties.
+  A separate legacy-order view would require an explicit reviewed sort/collation/
+  null/tie contract and permutation-to-source provenance; it must never replace
+  source order or be silently introduced to obtain a pass. No order equivalence
+  or numeric-tolerance exception is approved here.
+
+### Later integration validation contract (not executed)
+
+The smallest justified next slice, **after separate authorization**, is a pure
+immutable same-candidate composition ledger with synthetic fixtures: both public
+projections, complete occurrence/field accounting, fixed production bindings,
+independent resolution records and unconditional `NOT_GRANTED`. Resolve the
+descriptor/order choices before exposing a full reader facade or making a full
+reader-equivalence claim; no DB adapter or active-consumer integration is needed.
+
+Later synthetic integration checks must include both metric selections, all
+twelve metrics, joint metric-zero/currency-risk outcomes, nonzero and missing
+states, excluded cell types, unknown model classifications, allocation zero,
+text normalization boundaries, order-sensitive float sums, exact duplicates,
+changed fingerprints/versions/coordinates/occurrences, cross-candidate joins,
+projection failures and deterministic serialization/deep immutability. Public
+anomaly-success tests may use a restored test-local registry only under existing
+test conventions, never a public override or claimed historical acceptance.
+Pinned real anomaly candidates with changed optional mapping inputs must reject.
+Test date enumeration/latest/unavailable/conflicting dates, fresh returned lists,
+and no legacy fallback or fabricated file-backed provenance.
+
+A separately authorized all-date comparison must use the exact retained inputs,
+recorded historical construction, both public projections on each same C, actual
+legacy reader on the independent baseline side, and actual production advisor/
+ranking functions. Verify rather than assume the historical 33 workbooks/dates,
+5,283 model rows, 408 date/portfolio identities, 10,833 shortlist occurrences,
+327,603 source fields and 12,072 metric-zero omissions. Account for every row
+and all 21 model fields, all twelve projected metrics and every reader DTO field,
+original types/missing states, duplicate multiplicity, source and consumer order,
+both sheets/diagnostics, allocation, all mapping/disposition identities and
+failures. Report exact field mismatches and order permutations; do not align
+away a loss or silently accept different descriptors because ranking matches.
+
+Compare complete per-date/per-portfolio indicator values and availability,
+coverage/thresholds, ranking eligibility/reasons, score contributions/scores,
+ordering, tie groups/tie-breaking, warnings/unavailable metrics, winners and
+alternatives. Compatibility mode is the legacy comparator; original mode has
+intentional metric-zero differences, reported independently. Include repeat
+determinism checks. Any rejection blocks that date's comparison visibly; no
+partial date, excluded holding, legacy descriptor borrowing, forced expectation,
+or unapproved tolerance can yield equivalence. Any genuine intentional difference
+needs its own reviewed disposition before a bounded equivalence statement.
+
+The currency-risk coverage caveat remains: legacy full coverage coexisted with
+missing labels for 160 identities and partial labels for 102 (possibly overlapping
+groups). Neither missing nor partial labels establish hedging or complete risk
+information. Even a future passing integrated advisor comparison would not prove
+other reader workflows, admission eligibility, consumer activation or cutover.
+No checks in this subsection were executed by this documentation task.
+
 ## Provenance and deterministic identities
 
 A normalization candidate must bind all of the following without using a local
