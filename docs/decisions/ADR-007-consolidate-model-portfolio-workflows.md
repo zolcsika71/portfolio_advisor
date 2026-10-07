@@ -170,7 +170,8 @@ bindings; keeps model and shortlist zero rules scoped; and emits diagnostics for
 recovered parsing, uncertain formula origin, currency-risk translations,
 anomaly dispositions, and real-source model zero semantics. The adapter
 predates the subsequent model-zero policy approval and still emits
-`UNRESOLVED_MODEL_ZERO_SEMANTICS`; no compatibility projection is implemented.
+`UNRESOLVED_MODEL_ZERO_SEMANTICS`. The separate pure projection described below
+preserves that input diagnostic and records its scoped policy resolution.
 It accepts only an in-memory parser envelope, caller-supplied expected workbook
 hash, and optional exact approved mapping bytes. It has no database or
 filesystem surface, emits `admission_approval = NOT_GRANTED`, and cannot
@@ -219,9 +220,14 @@ independently satisfy the same v1 typed-source contract. The earlier corpus
 audit attributed 12,072 numeric-zero cells to the retained scope; this approval
 record does not freshly measure them or claim they mean missing data. Future
 bytes inherit no recovery, formula, correction, eligibility, or admission
-authority. Projection implementation, consumer activation, retained-corpus
-ranking equivalence, and any operational default change remain pending. This
-approved sub-decision does not accept ADR-007 or authorize admission,
+authority. The pure `project_model_metrics` API now implements original and
+compatibility selection with a required candidate fingerprint, immutable typed
+provenance, and field omission reasons. Both modes preserve all input rows,
+shortlist fields, original values, and diagnostics; only eligible model numeric
+zero observations are omitted in compatibility mode. Results remain
+`NOT_EVALUATED_PROJECTION_ONLY` with admission `NOT_GRANTED`. Consumer activation,
+retained-corpus ranking equivalence, and any operational default change remain
+pending. This approved sub-decision does not accept ADR-007 or authorize admission,
 migration, authority transfer, or cutover.
 
 ## Consequences

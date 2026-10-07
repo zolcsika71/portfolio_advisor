@@ -23,9 +23,10 @@ original observations for the exact twelve model metrics and expose legacy
 omission only through the separately identified, explicitly selected,
 provenance-bound `MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1` projection.
 The approval covers the 33 inventoried workbooks and future workbooks that
-independently satisfy the same v1 typed-source contract. It records policy
-decision only; neither the projection nor consumer selection is implemented,
-and no admission or operational authority is granted.
+independently satisfy the same v1 typed-source contract. The pure, explicitly
+selected projection is now implemented; active consumer integration and
+retained-corpus equivalence remain pending. No admission or operational
+authority is granted.
 
 The source parser continues to return `NOT_EVALUATED_PARSER_ONLY`. The pure
 `BIFF_XLS_NORMALIZATION_CANDIDATE_V1` adapter returns a separate
@@ -199,7 +200,7 @@ envelope. No current metric cell is empty text or text `"0"`.
 | --- | --- | --- | --- |
 | BIFF `number`, finite and non-zero | Same unscaled binary64 value | Same unless an exact authorized correction says otherwise | Eligible |
 | BIFF `number` equal to zero, shortlist | `0.0` observation | `NULL` only for the 23,979 exact ADR-003 correction bindings; otherwise `0.0` | Eligible only under exact dataset/correction binding |
-| BIFF `number` equal to zero, model | `0.0` observation plus the adapter's still-current `UNRESOLVED_MODEL_ZERO_SEMANTICS` diagnostic | Approved compatibility policy specifies omission; original remains `0.0` | **Policy approved 2026-09-26; implementation pending.** It is not a statement that the source failed cleaning and must never apply to shortlist or allocation |
+| BIFF `number` equal to zero, model | `0.0` observation plus the adapter's still-current `UNRESOLVED_MODEL_ZERO_SEMANTICS` diagnostic | Explicit compatibility projection omits the metric observation; original remains `0.0` | **Policy approved 2026-09-26; pure projection implemented, consumers pending.** It is not a statement that the source failed cleaning and must never apply to shortlist or allocation |
 | BIFF `blank` | No observation / SQL `NULL` | `NULL` | Eligible; retain `blank` source type |
 | BIFF `empty` | No observation / SQL `NULL` | `NULL` | Eligible; retain `empty` source type |
 | Text empty string | No observation / SQL `NULL` | `NULL` | Eligible only with an explicit `EMPTY_TEXT_AS_MISSING` diagnostic; retain text source type |
@@ -208,10 +209,10 @@ envelope. No current metric cell is empty text or text `"0"`.
 | BIFF boolean or date serial | None | None | Reject metric candidate even if the payload is numerically representable |
 | Non-finite number | None | None | Reject metric candidate |
 
-### Approved model-zero policy; implementation pending
+### Approved model-zero policy; pure projection implemented
 
-**Decision status: explicitly approved by the user on 2026-09-26; not
-implemented.** The approved policy is
+**Decision status: explicitly approved by the user on 2026-09-26; pure projection
+implemented, consumer activation pending.** The approved policy is
 `MODEL_METRIC_ZERO_HANDLING_POLICY_V1`. It has two outputs that must never be
 collapsed into one nullable scalar:
 
@@ -554,9 +555,10 @@ The evidence report's `NOT_GRANTED` fields remain an unchanged record of its
 audit-time state. The subsequent pure evidence-gate evaluator implements only
 the two approved checks and still emits `admission_approval = NOT_GRANTED`; it
 does not implement overall eligibility or authorize admission. The following
-model-zero implementation work also remains pending: the current normalization
-adapter still emits `UNRESOLVED_MODEL_ZERO_SEMANTICS`, no projection consumer
-exists, and retained-corpus ranking equivalence has not been rehearsed. The
+model-zero integration work remains pending: the current normalization adapter
+still emits `UNRESOLVED_MODEL_ZERO_SEMANTICS`, whose input record is preserved
+by the separate projection. No active projection consumer exists, and
+retained-corpus ranking equivalence has not been rehearsed. The
 following unrelated decisions remain pending:
 
 1. The occurrence-bound disposition manifest for the 24 currency-risk and
@@ -591,10 +593,42 @@ No current writer consumes the candidate format. The two evidence approvals
 are now enforced by the separate pure
 `BIFF_XLS_EVIDENCE_GATE_EVALUATION` v1 boundary, but it deliberately does not
 combine them with normalization diagnostics or other eligibility gates. The
-smallest next slice is a separately authorized pure implementation of the
-approved model-zero projection with synthetic type/provenance/selector tests.
-A later eligibility composition may consume that projection and the
-evidence-gate result only after its own authorization. Any temporary rehearsal
+approved model-zero projection is now implemented separately in
+`portfolio_advisor.workbook_source.model_metric_projection`. Its public API is:
+
+```python
+project_model_metrics(
+    candidate,
+    projection=MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1,
+    expected_candidate_fingerprint=candidate.candidate_fingerprint,
+)
+```
+
+Both keywords are required; `MODEL_METRIC_ORIGINAL_V1` is the other supported
+selection. The immutable `MODEL_METRIC_PROJECTION` v1 result embeds the complete
+unchanged two-sheet candidate and ordered model rows, with all twelve field
+dispositions, original typed fields, policy/date, projection identity/version,
+and a canonical `projection_fingerprint`. Every result remains
+`NOT_EVALUATED_PROJECTION_ONLY` with `admission_approval = NOT_GRANTED`.
+`zero_policy_applied` identifies only eligible numeric zeros in either mode;
+it records resolution under this policy without deleting the input's historical
+`UNRESOLVED_MODEL_ZERO_SEMANTICS` diagnostic. All other diagnostics remain intact.
+
+Validation checks immutable candidate types, source-contract identity, dated
+filename, exact sheets/headers, row and cell provenance, row fingerprints, and
+field semantics by replaying the existing pure field normalizer. Missing or
+altered required field diagnostics reject the input. This checks candidate
+consistency, not workbook authenticity: envelope/sheet fingerprints remain
+upstream bindings because full workbook metadata/merge evidence is not present
+in the candidate. Classification candidates and mapping references are retained,
+not newly approved or admitted. No filesystem or database is accessed; durable
+retention remains the caller's separately governed responsibility.
+Synthetic tests cover scope, exclusions, malformed candidates, duplicates,
+determinism, provenance, input non-mutation, and compatibility of adjacent APIs.
+
+The smallest next slice requires separate authorization for consumer selection
+or eligibility composition using this result and the evidence-gate result.
+Retained-corpus ranking equivalence remains unproven. Any temporary rehearsal
 must reproduce exact correction bindings before an admission adapter is
 designed; none of these steps may transfer authority or silently choose
 unresolved semantics.

@@ -8,12 +8,14 @@
 ' - src/portfolio_advisor/workbook_source/biff_evidence.py
 ' - src/portfolio_advisor/workbook_source/biff_evidence_approval.py
 ' - src/portfolio_advisor/workbook_source/normalization.py
+' - src/portfolio_advisor/workbook_source/model_metric_projection.py
 ' Synthetic regressions:
 ' - tests/test_model_portfolio_consolidation_phase3b.py
 ' - tests/test_biff_xls_source.py
 ' - tests/test_biff_xls_evidence.py
 ' - tests/test_biff_xls_evidence_approval.py
 ' - tests/test_biff_xls_normalization.py
+' - tests/test_model_metric_projection.py
 ' Verified current behavior against:
 ' - src/portfolio_advisor/main.py
 ' - src/portfolio_advisor/DB_creation/database_create.py
@@ -55,6 +57,7 @@ participant "BIFF-XLS source parser\n(no admission)" as Parser
 participant "Hash-bound BIFF evidence\nverifier (read-only)" as EvidenceVerifier
 participant "Evidence-gate evaluator\n(pure, no admission)" as GateEvaluator
 participant "Normalization candidate\nadapter (no admission)" as Normalizer
+participant "Explicit model metric\nprojection (pure)" as MetricProjection
 database "Isolated schema-v3\ntemporary database" as Temporary
 database "portfolio_advisor.sqlite\nproposed operational authority" as Analytical
 participant "Model + provenance +\ncorrection validators" as Validators
@@ -208,13 +211,28 @@ note over Parser, Normalizer
   overall eligibility is not implemented and admission remains NOT_GRANTED.
   Proposed currency-risk translations are not authorized. Shortlist numeric
   zero remains an original 0.0 and becomes effective NULL only through the
-  exact existing ADR-003 correction binding. Model zero-to-absence is a
-  separate legacy-compatible proposal requiring approval for real sources.
+  exact existing ADR-003 correction binding. Model zero policy was approved
+  on 2026-09-26; the separate pure projection implements explicit selection.
   Exact approved English mapping bytes may produce reference-only candidates;
   their existing dataset admission is not inherited. No implemented writer
   consumes this format. Phase
   3B.1's approved synthetic atomic behavior is not reopened; only a future
   real-workbook admission policy remains undecided.
+end note
+
+== Model metric projection [Implemented; consumers pending] ==
+
+Operator -> MetricProjection: provide candidate, expected fingerprint,\nand explicit ORIGINAL_V1 or ZERO_TO_ABSENCE_COMPATIBILITY_V1 selection
+MetricProjection -> MetricProjection: validate typed provenance and v1 field semantics;\npreserve the complete input candidate and every diagnostic
+alt eligible numeric zero in one of twelve model metrics, compatibility selected
+    MetricProjection -> MetricProjection: omit only that metric observation;\nrecord original evidence + omission reason + scoped policy resolution
+else original selected, nonzero, missing, or rejected metric
+    MetricProjection -> MetricProjection: preserve original/missing/rejected disposition\nwithout scaling or coercion
+end
+MetricProjection --> Operator: immutable versioned result + projection fingerprint;\nall source occurrences retained; admission NOT_GRANTED
+note over Operator, MetricProjection
+  Allocation and shortlist are outside this rule. No active consumer selects it.
+  Retained-corpus ranking equivalence remains unproven; no admission authority.
 end note
 
 == Phase 3B.1 synthetic temporary writer [Implemented, non-operational] ==

@@ -149,10 +149,10 @@ dataset, but not yet an operational typed interface for every field.
 | Field group | Current analytical representation | Verified coverage | Required action |
 | --- | --- | --- | --- |
 | Date, portfolio, product, ISIN, allocation, asset/sub-asset class, currency, currency risk | Typed snapshot/source-occurrence columns plus raw payload | All 5,283 rows; no missing portfolio, product, or ISIN | Preserve both typed and original values. Define stable identity from source-file SHA-256, sheet, source row, snapshot date, portfolio, and ISIN rather than SQLite row IDs. |
-| Ranking metrics: 1-year return, 1-year Sharpe, 1-year volatility, downside risk, maximum drawdown | `instrument_metric_observation` with occurrence-bound references | 5,021; 4,720; 5,139; 18; and 4,299 non-NULL legacy-compatible observations respectively | Preserve codes and occurrence multiplicity. The approved, unimplemented zero policy requires original zero observations and exposes these historical non-NULL counts only through the named compatibility projection. |
+| Ranking metrics: 1-year return, 1-year Sharpe, 1-year volatility, downside risk, maximum drawdown | `instrument_metric_observation` with occurrence-bound references | 5,021; 4,720; 5,139; 18; and 4,299 non-NULL legacy-compatible observations respectively | Preserve codes and occurrence multiplicity. The approved zero policy requires original zero observations; the pure compatibility projection is implemented, while storage/consumer integration and retained-data equivalence remain pending. |
 | Sustainability | Raw payload only | 5,217 non-NULL parsed legacy values | Add a typed nullable occurrence attribute while retaining the original payload text and translation version. |
-| YTD, 3-year return, 5-year return | Raw payload only | 5,195; 4,731; and 4,127 non-NULL parsed legacy-compatible values | The approved, unimplemented zero policy requires every valid original number, including zero, to be normalized with stable occurrence references; legacy omission is derived only through the named projection. |
-| 3-year Sharpe, 5-year Sharpe, 3-year volatility, information ratio | Raw payload only | 4,394; 3,962; 4,717; and 4,453 non-NULL parsed legacy-compatible values | The approved, unimplemented zero policy requires every valid original number, including zero, to be normalized; absence must not be inferred in the original layer. |
+| YTD, 3-year return, 5-year return | Raw payload only | 5,195; 4,731; and 4,127 non-NULL parsed legacy-compatible values | The approved zero policy preserves every valid original number, including zero, in the in-memory candidate; the pure named compatibility projection is implemented, storage integration pending. |
+| 3-year Sharpe, 5-year Sharpe, 3-year volatility, information ratio | Raw payload only | 4,394; 3,962; 4,717; and 4,453 non-NULL parsed legacy-compatible values | The approved zero policy preserves every valid original number, including zero; the pure projection is implemented, and absence is never inferred in the original layer. Storage integration remains pending. |
 | Original worksheet cells | `source_payload_json` | 21 original headers per occurrence | Keep immutable. Raw text such as `"0"` is evidence; the established model importer separately maps numeric zero to NULL in its parsed representation. Do not apply shortlist correction semantics to model data. |
 
 ### Identifiers, aliases, duplicates, and conflicts
@@ -568,9 +568,14 @@ errors, dates, booleans, non-finite values, and the entire shortlist role are
 excluded. Future files inherit no recovery,
 formula, correction, eligibility, or admission authority. The earlier corpus
 audit attributed 12,072 such cells to the 33 retained hashes; this plan does
-not freshly measure or admit them. The policy is not implemented, the adapter
-still reports its pre-approval unresolved diagnostic, and retained-corpus
-ranking equivalence remains unproven. Shortlist original zeros remain `0.0`,
+not freshly measure or admit them. The separate pure `project_model_metrics`
+API now requires an explicit original/compatibility selector and expected
+candidate fingerprint, preserves the complete input candidate, and emits
+versioned metric dispositions with original provenance. The adapter still
+reports its pre-approval unresolved diagnostic; the projection preserves it
+as input evidence and records eligible zero resolutions separately. No active
+consumer is integrated, and retained-corpus ranking equivalence remains
+unproven. Shortlist original zeros remain `0.0`,
 and the exact existing ADR-003 corrections are not inherited by new sources.
 Recovery/formula evidence is governed by the subsequently approved hash-bound
 sub-decisions described below; anomaly dispositions, executable overall
@@ -709,13 +714,13 @@ removal.
    not combine them with normalization diagnostics or other eligibility gates.
    Changed or future bytes remain outside scope, upstream formula history
    remains unverified, and parser success alone is insufficient.
-8. **Approved model-zero policy—implementation and equivalence pending:** the
+8. **Approved model-zero policy—consumer integration and equivalence pending:** the
    user approved `MODEL_METRIC_ZERO_HANDLING_POLICY_V1` on 2026-09-26 for the
    twelve model metrics on the 33 inventoried workbooks and future
-   v1-conforming model sheets. Original zero preservation and the separate
-   `MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1` projection are not
-   implemented; no consumer is activated, and retained-corpus ranking
-   equivalence remains unproven.
+   v1-conforming model sheets. Original zero preservation and the separate pure
+   `MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1` projection are implemented
+   in memory; no consumer is activated, and retained-corpus ranking equivalence
+   remains unproven. Projection success retains admission `NOT_GRANTED`.
 9. **Anomaly dispositions:** approve occurrence-bound treatment of the 24
    currency-risk and three sustainability warnings. No proposed English
    currency-risk mapping is currently authorized.

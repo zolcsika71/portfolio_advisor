@@ -93,7 +93,8 @@ change tooling merely to validate documentation.
   — implemented non-operational Phase 1 contracts and Phase 3A read-only
   shadow comparison, the implemented parser-only BIFF envelope, hash-bound
   recovery/formula verifier, bounded pure evidence-gate evaluator, pure
-  normalization candidate, and synthetic writer, plus the proposed overall
+  normalization candidate, explicit pure model metric projection, and synthetic
+  writer, plus the proposed overall
   eligibility, single-writer admission, cutover, and post-cutover recovery
   boundaries.
 

@@ -16,6 +16,15 @@ from .biff_xls import (
     BiffXlsParseError,
     parse_biff_xls,
 )
+from .model_metric_projection import (
+    MODEL_METRIC_ORIGINAL_V1,
+    MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1,
+    ModelMetricProjection,
+    ModelMetricProjectionError,
+    ProjectedModelMetric,
+    ProjectedModelRow,
+    project_model_metrics,
+)
 from .normalization import (
     ADMISSION_APPROVAL,
     CANDIDATE_STATUS,
@@ -30,6 +39,8 @@ __all__ = [
     "CANDIDATE_STATUS",
     "CONTRACT_NAME",
     "CONTRACT_VERSION",
+    "MODEL_METRIC_ORIGINAL_V1",
+    "MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1",
     "MODEL_PORTFOLIO_ROLE",
     "BiffEvidenceGateEvaluation",
     "BiffXlsEnvelope",
@@ -39,7 +50,12 @@ __all__ = [
     "EvidenceDecisionReason",
     "EvidenceGateVerdict",
     "EvidenceReportBinding",
+    "ModelMetricProjection",
+    "ModelMetricProjectionError",
+    "ProjectedModelMetric",
+    "ProjectedModelRow",
     "evaluate_biff_xls_evidence",
     "normalize_biff_xls_envelope",
     "parse_biff_xls",
+    "project_model_metrics",
 ]
