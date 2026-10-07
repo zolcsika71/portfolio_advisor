@@ -31,6 +31,7 @@ def write_biff_fixture(
     extra_model_blank: bool = False,
     include_formula: bool = False,
     duplicate_shortlist_first_row: bool = False,
+    model_currency_risk: object = 2,
 ) -> Path:
     """Generate a small workbook containing no retained/private evidence."""
     workbook = xlwt.Workbook(encoding="utf-8")
@@ -47,6 +48,7 @@ def write_biff_fixture(
             first_data_row,
             extra_model_data=extra_model_data,
             extra_model_blank=extra_model_blank,
+            currency_risk=model_currency_risk,
         )
     if include_shortlist:
         shortlist = workbook.add_sheet(shortlist_sheet_name, cell_overwrite_ok=True)
@@ -109,6 +111,7 @@ def _write_model_rows(
     *,
     extra_model_data: bool,
     extra_model_blank: bool,
+    currency_risk: object,
 ) -> None:
     percentage = xlwt.easyxf(num_format_str="0.00%")
     values: list[object] = [
@@ -119,7 +122,7 @@ def _write_model_rows(
         "Kötvény",
         "Globál",
         "USD",
-        2,
+        currency_risk,
         "1: ESG-Minimum Standard",
         0.0,
         0.08,

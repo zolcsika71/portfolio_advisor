@@ -255,7 +255,8 @@ eligibility/admission gates; it grants no additional authority. ADR-007 remains
 On 2026-10-07 the user explicitly approved all three
 [model currency-risk policy sub-decisions](../architecture/biff-xls-normalization-admission-policy-v1.md#model-currency-risk-translation-and-anomaly-policy):
 “Approve all three within their reviewed scopes.” These are independent policy
-approvals only; implementation, comparison execution, consumer activation, and
+approvals only. The subsequent synthetic-only task authorizes the separate pure
+projection described below; comparison execution, consumer activation, and
 admission remain unauthorized. `MODEL_CURRENCY_RISK_TRANSLATION_POLICY_V1`
 defines only declared Hungarian BIFF text keys mapped to `Hedged`, `Unhedged` and
 `Partially Hedged`, preserving originals and the explicit lookup/projection
@@ -264,9 +265,9 @@ translation, synonyms and already-English input extensions are excluded.
 Approved `MODEL_CURRENCY_RISK_ANOMALY_DISPOSITION_V1` concerns only
 the enumerated 24 occurrences in two exact workbook hashes: six text `VALUE!`
 values, nine numeric `2`, three numeric `3`, six numeric `4`. Their meanings
-remain unknown. A reviewed, fail-closed disposition manifest would be required
-before an explicitly selected `MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1`
-could expose `None` with reason `LEGACY_ANOMALY_AS_NONE_WITHOUT_INTERPRETATION`;
+remain unknown. The separate pure implementation pins a fail-closed registry
+for an explicitly selected `MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1`
+to expose `None` with reason `LEGACY_ANOMALY_AS_NONE_WITHOUT_INTERPRETATION`;
 no original, diagnostic, duplicate occurrence or holding is dropped. The
 artifact must bind exact hashes, coordinates, types, raw values, formats,
 occurrence/candidate fingerprints and policy identities. Changed bytes,
@@ -283,9 +284,9 @@ the older strings do not establish those types. Recovery package
 `inspection/typed-occurrence-manifest-v1.json` (SHA-256
 `c4d678e0c90abac49337bf1f7547816b45134b6e6e7886ab4aacf1ee594f123a`).
 Exact provenance and parser recovery/formula limitations are documented in the
-linked policy. This is not an independent raw-BIFF reinspection, newly
-evaluated candidate binding, installed executable disposition artifact or
-implemented projection.
+linked policy. This is not an independent raw-BIFF reinspection or newly
+evaluated candidate binding. The subsequent pure projection pins the manifest
+and its historical candidate references without rerunning retained inputs.
 The manifest's `NOT_GRANTED` fields remain its unchanged audit-time record;
 the later approvals are recorded separately in documentation. Policy approval
 does not install an executable artifact, prove consumer equivalence or grant
@@ -303,11 +304,27 @@ comparison is not endorsement of complete FX-risk measurement or new ranking
 semantics. Full candidate-native reader equivalence is still unperformed and
 depends on other descriptive contracts too. Missing and partially hedged labels
 do not prove hedging or complete currency-risk information. None of these
-approvals authorizes
-implementation, test execution, consumer activation or admission, changes the
+approvals alone authorizes
+implementation, comparison execution, consumer activation or admission, changes the
 approved classification/model-zero decisions, or decides shortlist translation,
 sustainability, metric interpretation, eligibility composition or cutover.
 This ADR remains `Proposed`; admission remains `NOT_GRANTED`.
+
+The separately authorized pure
+[`model_currency_risk_projection.py`](../../src/portfolio_advisor/workbook_source/model_currency_risk_projection.py)
+implementation requires explicit profile selection and a candidate fingerprint.
+It reuses substantive immutable v1 validation, preserves both sheets and all
+diagnostics/occurrences, and binds the approved mapping and exact anomaly
+registry without a public policy substitution path. Scoped policy resolutions
+are separate from historical diagnostics. Results remain
+`NOT_EVALUATED_PROJECTION_ONLY` / `NOT_GRANTED`. Complete, source-ordered registry
+coverage is checked; duplicate/unused entries fail closed. Synthetic tests cover
+public mapping/missing requests, public anomaly success/rejection with a
+test-local restored registry, and fixed anomaly proof matching. No production
+override is exposed; these tests do not prove complete retained-candidate
+acceptance or reader equivalence. No consumer, database, ranking,
+eligibility or operational default is changed. Future lexical inputs inherit
+no evidence/admission authority; future anomalies inherit no exception.
 
 ## Consequences
 

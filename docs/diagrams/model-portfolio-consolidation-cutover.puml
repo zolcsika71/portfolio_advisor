@@ -9,6 +9,7 @@
 ' - src/portfolio_advisor/workbook_source/biff_evidence_approval.py
 ' - src/portfolio_advisor/workbook_source/normalization.py
 ' - src/portfolio_advisor/workbook_source/model_metric_projection.py
+' - src/portfolio_advisor/workbook_source/model_currency_risk_projection.py
 ' Synthetic regressions:
 ' - tests/test_model_portfolio_consolidation_phase3b.py
 ' - tests/test_biff_xls_source.py
@@ -16,6 +17,7 @@
 ' - tests/test_biff_xls_evidence_approval.py
 ' - tests/test_biff_xls_normalization.py
 ' - tests/test_model_metric_projection.py
+' - tests/test_model_currency_risk_projection.py
 ' Verified current behavior against:
 ' - src/portfolio_advisor/main.py
 ' - src/portfolio_advisor/DB_creation/database_create.py
@@ -58,6 +60,7 @@ participant "Hash-bound BIFF evidence\nverifier (read-only)" as EvidenceVerifier
 participant "Evidence-gate evaluator\n(pure, no admission)" as GateEvaluator
 participant "Normalization candidate\nadapter (no admission)" as Normalizer
 participant "Explicit model metric\nprojection (pure)" as MetricProjection
+participant "Explicit model currency-risk\nprojection (pure)" as CurrencyProjection
 database "Isolated schema-v3\ntemporary database" as Temporary
 database "portfolio_advisor.sqlite\nproposed operational authority" as Analytical
 participant "Model + provenance +\ncorrection validators" as Validators
@@ -211,8 +214,8 @@ note over Parser, Normalizer
   overall eligibility is not implemented and admission remains NOT_GRANTED.
   Model-only currency-risk mapping, exact 24-occurrence anomaly disposition,
   and historical comparison-profile definition were user-approved on 2026-10-07.
-  Their implementation, comparison execution, consumer activation and admission
-  remain unauthorized; the normalizer's pre-approval diagnostics are unchanged.
+  The separate pure projection is implemented; comparison execution, consumer
+  activation and admission remain unauthorized. Normalizer diagnostics are unchanged.
   Missing/partial labels do not establish hedging or complete currency-risk information.
   Shortlist currency-risk mapping remains unapproved. Shortlist numeric
   zero remains an original 0.0 and becomes effective NULL only through the
@@ -238,6 +241,28 @@ MetricProjection --> Operator: immutable versioned result + projection fingerpri
 note over Operator, MetricProjection
   Allocation and shortlist are outside this rule. No active consumer selects it.
   Retained-corpus ranking equivalence remains unproven; no admission authority.
+end note
+
+== Model currency-risk projection [Implemented; comparison/consumers pending] ==
+
+Operator -> CurrencyProjection: provide v1 candidate, expected fingerprint,\nand explicit LEGACY_READER_PROJECTION_V1 selection
+CurrencyProjection -> CurrencyProjection: validate immutable typed provenance and field semantics;\npreserve both sheets, diagnostics and duplicate occurrences
+alt approved Hungarian BIFF text key (NFC / trim / casefold)
+    CurrencyProjection -> CurrencyProjection: expose separate English attribute + mapping identity;\nretain exact original; infer no hedge fraction/effectiveness
+else source missing (blank / absent / empty text)
+    CurrencyProjection -> CurrencyProjection: retain distinct original missing state;\nno hedging inference
+else exact approved anomaly binding in fixed 24-entry registry
+    CurrencyProjection -> CurrencyProjection: verify historical candidate/envelope/sheet/row/cell bindings;\nrequire every registry entry exactly once in source order;\nexpose None + LEGACY_ANOMALY_AS_NONE_WITHOUT_INTERPRETATION
+else unknown label, typed state, changed or malformed binding
+    break projection rejected
+        CurrencyProjection --> Operator: reject whole projection visibly; no fallback or row exclusion
+    end
+end
+CurrencyProjection --> Operator: immutable versioned attributes + scoped policy resolutions;\nunchanged complete candidate; admission NOT_GRANTED
+note over Operator, CurrencyProjection
+  No policy/registry override, retained-byte inspection, active reader or ranking wiring.
+  Missing/partial labels do not prove complete risk information. Synthetic checks
+  do not establish retained candidate-native equivalence or overall eligibility.
 end note
 
 == Phase 3B.1 synthetic temporary writer [Implemented, non-operational] ==

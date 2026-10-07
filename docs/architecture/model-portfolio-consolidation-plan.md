@@ -601,8 +601,9 @@ as detailed in the linked comparison record and package instructions.
 
 The [model currency-risk policies](biff-xls-normalization-admission-policy-v1.md#model-currency-risk-translation-and-anomaly-policy)
 were explicitly approved by the user on 2026-10-07: “Approve all three within
-their reviewed scopes.” They remain unimplemented; implementation, comparison
-execution, consumer activation, and admission remain unauthorized. They separate
+their reviewed scopes.” A subsequent synthetic-only slice now implements the
+separate pure projection; comparison execution, consumer activation, and
+admission remain unauthorized. The policies separate
 three lexical
 Hungarian-to-English mappings (`Fedezve` → `Hedged`, `Nincs fedezve` →
 `Unhedged`, `Részben fedezve` → `Partially Hedged`) from a disposition for only
@@ -613,7 +614,7 @@ text-only NFC/trim/casefold lookup; the approved
 `MODEL_CURRENCY_RISK_ANOMALY_DISPOSITION_V1` is confined to the enumerated
 coordinates in two full hashes. It preserves original values, types, provenance,
 diagnostics and every holding; a separately selected
-`MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1` could expose reason-bearing
+`MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1` can expose reason-bearing
 `None` for those known anomalies, not interpret or repair their values.
 Unknown labels and new anomalies fail the approved reader-profile definition
 visibly.
@@ -633,11 +634,13 @@ Recovery package `model-currency-risk-typed-v1.FyqXIB` preserves the actual
 harness and typed manifest; its `inspection/typed-occurrence-manifest-v1.json`
 SHA-256 is `c4d678e0c90abac49337bf1f7547816b45134b6e6e7886ab4aacf1ee594f123a`.
 The linked policy records exact provenance and inspection limitations.
-This is parser-exposed cell evidence, not a newly approved disposition artifact,
-independent raw-BIFF/formula inspection or candidate-native reader comparison.
+This is parser-exposed cell evidence, not an independent raw-BIFF/formula
+inspection or candidate-native reader comparison. The pure projection now pins
+this evidence in an immutable executable 24-entry registry; it does not alter
+the manifest or extend its exception scope.
 The manifest's `NOT_GRANTED` fields retain its historical audit-time state;
 the later policy approvals are recorded separately, without evidence mutation.
-Implementation and comparison execution remain unauthorized; admission remains
+Comparison execution and consumer activation remain unauthorized; admission remains
 `NOT_GRANTED`.
 
 The active indicator counts only exact English `Unhedged`; with positive total
@@ -649,8 +652,19 @@ that historical calculation explicitly, not claim complete FX-risk measurement.
 Mapping, exact anomaly dispositions and acceptance of this comparison profile
 are independently approved policy prerequisites, not proof of candidate-native
 reader
-equivalence. Other descriptive-field contracts and the actual implementation/test
-remain pending. No shortlist or sustainability decision, classification mapping,
+equivalence. The [pure projection API](biff-xls-normalization-admission-policy-v1.md#implemented-pure-currency-risk-projection)
+requires explicit profile selection and the expected candidate fingerprint,
+reuses deep typed v1 validation, and preserves the complete input candidate,
+diagnostics and holdings. It pins mapping/policy identities plus exact historical
+candidate, envelope, sheet, row, occurrence, cell and format bindings for the
+24 anomalies; unknown/mismatched states and incomplete or duplicate registry
+coverage fail closed. Scoped policy resolutions do not waive other diagnostics.
+Synthetic tests exercise public mapping/missing requests, successful/rejected
+anomaly requests with a test-local registry (restored afterwards), and the fixed
+24-binding proof surface. No production override exists; these tests do not
+exercise complete retained candidates or prove historical acceptance.
+Other descriptive-field contracts and candidate-native comparison remain
+pending. No shortlist or sustainability decision, classification mapping,
 model-zero policy, ranking/default, consumer activation, eligibility composition
 or admission authority changes; future inputs inherit no evidence exceptions.
 
