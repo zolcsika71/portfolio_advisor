@@ -1,8 +1,13 @@
 @startuml
 ' Status: Phase 1, read-only Phase 3A, synthetic Phase 3B.1, parser-only
 ' Phase 3B.2, read-only BIFF evidence verification, candidate-only Phase 3B.3,
-' evidence-gate evaluation and synthetic-only composition ledger implemented;
+' evidence-gate evaluation and pure composition ledger implemented;
+' ledger synthetic validation and bounded retained acceptance completed;
 ' reader facade, admission and cutover proposed
+' Retained ledger acceptance: source 7908995606c0a5c882cfea74197a6bbf68dad4f4
+' Saved report SHA-256: 8930d1e3fd7f0cb66dc8e7bb9a832593dd0270b17af15dbf3e8b106f8c22997b
+' Scope/limitations: docs/architecture/biff-xls-normalization-admission-policy-v1.md
+' section "Bounded retained-corpus ledger acceptance evidence"
 ' Implemented sources:
 ' - src/portfolio_advisor/database/model_portfolio_phase3b.py
 ' - src/portfolio_advisor/workbook_source/biff_xls.py
@@ -70,7 +75,7 @@ participant "Evidence-gate evaluator\n(pure, no admission)" as GateEvaluator
 participant "Normalization candidate\nadapter (no admission)" as Normalizer
 participant "Explicit model metric\nprojection (pure)" as MetricProjection
 participant "Explicit model currency-risk\nprojection (pure)" as CurrencyProjection
-participant "Immutable composition ledger\n[Implemented, synthetic-only]" as Ledger
+participant "Immutable composition ledger\n[Implemented, pure]" as Ledger
 participant "Candidate-native reader\ncomposition [Proposed]" as CandidateReader
 participant "Injected advisor/ranking\n(existing interface)" as Advisor
 database "Isolated schema-v3\ntemporary database" as Temporary
@@ -280,7 +285,7 @@ note over Operator, CurrencyProjection
   do not establish retained candidate-native equivalence or overall eligibility.
 end note
 
-== Same-candidate composition ledger [Implemented, synthetic-only] ==
+== Same-candidate composition ledger [Implemented, pure] ==
 
 Operator -> Ledger: complete C + supplied M/R + expected C fingerprint;\nexplicit metric and currency-risk selections (no defaults)
 Ledger -> MetricProjection: replay public API on the complete same validated C
@@ -295,7 +300,12 @@ else exact same-candidate public replay matches
 end
 note over Ledger
   Source order is evidence order, not an approved final reader order.
-  Synthetic-only validation; no retained integrated comparison or reader DTO.
+  Synthetic validation and bounded joint retained ledger acceptance completed:
+  33 workbooks x two metric modes; 66 accepted cases, zero discrepancies.
+  Historical construction omitted the optional shortlist mapping manifest (None).
+  No reader construction or integrated reader/ranking equivalence established.
+  Classification, descriptive/allocation and final reader-order decisions pending.
+  Reader facade, activation and eligibility composition pending; admission NOT_GRANTED.
 end note
 
 == Integrated candidate-native reader [Proposed, not authorized] ==

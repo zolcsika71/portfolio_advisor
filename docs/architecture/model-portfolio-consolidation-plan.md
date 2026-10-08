@@ -832,15 +832,53 @@ identities, preserves all fields/diagnostics and scoped reasons, and returns
 detached serialization with admission `NOT_GRANTED`. Source order remains
 evidence order; no descriptor/order profile, DTO or consumer is activated.
 Synthetic anomaly-success tests use restored test-local bindings, not a public
-override or evidence of retained acceptance. The three reader decisions and
-separately authorized integrated comparison remain pending.
+override; their coverage is separate from the retained acceptance evidence below.
+The three reader decisions and separately authorized integrated reader comparison
+remain pending.
+
+The [bounded retained ledger acceptance record](biff-xls-normalization-admission-policy-v1.md#bounded-retained-corpus-ledger-acceptance-evidence)
+used published revision `7908995606c0a5c882cfea74197a6bbf68dad4f4` and is preserved
+in local recovery package `model-ledger-retained-acceptance-v1.82oxMA`.
+`evaluated/acceptance.json` SHA-256 is
+`8930d1e3fd7f0cb66dc8e7bb9a832593dd0270b17af15dbf3e8b106f8c22997b`;
+`SHA256SUMS` SHA-256 is
+`bbeb4b1cd08321dd41df10fa166b9b7600bce253cb3c20b1cf05133e0fbac1ef`.
+All 28 entries and saved source/input/dependency/result bindings were verified
+without executing the actual preserved harness. It used the public parser,
+normalizer, both public projections and public ledger API, the unchanged
+production registry and explicit `approved_shortlist_mapping_manifest=None`.
+
+All 33 workbooks passed both metric modes (66 public ledger cases), with zero
+rejection/discrepancy. Each mode preserved 5,283 model occurrences: original
+mode retained 12,072 numeric zeros; compatibility mode omitted exactly those
+observations while preserving 50,776 nonzero observations and 548 missing
+metric cells. Currency risk accounted for 4,968 translations, 291 missing
+states and all 24 exact anomaly dispositions. Allocation, originals, diagnostics,
+source order, occurrence identities and original-only classification metadata
+survived, including all 10,833 shortlist occurrences and 327,603 typed fields.
+Eight in-memory mode-repeat cases were byte-identical; 363 saved-evidence
+identity/count checks matched prior reports without rerunning reader/ranking.
+
+Reproduction needs the exact clean checkout/own source, external hash-bound XLS
+files, the typed-anomaly package and a fresh output directory; additional saved
+reconciliation needs the earlier metric/currency packages. No database is needed.
+Complete recorded dependencies describe this execution, not older audits;
+typed evidence remains published-parser observations, not new independent BIFF
+inspection or strict/recovery testing. This is joint ledger acceptance only:
+no reader was constructed or integrated advisor/ranking exercised. Source order
+does not select final reader order; matching legacy currency coverage still
+does not establish complete risk information. The classification authority,
+descriptive/allocation compatibility and final reader-order decisions, reader
+facade, integrated equivalence, activation, eligibility composition and admission
+remain pending. ADR-007 stays `Proposed`; admission remains `NOT_GRANTED`.
 
 The contract specifies later date/portfolio comparisons of every reader field,
 all 21 model source fields/twelve metrics, missing states, duplicate/order and
 provenance accounting, then actual advisor coverage, eligibility, contributions,
-scores, ordering, ties, warnings, winners and alternatives. No such integrated
-checks are executed or authorized here. The separate metric and currency-risk
-comparisons held different legacy inputs fixed; neither alone nor together proves
+scores, ordering, ties, warnings, winners and alternatives. No reader-level
+integrated checks are executed or authorized by this ledger acceptance record.
+The separate metric and currency-risk comparisons held different legacy inputs
+fixed; neither alone nor together proves
 an integrated candidate-native reader. Historical full currency-risk coverage
 does not prove complete risk information or hedging of missing/partial labels.
 Reader construction, consolidation eligibility and ranking eligibility remain

@@ -390,7 +390,7 @@ float-order and tie effects must not be waived. Historical candidates must still
 omit the optional shortlist mapping manifest; the two anomaly-bound candidate
 identities cannot be replaced by mapped variants or silently rebound.
 
-The [synthetic-only immutable composition ledger](../../src/portfolio_advisor/workbook_source/model_projection_ledger.py)
+The [pure immutable composition ledger](../../src/portfolio_advisor/workbook_source/model_projection_ledger.py)
 is implemented as `MODEL_PROJECTION_COMPOSITION_LEDGER` v1, not a reader facade
 or active integration. Both explicit supplied results are checked against
 public-API replay on the same complete candidate, with pinned identities,
@@ -399,12 +399,46 @@ alignment. Captured evaluated policy bindings, original fields and diagnostics,
 and separate scoped resolutions survive in frozen evidence and detached
 serialization. All outputs retain admission `NOT_GRANTED`; source evidence
 order selects no final reader order. Synthetic anomaly tests use a restored
-test-local registry only, never a production approval override or a retained
-acceptance claim. Classification authority, descriptive/allocation compatibility
-and final holding order remain unresolved. The contract describes later
-complete field/occurrence and actual advisor/ranking comparisons across all dates;
-none are executed or authorized by this design. Separate metric/currency-risk
-comparisons do not prove joint reader equivalence. Matching legacy FX-risk
+test-local registry only, never a production approval override; those tests alone
+do not prove retained acceptance. The separate
+[bounded retained ledger acceptance](../architecture/biff-xls-normalization-admission-policy-v1.md#bounded-retained-corpus-ledger-acceptance-evidence)
+at published revision `7908995606c0a5c882cfea74197a6bbf68dad4f4` is preserved in
+local recovery package `model-ledger-retained-acceptance-v1.82oxMA`.
+`evaluated/acceptance.json` SHA-256 is
+`8930d1e3fd7f0cb66dc8e7bb9a832593dd0270b17af15dbf3e8b106f8c22997b`;
+`SHA256SUMS` SHA-256 is
+`bbeb4b1cd08321dd41df10fa166b9b7600bce253cb3c20b1cf05133e0fbac1ef`.
+All 28 checksums and saved source/input/dependency/result bindings were verified
+without executing the preserved harness or repeating the corpus.
+
+With explicit `approved_shortlist_mapping_manifest=None`, both public metric
+modes and the approved public currency-risk profile on each same candidate,
+the unchanged production registry and public ledger API accepted all 33
+workbooks in both modes: 66 cases, no rejection/discrepancy. Each mode retained
+5,283 model occurrences. Original mode preserved 12,072 numeric zeros;
+compatibility mode omitted only those observations, preserving 50,776 nonzero
+observations and 548 missing metric cells. Currency risk accounted for 4,968
+translations, 291 preserved missing states and all 24 exact anomaly dispositions.
+Allocation, originals, diagnostics, source order, occurrence identities and
+original-only classifications remained intact, with 10,833 shortlist occurrences
+and 327,603 typed fields. Eight in-memory mode repeats were byte-identical;
+363 saved-evidence identity/count checks matched prior reports, not a new
+reader/ranking comparison. External hash-bound XLS files, the exact clean source
+checkout, typed-anomaly package and fresh output are needed for reproduction;
+additional reconciliation needs the two prior comparison packages. No database
+is needed. Saved full dependency versions identify this run, not earlier audits;
+typed findings are parser observations, not new independent raw-BIFF or
+strict/recovery inspection. Historical audit fields remain unchanged.
+
+This establishes joint ledger acceptance only, not a constructed reader,
+integrated reader/ranking equivalence or operational authority. Classification
+authority, descriptive/allocation compatibility and final holding order remain
+unresolved; reader facade, integrated equivalence, activation, eligibility
+composition and admission remain pending. Source order remains evidence order.
+The contract describes later reader-level complete field/occurrence and actual
+advisor/ranking comparisons across all dates; those are not executed or
+authorized by this record. Separate metric/currency-risk comparisons do not
+prove joint reader equivalence. Matching legacy FX-risk
 coverage is not complete currency-risk information. Reader construction,
 consolidation eligibility composition and ranking eligibility are independent;
 consumer activation and admission remain pending. This ADR stays `Proposed`.

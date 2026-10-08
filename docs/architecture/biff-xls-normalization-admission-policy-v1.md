@@ -112,10 +112,10 @@ normalized `0.0`, and corrected effective `NULL` are three different states.
 ## Proposed integrated candidate-native model reader contract
 
 The reader facade remains **Proposed, unimplemented**, traced at revision
-`66b29b0bc6078169d72deddf20513adeb72ad871`. Only the synthetic-only pure
-composition ledger below is now implemented; this grants no reader-facade,
-comparison-execution, consumer-activation or admission authority. The separate
-[metric comparison](#bounded-retained-corpus-comparison-evidence) and
+`66b29b0bc6078169d72deddf20513adeb72ad871`. The pure composition ledger is
+implemented, with bounded retained acceptance recorded below; neither grants
+reader-facade, further comparison-execution, consumer-activation or admission
+authority. The separate [metric comparison](#bounded-retained-corpus-comparison-evidence) and
 [currency-risk comparison](#bounded-currency-risk-compatibility-comparison-evidence)
 held different legacy inputs fixed; neither separately nor together proves this
 reader. The composition boundary is shown in the
@@ -240,7 +240,7 @@ diagnostics. A different mapped historical variant would need new authorization,
 not a composition-layer bypass. Future v1 candidates receive lexical/metric
 policy scope only, never historical anomaly or evidence-gate authority.
 
-### Implemented synthetic-only composition ledger
+### Implemented pure composition ledger
 
 [`compose_model_projection_ledger`](../../src/portfolio_advisor/workbook_source/model_projection_ledger.py)
 implements `MODEL_PROJECTION_COMPOSITION_LEDGER` v1, not `ModelPortfolioReader`.
@@ -272,11 +272,88 @@ remain separate from unchanged historical diagnostics.
 both explicit metric modes, joint zero/risk outcomes, missing/excluded states,
 duplicate preservation, tampering, and deep immutability. Anomaly-success
 coverage uses only a restored test-local private registry through both public
-APIs; it does not prove historical acceptance or offer a production override.
+APIs; those tests alone do not prove retained acceptance or offer a production
+override. The separate preserved public-API run below supplies bounded retained
+ledger acceptance without test-local substitutions.
 No retained inputs or private packages are required by the API or tests.
 Every ledger is `NOT_EVALUATED_COMPOSITION_LEDGER_ONLY`, with admission
-`NOT_GRANTED`. This validates in-memory composition, not fresh source bytes,
-reader fields, eligibility, integrated equivalence or operational authority.
+`NOT_GRANTED`. The API itself validates in-memory composition, not fresh source
+bytes, reader fields, eligibility, integrated equivalence or operational authority.
+
+### Bounded retained-corpus ledger acceptance evidence
+
+The subsequent read-only acceptance run used published revision
+`7908995606c0a5c882cfea74197a6bbf68dad4f4`. Recovery package
+`model-ledger-retained-acceptance-v1.82oxMA` preserves the actual
+`accept_ledgers.py` harness, per-workbook/per-mode results, source/input
+fingerprints, execution-time dependency versions and `REPRODUCE.md` outside
+Git. Its `evaluated/acceptance.json`
+(`MODEL_PROJECTION_LEDGER_RETAINED_ACCEPTANCE` v1) has SHA-256
+`8930d1e3fd7f0cb66dc8e7bb9a832593dd0270b17af15dbf3e8b106f8c22997b`
+and canonical report fingerprint
+`37b6a55508702c60ac14ab4be941621794c29d91390682f05bc6838c093538eb`.
+The package's `SHA256SUMS` has SHA-256
+`bbeb4b1cd08321dd41df10fa166b9b7600bce253cb3c20b1cf05133e0fbac1ef`.
+All 28 entries, 15 source bindings, 33 inventory/input bindings and saved
+results were verified without executing the harness or rerunning the corpus.
+Private occurrence-level evidence remains outside Git.
+
+The harness verified all workbook hashes before parsing both exact leading-space
+sheets. It normalized each envelope with the inventory hash and explicit
+**`approved_shortlist_mapping_manifest=None`**, invoked both explicit public
+metric modes and the public `MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1`,
+then called public `compose_model_projection_ledger` for each metric mode with
+the actual same complete candidate fingerprint. Production policies and the
+anomaly registry were unchanged; no helper replaced a failed call, no registry
+was substituted and no identity was fabricated.
+
+- All 33 workbooks/dates passed both modes: **66 accepted public ledger cases**,
+  with zero rejection, discrepancy or blocked case. Each mode retained all
+  5,283 source-ordered model occurrences and checked 63,396 metric cells.
+- Original mode retained 62,848 present metric observations, including all
+  12,072 finite numeric zeros. Compatibility mode retained 50,776 nonzero
+  observations and omitted exactly those 12,072 zero observations, not holdings.
+  Both preserved the same 548 source-missing metric cells and their typed evidence.
+- Currency risk accounted for all 5,283 occurrences: 4,968 approved translations,
+  291 preserved missing states (255 formatted blanks and 36 empty cells), and
+  all 24 exact manifest/registry-bound anomaly dispositions with reason
+  `LEGACY_ANOMALY_AS_NONE_WITHOUT_INTERPRETATION`. No numeric-code meaning was inferred.
+- Full candidates, allocation, originals, diagnostics, exact occurrence joins,
+  source order and captured evaluated policy bindings remained intact, including
+  all 10,833 shortlist occurrences and 327,603 typed source data fields.
+  Model classification metadata remained original-only, with no English authority.
+  Every occurrence survived independently; no economic-key deduplication occurred.
+  Deep immutability and detached serialization checks passed without input mutation.
+- Four representative candidates (2024-07-02, 2024-10-07, 2024-10-17 and
+  2025-05-09), repeated in memory in both modes, produced eight byte-identical
+  projection/ledger repeat cases. No second workbook parse was performed.
+  `reconcile_prior.py` separately recorded 363 matching saved-evidence checks
+  of workbook/envelope/candidate/projection identities, counts and policy bindings;
+  neither earlier reader/ranking comparison was re-executed.
+
+Reproduction requires the exact clean source revision and its own imports,
+all 33 external XLS files at the recorded hashes, the unchanged typed-anomaly
+package `model-currency-risk-typed-v1.FyqXIB`, and a fresh output directory.
+The additional saved-evidence reconciliation requires the preserved metric and
+currency-risk comparison packages. No database is an execution dependency;
+no workbook/database bytes are copied into the package. Source copies identify
+the executed code but do not replace the checked checkout. The recorded complete
+34-distribution environment identifies this run, not earlier audits (Python
+3.12.7 and xlrd 2.0.2); each workbook/mode/repeat stage was bounded to 90 seconds.
+
+This establishes **joint retained ledger acceptance only**, not a reader or
+integrated reader/ranking equivalence. Source order remains evidence order,
+not final holding order. Typed observations are from the published parser,
+not a new independent raw-BIFF/formula/recovery audit; the historical six/27
+strict/recovery split was not freshly tested. Historical diagnostics and audit
+`NOT_GRANTED` fields remain unchanged. Neither this run nor the earlier separate
+metric/currency-risk comparisons establishes complete currency-risk information
+or hedging of missing/partially hedged holdings. Model-classification authority,
+descriptive/allocation compatibility, final reader order, reader facade,
+integrated equivalence, activation and eligibility composition remain pending.
+ADR-007 stays `Proposed`; every ledger and the evidence report retain admission
+`NOT_GRANTED`. Recording this result grants no further execution or admission
+authority.
 
 ### Proposed opt-in surface and unresolved descriptive choices
 
