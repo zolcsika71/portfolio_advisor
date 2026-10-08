@@ -35,6 +35,12 @@ from .model_metric_projection import (
     ProjectedModelRow,
     project_model_metrics,
 )
+from .model_projection_ledger import (
+    ComposedModelOccurrence,
+    ModelProjectionLedger,
+    ModelProjectionLedgerError,
+    compose_model_projection_ledger,
+)
 from .normalization import (
     ADMISSION_APPROVAL,
     CANDIDATE_STATUS,
@@ -60,6 +66,7 @@ __all__ = [
     "BiffXlsNormalizationCandidate",
     "BiffXlsNormalizationError",
     "BiffXlsParseError",
+    "ComposedModelOccurrence",
     "EvidenceDecisionReason",
     "EvidenceGateVerdict",
     "EvidenceReportBinding",
@@ -67,10 +74,13 @@ __all__ = [
     "ModelCurrencyRiskProjectionError",
     "ModelMetricProjection",
     "ModelMetricProjectionError",
+    "ModelProjectionLedger",
+    "ModelProjectionLedgerError",
     "ProjectedModelCurrencyRisk",
     "ProjectedModelCurrencyRiskRow",
     "ProjectedModelMetric",
     "ProjectedModelRow",
+    "compose_model_projection_ledger",
     "evaluate_biff_xls_evidence",
     "normalize_biff_xls_envelope",
     "parse_biff_xls",

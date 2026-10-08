@@ -1,7 +1,8 @@
 @startuml
 ' Status: Phase 1, read-only Phase 3A, synthetic Phase 3B.1, parser-only
 ' Phase 3B.2, read-only BIFF evidence verification, candidate-only Phase 3B.3,
-' and evidence-gate evaluation implemented; admission and cutover proposed
+' evidence-gate evaluation and synthetic-only composition ledger implemented;
+' reader facade, admission and cutover proposed
 ' Implemented sources:
 ' - src/portfolio_advisor/database/model_portfolio_phase3b.py
 ' - src/portfolio_advisor/workbook_source/biff_xls.py
@@ -10,6 +11,7 @@
 ' - src/portfolio_advisor/workbook_source/normalization.py
 ' - src/portfolio_advisor/workbook_source/model_metric_projection.py
 ' - src/portfolio_advisor/workbook_source/model_currency_risk_projection.py
+' - src/portfolio_advisor/workbook_source/model_projection_ledger.py
 ' Proposed reader composition traced against:
 ' - src/portfolio_advisor/database/repository.py
 ' - src/portfolio_advisor/advisor/service.py
@@ -24,6 +26,7 @@
 ' - tests/test_biff_xls_normalization.py
 ' - tests/test_model_metric_projection.py
 ' - tests/test_model_currency_risk_projection.py
+' - tests/test_model_projection_ledger.py
 ' Verified current behavior against:
 ' - src/portfolio_advisor/main.py
 ' - src/portfolio_advisor/DB_creation/database_create.py
@@ -67,6 +70,7 @@ participant "Evidence-gate evaluator\n(pure, no admission)" as GateEvaluator
 participant "Normalization candidate\nadapter (no admission)" as Normalizer
 participant "Explicit model metric\nprojection (pure)" as MetricProjection
 participant "Explicit model currency-risk\nprojection (pure)" as CurrencyProjection
+participant "Immutable composition ledger\n[Implemented, synthetic-only]" as Ledger
 participant "Candidate-native reader\ncomposition [Proposed]" as CandidateReader
 participant "Injected advisor/ranking\n(existing interface)" as Advisor
 database "Isolated schema-v3\ntemporary database" as Temporary
@@ -276,14 +280,28 @@ note over Operator, CurrencyProjection
   do not establish retained candidate-native equivalence or overall eligibility.
 end note
 
+== Same-candidate composition ledger [Implemented, synthetic-only] ==
+
+Operator -> Ledger: complete C + supplied M/R + expected C fingerprint;\nexplicit metric and currency-risk selections (no defaults)
+Ledger -> MetricProjection: replay public API on the complete same validated C
+MetricProjection --> Ledger: pinned v1 result + immutable C + ordered metric ledger
+Ledger -> CurrencyProjection: replay public API on that same C; fixed anomaly registry
+CurrencyProjection --> Ledger: pinned v1 result + immutable C + ordered risk attributes
+Ledger -> Ledger: compare complete typed contents and evaluated identities;\nrequire every occurrence/field once in exact source order
+alt projection failure, changed value/provenance or incomplete/reordered binding
+    Ledger --> Operator: reject complete composition; no override, fallback or dropped holding
+else exact same-candidate public replay matches
+    Ledger --> Operator: immutable ledger + captured evaluated policy identities;\noriginals, both sheets, diagnostics and scoped reasons; admission NOT_GRANTED
+end
+note over Ledger
+  Source order is evidence order, not an approved final reader order.
+  Synthetic-only validation; no retained integrated comparison or reader DTO.
+end note
+
 == Integrated candidate-native reader [Proposed, not authorized] ==
 
-Operator -> CandidateReader: future explicit same-candidate inputs + expected fingerprints;\nmetric, currency-risk, descriptor and order selections (no defaults)
-CandidateReader -> MetricProjection: project the complete same validated candidate C
-MetricProjection --> CandidateReader: pinned v1 result + immutable C + ordered metric ledger
-CandidateReader -> CurrencyProjection: project that same C; fixed production anomaly registry
-CurrencyProjection --> CandidateReader: pinned v1 result + immutable C + ordered risk attributes
-CandidateReader -> CandidateReader: verify exact identities + every source occurrence/field;\npreserve both sheets, originals, allocation and diagnostics
+Operator -> CandidateReader: future validated ledger + explicit descriptor/order selections
+CandidateReader -> CandidateReader: future field/DTO and profile validation;\nno legacy-data fallback
 alt projection failure, mismatch, rejected reader field or unresolved profile choice
     CandidateReader --> Operator: fail complete snapshot visibly; no DB fallback or dropped holding
 else separately reviewed descriptor/order profiles satisfied
@@ -297,7 +315,8 @@ note over CandidateReader, Advisor
   Source-order preservation is not legacy SQL order or float-score equivalence.
   Separate metric/risk comparisons held other legacy inputs fixed: no joint proof.
   Missing/partial risk labels do not establish hedging or complete risk information.
-  No implementation, comparison execution, activation or admission is authorized here.
+  Only the pure ledger is implemented. Reader-facade implementation, retained
+  integration comparison, activation and admission remain unauthorized.
 end note
 
 == Phase 3B.1 synthetic temporary writer [Implemented, non-operational] ==

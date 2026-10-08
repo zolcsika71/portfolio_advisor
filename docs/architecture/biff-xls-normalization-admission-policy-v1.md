@@ -111,8 +111,9 @@ normalized `0.0`, and corrected effective `NULL` are three different states.
 
 ## Proposed integrated candidate-native model reader contract
 
-This is a **Proposed, unimplemented** composition contract, traced at revision
-`66b29b0bc6078169d72deddf20513adeb72ad871`. It grants no implementation,
+The reader facade remains **Proposed, unimplemented**, traced at revision
+`66b29b0bc6078169d72deddf20513adeb72ad871`. Only the synthetic-only pure
+composition ledger below is now implemented; this grants no reader-facade,
 comparison-execution, consumer-activation or admission authority. The separate
 [metric comparison](#bounded-retained-corpus-comparison-evidence) and
 [currency-risk comparison](#bounded-currency-risk-compatibility-comparison-evidence)
@@ -239,6 +240,44 @@ diagnostics. A different mapped historical variant would need new authorization,
 not a composition-layer bypass. Future v1 candidates receive lexical/metric
 policy scope only, never historical anomaly or evidence-gate authority.
 
+### Implemented synthetic-only composition ledger
+
+[`compose_model_projection_ledger`](../../src/portfolio_advisor/workbook_source/model_projection_ledger.py)
+implements `MODEL_PROJECTION_COMPOSITION_LEDGER` v1, not `ModelPortfolioReader`.
+Its mandatory inputs are complete C, `metric_result`, `currency_risk_result`,
+explicit `metric_projection` and `currency_risk_projection` selections, and
+`expected_candidate_fingerprint`. It invokes both public projections again on C
+and compares the supplied deeply immutable typed results with that replay,
+including canonical contents, evaluated bindings and exact source-ordered
+occurrence coverage. Mixed candidates, missing/extra/duplicate/reordered
+references, unsupported versions, altered values or provenance fail visibly,
+even with recomputed fingerprints. It also checks model classification metadata
+against validated original fields: English candidates/mapping identity must be
+absent and status must be `NOT_APPLICABLE_TO_MODEL_ROLE`. This prevents forged
+classification authority without choosing a reader translation profile.
+No registry/policy/approval override exists.
+
+The frozen ledger retains full C (both sheets and diagnostics) and one composed
+entry per model occurrence, with all original fields, twelve metric dispositions
+and the currency-risk disposition/reason. Its evaluated projection metadata,
+policy dates, mapping/registry identities and fingerprints are captured in
+immutable canonical serialization; `to_dict()` returns detached copies.
+`SOURCE_OCCURRENCE_ORDER_NOT_READER_ORDER` declares evidence order only.
+Original classifications and descriptive/allocation fields remain evidence;
+the ledger selects neither a descriptor profile nor final holding order and
+does not turn `REJECTED` into a valid reader value. Scoped policy resolutions
+remain separate from unchanged historical diagnostics.
+
+[`synthetic ledger tests`](../../tests/test_model_projection_ledger.py) exercise
+both explicit metric modes, joint zero/risk outcomes, missing/excluded states,
+duplicate preservation, tampering, and deep immutability. Anomaly-success
+coverage uses only a restored test-local private registry through both public
+APIs; it does not prove historical acceptance or offer a production override.
+No retained inputs or private packages are required by the API or tests.
+Every ledger is `NOT_EVALUATED_COMPOSITION_LEDGER_ONLY`, with admission
+`NOT_GRANTED`. This validates in-memory composition, not fresh source bytes,
+reader fields, eligibility, integrated equivalence or operational authority.
+
 ### Proposed opt-in surface and unresolved descriptive choices
 
 The following illustrates a future interface, **not implemented code**:
@@ -306,12 +345,12 @@ These integration choices remain unresolved:
 
 ### Later integration validation contract (not executed)
 
-The smallest justified next slice, **after separate authorization**, is a pure
-immutable same-candidate composition ledger with synthetic fixtures: both public
-projections, complete occurrence/field accounting, fixed production bindings,
-independent resolution records and unconditional `NOT_GRANTED`. Resolve the
-descriptor/order choices before exposing a full reader facade or making a full
-reader-equivalence claim; no DB adapter or active-consumer integration is needed.
+The pure immutable same-candidate ledger is implemented and validated only with
+synthetic fixtures; it preserves fixed production bindings, independent scoped
+resolutions and unconditional `NOT_GRANTED`. The next reader slice requires
+separate authorization and resolution of the classification, descriptive/
+allocation and final order choices before exposing a facade or making a full
+reader-equivalence claim. No DB adapter or active-consumer integration is present.
 
 Later synthetic integration checks must include both metric selections, all
 twelve metrics, joint metric-zero/currency-risk outcomes, nonzero and missing
@@ -352,7 +391,8 @@ missing labels for 160 identities and partial labels for 102 (possibly overlappi
 groups). Neither missing nor partial labels establish hedging or complete risk
 information. Even a future passing integrated advisor comparison would not prove
 other reader workflows, admission eligibility, consumer activation or cutover.
-No checks in this subsection were executed by this documentation task.
+The later reader/all-date integration checks in this subsection remain
+unexecuted; synthetic ledger checks do not establish their results.
 
 ## Provenance and deterministic identities
 

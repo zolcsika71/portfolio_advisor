@@ -798,7 +798,7 @@ removal.
 ## Proposed integrated candidate-native model reader
 
 The [field-level composition contract](biff-xls-normalization-admission-policy-v1.md#proposed-integrated-candidate-native-model-reader-contract)
-is documentation-only, traced at revision
+keeps the reader facade proposed, traced at revision
 `66b29b0bc6078169d72deddf20513adeb72ad871`. It proposes an explicit in-memory
 `ModelPortfolioReader`, not a file-backed repository or operational authority.
 Both public projections must consume the same validated complete candidate,
@@ -821,8 +821,19 @@ from some legacy preparation semantics. Source order also differs from the
 legacy SQL portfolio/ISIN/product order; float aggregation and equal-key ordering
 need explicit comparison, not an assumed permutation-invariant result. A full
 reader facade requires these descriptive/order choices to be reviewed first.
-The smallest separately authorizable implementation is a pure same-candidate
-composition ledger plus synthetic integration tests, without consumer activation.
+The [pure same-candidate composition ledger](../../src/portfolio_advisor/workbook_source/model_projection_ledger.py)
+is now implemented as `MODEL_PROJECTION_COMPOSITION_LEDGER` v1, with
+[synthetic tests](../../tests/test_model_projection_ledger.py), not a reader facade.
+Mandatory choices and expected identity accompany both supplied projection
+results. Public-API replay on the same complete candidate checks substantive
+typed provenance, values, pinned v1 bindings and complete unique source-ordered
+coverage, not fingerprints alone. The immutable ledger captures evaluated
+identities, preserves all fields/diagnostics and scoped reasons, and returns
+detached serialization with admission `NOT_GRANTED`. Source order remains
+evidence order; no descriptor/order profile, DTO or consumer is activated.
+Synthetic anomaly-success tests use restored test-local bindings, not a public
+override or evidence of retained acceptance. The three reader decisions and
+separately authorized integrated comparison remain pending.
 
 The contract specifies later date/portfolio comparisons of every reader field,
 all 21 model source fields/twelve metrics, missing states, duplicate/order and

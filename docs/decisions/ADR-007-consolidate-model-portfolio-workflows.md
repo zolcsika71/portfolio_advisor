@@ -370,7 +370,7 @@ authority is expanded; ADR-007 remains `Proposed` and admission `NOT_GRANTED`.
 ## Proposed candidate-native reader composition
 
 The [integrated field-level reader contract](../architecture/biff-xls-normalization-admission-policy-v1.md#proposed-integrated-candidate-native-model-reader-contract)
-defines a documentation-only next boundary, traced at revision
+defines a still-proposed reader-facade boundary, traced at revision
 `66b29b0bc6078169d72deddf20513adeb72ad871`. Reuse the existing
 `ModelPortfolioReader` injection interface, without fabricating a database path.
 Both explicitly selected public projections must use the same validated complete
@@ -390,8 +390,18 @@ float-order and tie effects must not be waived. Historical candidates must still
 omit the optional shortlist mapping manifest; the two anomaly-bound candidate
 identities cannot be replaced by mapped variants or silently rebound.
 
-The smallest separately authorizable slice is a synthetic-only immutable
-composition ledger, not active reader integration. The contract describes later
+The [synthetic-only immutable composition ledger](../../src/portfolio_advisor/workbook_source/model_projection_ledger.py)
+is implemented as `MODEL_PROJECTION_COMPOSITION_LEDGER` v1, not a reader facade
+or active integration. Both explicit supplied results are checked against
+public-API replay on the same complete candidate, with pinned identities,
+substantive typed/provenance validation and complete source-ordered occurrence
+alignment. Captured evaluated policy bindings, original fields and diagnostics,
+and separate scoped resolutions survive in frozen evidence and detached
+serialization. All outputs retain admission `NOT_GRANTED`; source evidence
+order selects no final reader order. Synthetic anomaly tests use a restored
+test-local registry only, never a production approval override or a retained
+acceptance claim. Classification authority, descriptive/allocation compatibility
+and final holding order remain unresolved. The contract describes later
 complete field/occurrence and actual advisor/ranking comparisons across all dates;
 none are executed or authorized by this design. Separate metric/currency-risk
 comparisons do not prove joint reader equivalence. Matching legacy FX-risk
