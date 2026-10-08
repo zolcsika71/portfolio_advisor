@@ -381,8 +381,9 @@ Legacy data belongs only on an independent comparison side, never as a fallback
 for candidate-native descriptors.
 
 The reader classification, original-descriptor and holding-order policies were
-approved on 2026-10-08; subsequent authorization covers only the pure facade
-and synthetic validation below, not retained comparison execution or activation.
+approved on 2026-10-08; subsequent separate authorization covered the pure facade,
+synthetic validation and bounded retained-reader acceptance below, not further
+legacy-reader/ranking comparison execution or activation.
 Original Hungarian model classifications are available, but the
 shortlist's approved English mapping and dataset-bound corrections do not
 authorize model translation. The independent exact model lexical policy below
@@ -436,8 +437,10 @@ strict/recovery inspection. Historical audit fields remain unchanged.
 This establishes joint ledger acceptance only, not a constructed reader,
 integrated reader/ranking equivalence or operational authority. Classification,
 descriptive/allocation and holding-order policies were subsequently approved on
-2026-10-08, not by this run; their evidence gaps and retained reader validation, integrated
+2026-10-08, not by this run; their compatibility evidence gaps, integrated
 equivalence, activation, eligibility composition and admission remain pending.
+The separately recorded retained-reader acceptance below does not broaden this
+ledger result.
 Source order remains evidence order.
 The contract describes later reader-level complete field/occurrence and actual
 advisor/ranking comparisons across all dates; those are not executed or
@@ -473,8 +476,9 @@ shortlist/correction, recovery/formula, eligibility or admission authority.
   Preserve originals in C; separate reader sidecar holds English results and
   mapping identity, including sub-asset output without adding a DTO field.
   Ranking equality cannot waive classifications merely because the current
-  advisor does not consume them; other consumers retain them. Coverage and
-  full classification field/workflow equivalence remain untested.
+  advisor does not consume them; other consumers retain them. Observed lexical
+  coverage is recorded below; complete table coverage, semantic taxonomy and
+  legacy classification field/workflow equivalence remain unproven.
 - **`MODEL_READER_DESCRIPTIVE_ALLOCATION_POLICY_V1` — approved on 2026-10-08:** explicit
   `ORIGINAL_MODEL_DESCRIPTORS_V1`, using validated trimmed required portfolio/
   product/ISIN, optional currency missing semantics and unchanged finite
@@ -483,8 +487,9 @@ shortlist/correction, recovery/formula, eligibility or admission authority.
   to one trimmed key reject the snapshot. No broad zero cleaner, allocation
   rescaling/normalization/cap, text coercion or legacy-data fallback; classification
   and approved metric/risk choices remain separate. Raw text/legacy cleaning
-  are alternatives, not tacit policy. Descriptor grouping/collision and allocation
-  equivalence remain unproven; ranking eligibility remains a different boundary.
+  are alternatives, not tacit policy. The bounded acceptance below found no
+  trim-collision census issues; legacy descriptor grouping and allocation
+  equivalence remain unproven. Ranking eligibility remains a different boundary.
 - **`MODEL_READER_HOLDING_ORDER_POLICY_V1` — approved on 2026-10-08:** explicit `SOURCE_ORDER_V1`
   or `MODEL_READER_LEGACY_KEY_SOURCE_TIE_ORDER_V1`. The latter uses ascending
   selected DTO portfolio/ISIN/product UTF-8 binary keys with original occurrence
@@ -506,7 +511,8 @@ reader output. The legacy database can appear only on a separately authorized
 comparator side, never as a candidate-native field fallback.
 
 The separately authorized pure implementation requires explicit approved
-profile selections; classification coverage, descriptor/allocation equivalence,
+profile selections; legacy classification-field equivalence,
+descriptor/allocation equivalence,
 legacy equal-key ordering and integrated reader equivalence remain unproven.
 Later separately authorized synthetic/integrated checks must verify complete reader
 fields, typed/missing states, order and duplicate provenance before using the
@@ -514,10 +520,11 @@ actual advisor to compare coverage, eligibility, scores, ties, warnings and
 winners across all dates. No such checks are executed here. Existing approved
 metric/currency-risk policies and saved comparison/ledger claims are unchanged;
 joint ledger acceptance is not integrated reader/ranking equivalence.
-Retained reader validation, integrated equivalence, activation, eligibility composition and admission
-remain pending. This ADR remains `Proposed`; admission remains `NOT_GRANTED`.
+Bounded retained-reader acceptance is recorded below; integrated equivalence,
+activation, eligibility composition and admission remain pending. This ADR
+remains `Proposed`; admission remains `NOT_GRANTED`.
 
-### Implemented pure candidate-native reader — synthetic-only validation
+### Implemented pure candidate-native reader — bounded validation
 
 [`CandidateNativeModelPortfolioReader`](../../src/portfolio_advisor/workbook_source/candidate_model_reader.py)
 now implements the three-method storage-neutral interface under separate explicit
@@ -534,9 +541,54 @@ detached serialization and fresh holdings lists preserve immutable state.
 The [implementation boundary and synthetic tests](../architecture/biff-xls-normalization-admission-policy-v1.md#implemented-pure-candidate-native-reader-facade)
 do not prove retained classification/descriptor/order or integrated equivalence.
 Historical anomaly candidates keep exact bindings and
-`approved_shortlist_mapping_manifest=None`. No retained execution, advisor wiring,
+`approved_shortlist_mapping_manifest=None`. The subsequent bounded acceptance is
+recorded separately below; no further comparison execution, advisor wiring,
 consumer activation, eligibility composition or admission is authorized here.
 This ADR remains `Proposed`; admission stays `NOT_GRANTED`.
+
+### Bounded retained-reader acceptance evidence
+
+The [detailed retained-reader record](../architecture/biff-xls-normalization-admission-policy-v1.md#bounded-retained-corpus-reader-acceptance-evidence)
+binds local recovery package `model-reader-retained-acceptance-v1.6f_7pei7` to
+source revision `c4ef67487221c7ed0b649a942117787c334b335f`.
+The `CANDIDATE_NATIVE_MODEL_READER_RETAINED_ACCEPTANCE` v1 report
+`evaluated/acceptance.json` SHA-256 is
+`3e85be6ae922e76abb5cfeef59a3bc77b2f2f5fa1fa01771cc0e04d11eed928d`;
+`SHA256SUMS` SHA-256 is
+`9ca0d66b067c2748bdd758a6b95fa63e0750bde1fc14c5e8b58b34ad038d7dc3`.
+All 66 checksums and saved source/input/dependency/outcome bindings were verified
+without executing the actual preserved harness or repeating the corpus.
+
+With explicit compatibility metrics, historical currency-risk profile,
+`MODEL_CLASSIFICATION_LEGACY_LEXICAL_V1`, `ORIGINAL_MODEL_DESCRIPTORS_V1` and
+`MODEL_READER_LEGACY_KEY_SOURCE_TIE_ORDER_V1`, unchanged production bindings and
+`approved_shortlist_mapping_manifest=None`, all 33 single-date readers and one
+atomic all-date reader accepted: zero rejections/discrepancies. All three reader
+methods were checked, with per-date atomic loads matching singleton results.
+The run covered 5,283 holdings/408 date-portfolio identities and all twelve DTO
+fields (63,396 checks), plus thirteen sidecar fields (68,679 bindings). It omitted
+12,072 zero observations, preserved 50,776 nonzero observations and 548 missing
+metric cells, and accounted for 4,968 risk translations, 291 missing states and
+24 exact anomaly dispositions. Originals, diagnostics, permutations, source
+identities, 10,833 shortlist occurrences and 327,603 typed fields survived.
+Four representative repeats were byte-identical. Three equal-key groups retained
+separate source-index-tied occurrences, not proof of legacy equal-key order.
+No zero-weight holdings were present, so this corpus did not exercise that
+synthetically tested behavior. Observed lexical/descriptor acceptance is not
+provider semantics, complete mapping-table coverage or legacy-field equivalence.
+
+Reproduction requires exact source/imports, the 33 externally retained hash-bound
+XLS files, unchanged prior ledger/typed-anomaly packages, compatible recorded
+dependencies and fresh output; no database. The actual harness and `REPRODUCE.md`
+record arguments, bounds and limitations. The saved full dependency versions
+(Python 3.12.7/xlrd 2.0.2) describe this run, not historical audits. Findings are
+parser observations, not a new independent BIFF/formula/strict-recovery audit.
+This establishes **retained reader acceptance only**, not legacy-reader or
+integrated advisor/ranking equivalence; neither was compared. Earlier ledger and
+separate comparison claims remain unchanged. Missing/partially hedged labels do
+not prove hedging or complete risk information. Further comparison execution,
+activation, eligibility composition and admission remain pending, requiring
+separate authorization. This ADR stays `Proposed`; admission stays `NOT_GRANTED`.
 
 ## Consequences
 
