@@ -3,7 +3,8 @@
 ' Phase 3B.2, read-only BIFF evidence verification, candidate-only Phase 3B.3,
 ' evidence-gate evaluation and pure composition ledger implemented;
 ' ledger synthetic validation and bounded retained acceptance completed;
-' reader facade, admission and cutover proposed
+' pure reader facade implemented with synthetic validation only;
+' retained reader equivalence, activation, admission and cutover pending
 ' Retained ledger acceptance: source 7908995606c0a5c882cfea74197a6bbf68dad4f4
 ' Saved report SHA-256: 8930d1e3fd7f0cb66dc8e7bb9a832593dd0270b17af15dbf3e8b106f8c22997b
 ' Scope/limitations: docs/architecture/biff-xls-normalization-admission-policy-v1.md
@@ -17,7 +18,8 @@
 ' - src/portfolio_advisor/workbook_source/model_metric_projection.py
 ' - src/portfolio_advisor/workbook_source/model_currency_risk_projection.py
 ' - src/portfolio_advisor/workbook_source/model_projection_ledger.py
-' Proposed reader composition traced against:
+' - src/portfolio_advisor/workbook_source/candidate_model_reader.py
+' Reader boundary traced against:
 ' - src/portfolio_advisor/database/repository.py
 ' - src/portfolio_advisor/advisor/service.py
 ' - src/portfolio_advisor/metrics/portfolio.py
@@ -299,36 +301,36 @@ else exact same-candidate public replay matches
     Ledger --> Operator: immutable ledger + captured evaluated policy identities;\noriginals, both sheets, diagnostics and scoped reasons; admission NOT_GRANTED
 end
 note over Ledger
-  Source order is evidence order, not an approved final reader order.
+  Ledger source order is evidence order, not a selected reader permutation.
   Synthetic validation and bounded joint retained ledger acceptance completed:
   33 workbooks x two metric modes; 66 accepted cases, zero discrepancies.
   Historical construction omitted the optional shortlist mapping manifest (None).
   No reader construction or integrated reader/ranking equivalence established.
-  Classification, descriptive/allocation and final reader-order decisions pending.
-  Reader facade, activation and eligibility composition pending; admission NOT_GRANTED.
+  Reader policies approved 2026-10-08; retained policy compatibility remains unproven.
+  Pure facade separately implemented; activation and eligibility pending; admission NOT_GRANTED.
 end note
 
-== Integrated candidate-native reader [Proposed, not authorized] ==
+== Pure candidate-native reader [Implemented, synthetic validation only] ==
 
-Operator -> CandidateReader: future validated ledger + explicit descriptor/order selections
-CandidateReader -> CandidateReader: future field/DTO and profile validation;\nno legacy-data fallback
+Operator -> CandidateReader: immutable ledgers + expected candidate/ledger bindings;\nexplicit classification, descriptor and order profiles
+CandidateReader -> CandidateReader: public projection/composition replay; full-content check;\natomic snapshot field/DTO validation; no legacy-data fallback
 alt projection failure, mismatch, rejected reader field or unresolved profile choice
     CandidateReader --> Operator: fail complete snapshot visibly; no DB fallback or dropped holding
-else separately reviewed descriptor/order profiles satisfied
-    CandidateReader --> Operator: proposed ModelPortfolioReader + immutable provenance sidecar;\nadmission NOT_GRANTED (not ranking or admission eligibility)
+else approved profiles and all snapshot checks satisfied
+    CandidateReader --> Operator: ModelPortfolioReader + immutable field/permutation sidecar;\nadmission NOT_GRANTED (not ranking or admission eligibility)
     Operator -> Advisor: future separately authorized explicit reader injection only
 end
 note over CandidateReader, Advisor
   Historical candidates omit the optional shortlist mapping manifest;
   two exact anomaly-candidate identities cannot be rebound to mapped variants.
   Model-only classification and descriptor/order policies approved 2026-10-08.
-  Policy approval grants no implementation or comparison-execution authority;
-  consumer activation and admission remain unauthorized.
+  Later explicit authorization covers the pure facade and synthetic checks only.
+  Retained comparison execution, consumer activation and admission remain unauthorized.
   Source-order preservation is not legacy SQL order or float-score equivalence.
   Separate metric/risk comparisons held other legacy inputs fixed: no joint proof.
   Missing/partial risk labels do not establish hedging or complete risk information.
-  Only the pure ledger is implemented. Reader-facade implementation, retained
-  integration comparison, activation and admission remain unauthorized.
+  Pure facade and ledger implemented; no advisor wiring or database fallback.
+  Retained reader/integration comparison, activation and admission remain pending.
 end note
 
 == Phase 3B.1 synthetic temporary writer [Implemented, non-operational] ==

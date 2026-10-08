@@ -94,8 +94,9 @@ change tooling merely to validate documentation.
   shadow comparison, the implemented parser-only BIFF envelope, hash-bound
   recovery/formula verifier, bounded pure evidence-gate evaluator, pure
   normalization candidate, explicit pure model metric and currency-risk
-  projections, immutable synthetic-only same-candidate composition ledger and
-  synthetic writer, plus the proposed reader facade without legacy fallback, overall
+  projections, immutable same-candidate composition ledger with bounded retained
+  acceptance, synthetic writer and the pure synthetic-validated reader facade
+  without legacy fallback, plus proposed retained reader equivalence, overall
   eligibility, single-writer admission, cutover, and post-cutover recovery
   boundaries.
 

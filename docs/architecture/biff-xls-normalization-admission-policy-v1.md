@@ -119,11 +119,12 @@ normalized `0.0`, and corrected effective `NULL` are three different states.
 
 ## Proposed integrated candidate-native model reader contract
 
-The reader facade remains **Proposed, unimplemented**, traced at revision
-`66b29b0bc6078169d72deddf20513adeb72ad871`. The pure composition ledger is
-implemented, with bounded retained acceptance recorded below; neither grants
-reader-facade, further comparison-execution, consumer-activation or admission
-authority. The separate [metric comparison](#bounded-retained-corpus-comparison-evidence) and
+The original reader contract was traced at revision
+`66b29b0bc6078169d72deddf20513adeb72ad871`. The pure facade is now implemented
+under separate synthetic-only implementation authorization, as described below.
+The ledger's bounded retained acceptance grants no reader comparison-execution,
+consumer-activation or admission authority.
+The separate [metric comparison](#bounded-retained-corpus-comparison-evidence) and
 [currency-risk comparison](#bounded-currency-risk-compatibility-comparison-evidence)
 held different legacy inputs fixed; neither separately nor together proves this
 reader. The composition boundary is shown in the
@@ -141,9 +142,9 @@ unmapped classification in a candidate with a required source header.
 already accepts an explicitly injected reader. It invokes the actual
 [reported-indicator calculations](../../src/portfolio_advisor/metrics/portfolio.py)
 and [ranking functions](../../src/portfolio_advisor/ranking/ranking.py).
-An in-memory adapter would implement `ModelPortfolioReader`, **not**
+The in-memory facade implements `ModelPortfolioReader`, **not**
 `FileBackedModelPortfolioReader`; it must not invent a `database_path`.
-Proposed `observation_dates()` returns the ascending unique `tuple[date, ...]`
+`observation_dates()` returns the ascending unique `tuple[date, ...]`
 of accepted input snapshots; `latest_observation_date()` returns its greatest
 date; `load_holdings(date)` returns that complete snapshot's fresh
 `list[HoldingObservation]` in the explicitly selected order. Empty/conflicting
@@ -175,7 +176,7 @@ blank versus absent versus empty text, rejection versus omission, and originals.
 | `volatility_1y` | `1Y Vol.` → `VOLATILITY_1Y` in M | `float \| None`, unscaled ratio | Same scoped rule. Consumer's reported-annualized label is existing compatibility terminology, not independently established methodology |
 | `downside_risk` | `Down. risk` → `DOWNSIDE_RISK` in M | `float \| None`, unscaled ratio | Same scoped rule; no inferred target return or risk methodology |
 | `maximum_drawdown` | `Max. drawd.` → `MAXIMUM_DRAWDOWN` in M | `float \| None`, unscaled ratio | Same scoped rule; no absolute-value/sign repair or reconstructed drawdown |
-| `asset_class` | `Eszközosztály` → C.`original_asset_class`; separately selected reader classification view | DTO `str \| None` | Original Hungarian text preserved. Original-label and exact model-only lexical profiles were approved on 2026-10-08; implementation and corpus classification equivalence remain unauthorized/unproven. C retains `NOT_APPLICABLE_TO_MODEL_ROLE`, no English model mapping. Derived view/provenance belongs in the sidecar, never inherited shortlist mapping/correction authority or fallback `None` |
+| `asset_class` | `Eszközosztály` → C.`original_asset_class`; separately selected reader classification view | DTO `str \| None` | Original Hungarian text preserved. Original-label and exact model-only lexical profiles were approved on 2026-10-08 and are implemented in the synthetic-validated facade; corpus classification equivalence remains unproven. C retains `NOT_APPLICABLE_TO_MODEL_ROLE`, no English model mapping. Derived view/provenance belongs in the sidecar, never inherited shortlist mapping/correction authority or fallback `None` |
 
 The remaining seven model metrics are still accounted for in M's complete
 twelve-field ledger: `YTD` → `YTD`, `3yr` → `RETURN_3Y`, `5yr` → `RETURN_5Y`,
@@ -199,7 +200,7 @@ This contract authorizes no change to those functions or the active policy.
 
 ### Same-candidate composition and fail-closed behavior
 
-Propose a pure `CANDIDATE_NATIVE_MODEL_READER_V1` construction boundary:
+The pure reader implements the following v1 construction boundary:
 
 1. Require C and its expected candidate fingerprint, exact source/envelope/
    normalization v1 identities, and mandatory metric and currency-risk choices.
@@ -359,7 +360,7 @@ metric/currency-risk comparisons establishes complete currency-risk information
 or hedging of missing/partially hedged holdings. The three reader policies were
 subsequently approved on 2026-10-08, separately from this evidence. Classification
 coverage, descriptive/allocation equivalence and legacy equal-key ordering remain
-unproven; reader facade, integrated equivalence, activation and eligibility
+unproven; retained reader validation, integrated equivalence, activation and eligibility
 composition remain pending.
 ADR-007 stays `Proposed`; every ledger and the evidence report retain admission
 `NOT_GRANTED`. Recording this result grants no further execution or admission
@@ -400,7 +401,8 @@ DTO-to-occurrence field binding. Proposed reader results always retain
 eligibility composition nor ranking eligibility.
 
 The following static trace grounds the three separately approved policies below;
-their implementation and compatibility validation remain pending:
+their pure facade implementation is described below; retained compatibility
+validation remains pending:
 
 - **Model classifications:** legacy
   [`excel_processing.VALUE_TRANSLATIONS`](../../src/portfolio_advisor/DB_creation/excel_processing.py)
@@ -442,10 +444,10 @@ their implementation and compatibility validation remain pending:
 The user explicitly stated “Approve all three within their reviewed scopes.”
 Each decision below is **Approved on 2026-10-08**, following independent static
 review against source revision `7eb2a4e95f789c2a5da3a64ba001bab41685b501`.
-These are three separate policy approvals, not implemented APIs or execution
-grants. Implementation, comparison execution, consumer activation and admission
-remain unauthorized; reader construction requires separate authorization and
-explicit selection of the approved profiles.
+These are three separate policy approvals, not execution grants. Subsequent
+explicit authorization covers only the pure facade and synthetic validation
+described below. Retained comparison execution, consumer activation and admission
+remain unauthorized; construction requires explicit approved profile selections.
 The existing twelve-field/three-method reader contract remains the boundary.
 The [retained ledger acceptance](#bounded-retained-corpus-ledger-acceptance-evidence)
 supplies same-candidate composition evidence, not authority for these choices.
@@ -536,7 +538,7 @@ Lexical policy also permits **only the normalized identity keys of the listed
 canonical outputs in that same column**, returning their exact canonical spelling.
 This approved English-input permission is classification-specific; it does not
 extend the approved currency-risk mappings. Freeze all 10 asset keys, 24 sub-asset
-keys, column-specific canonical identity keys and lookup operations in a later
+keys, column-specific canonical identity keys and lookup operations in the
 versioned, content-fingerprinted implementation; runtime edits to the legacy
 dictionary must not expand authority. If normalized keys collide with conflicting
 outputs, fail rather than choose precedence. These are independent lexical
@@ -569,8 +571,9 @@ implementation, comparison execution, activation or admission approval.”
 **Approval record:** The user's explicit 2026-10-08 approval of all three within
 their reviewed scopes separately approves `MODEL_READER_DESCRIPTIVE_ALLOCATION_POLICY_V1`
 and explicit `ORIGINAL_MODEL_DESCRIPTORS_V1` under every condition below.
-Implementation, comparison execution, consumer activation and admission remain
-unauthorized; descriptor/allocation equivalence is not established by approval.
+This policy approval does not authorize implementation, comparison execution,
+consumer activation or admission; descriptor/allocation equivalence is not
+established by approval. Separate pure facade authorization is recorded below.
 
 **Problem and alternatives.** The legacy reader returns stored ordinary text;
 legacy `prepare_rows` does not categorically translate portfolio/product/ISIN/
@@ -688,15 +691,63 @@ every duplicate and a complete permutation sidecar. This specifies reader order,
 not legacy equal-key order equivalence, ranking-policy change, implementation,
 comparison execution, activation or admission approval.”
 
-### Later integration validation contract (not executed)
+### Implemented pure candidate-native reader facade
+
+[`CandidateNativeModelPortfolioReader`](../../src/portfolio_advisor/workbook_source/candidate_model_reader.py)
+implements `CANDIDATE_NATIVE_MODEL_PORTFOLIO_READER` v1 under separate, explicit
+synthetic-only implementation authorization. The three policy approvals above
+did not themselves authorize implementation. All constructor arguments are
+mandatory: nonempty immutable `ledgers`, parallel `expected_candidate_fingerprints`
+and `expected_ledger_fingerprints`, `classification_profile`, `descriptor_profile`
+and `holding_order`. Metric and currency-risk choices remain the explicit
+selections captured by each ledger; no default or caller policy override exists.
+
+Construction replays both public projections and public ledger composition,
+checking complete captured **and live** contents, typed originals, supported v1
+bindings and exact source-ordered occurrence coverage. A recursive typed guard
+rejects mutable/subclass impostors before caller equality or serialization can
+mask their structure. Full live-content comparison remains mandatory even for
+valid typed values that compare equal (such as signed zero). Fingerprints alone are
+insufficient. It validates every snapshot before exposing a reader, rejects
+duplicate dates, invalid required descriptors/allocation, unknown lexical keys,
+trim-induced portfolio identity collisions and rejected five DTO metrics.
+Unused-field diagnostics remain unchanged, not waived. Allocation is unchanged
+in percentage points; zero-weight holdings and duplicate occurrences survive.
+
+The original-label or fixed model-only lexical view is separate from C's
+original-only classification metadata. Exact 10/24 keys, same-column canonical
+identity keys, lookup operations and policy/version/approval identities are
+captured with evaluated content fingerprints. Sub-asset output stays in the
+sidecar. No legacy database fallback or inherited shortlist authority exists.
+Historical candidate construction remains `approved_shortlist_mapping_manifest=None`;
+the unchanged public risk registry still enforces exact anomaly bindings.
+
+The frozen reader returns ascending dates, the greatest date and fresh holdings
+lists for exact dates only. `snapshot_provenance(date)` exposes frozen full-ledger,
+field/raw/normalized/DTO/disposition provenance and a complete zero-based
+`dto_to_source` permutation. Source mode leaves order intact; key mode uses selected
+DTO UTF-8 binary keys and source-occurrence ties. Neither mutates C, ledger order,
+diagnostics or holdings. Canonical `to_json()`, detached `to_dict()` and
+`reader_fingerprint` bind the evaluated state; admission is always `NOT_GRANTED`
+and status is `NOT_EVALUATED_READER_ONLY`, not eligibility or freshly inspected bytes.
+
+[`Synthetic reader tests`](../../tests/test_candidate_model_reader.py) exercise
+both classification/order/metric modes, all approved lexical keys and identity
+boundaries, joint risk/missing/zero outcomes, descriptors, collisions, duplicates,
+tampering with recomputed identities and deep immutability. Anomaly success uses
+restored test-local synthetic proof-shape bindings through the public APIs only;
+it does not demonstrate historical reader acceptance or expose a production seam.
+No advisor/ranking execution, retained reader check, operational wiring or
+consumer activation is implemented or authorized by this slice.
+
+### Later retained integration validation contract (not executed)
 
 The pure immutable same-candidate ledger has synthetic validation and bounded
 retained acceptance; it preserves fixed production bindings, independent scoped
-resolutions and unconditional `NOT_GRANTED`. Neither constructs a reader. The
-next reader slice requires separate implementation authorization and explicit
-selection of the approved classification, descriptor/allocation and order
-profiles before exposing a facade or making a full
-reader-equivalence claim. No DB adapter or active-consumer integration is present.
+resolutions and unconditional `NOT_GRANTED`. That ledger does not construct a reader. The
+pure facade now has synthetic validation and mandatory approved profile choices.
+A retained reader-equivalence claim still requires separately authorized checks.
+No DB adapter or active-consumer integration is present.
 
 Later synthetic integration checks must include both metric selections, all
 twelve metrics, joint metric-zero/currency-risk outcomes, nonzero and missing
@@ -709,12 +760,14 @@ test conventions, never a public override or claimed historical acceptance.
 Pinned real anomaly candidates with changed optional mapping inputs must reject.
 Test date enumeration/latest/unavailable/conflicting dates, fresh returned lists,
 and no legacy fallback or fabricated file-backed provenance.
-After separate implementation and validation-execution authorization, add exact
+The separately authorized synthetic facade tests now cover exact
 classification-table/canonical-identity and unknown-key tests, raw-label trim
 collisions, both explicit order profiles, UTF-8/non-ASCII and equal-key source
 ties, complete permutation provenance, and failures on altered sidecar bindings.
 Do not change either original-only candidate classifications or fixed anomaly
-bindings to make those tests pass. These tests are specified, not executed here.
+bindings to make those tests pass. Pure construction cases are covered by the
+synthetic facade tests above; order-sensitive advisor calculations and retained
+equivalence remain unexecuted.
 
 A separately authorized all-date comparison must use the exact retained inputs,
 recorded historical construction, both public projections on each same C, actual

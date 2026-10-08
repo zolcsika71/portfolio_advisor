@@ -370,7 +370,7 @@ authority is expanded; ADR-007 remains `Proposed` and admission `NOT_GRANTED`.
 ## Proposed candidate-native reader composition
 
 The [integrated field-level reader contract](../architecture/biff-xls-normalization-admission-policy-v1.md#proposed-integrated-candidate-native-model-reader-contract)
-defines a still-proposed reader-facade boundary, traced at revision
+defines the reader-facade boundary, originally traced at revision
 `66b29b0bc6078169d72deddf20513adeb72ad871`. Reuse the existing
 `ModelPortfolioReader` injection interface, without fabricating a database path.
 Both explicitly selected public projections must use the same validated complete
@@ -381,11 +381,12 @@ Legacy data belongs only on an independent comparison side, never as a fallback
 for candidate-native descriptors.
 
 The reader classification, original-descriptor and holding-order policies were
-approved on 2026-10-08; implementation and comparison execution remain
-unauthorized. Original Hungarian model classifications are available, but the
+approved on 2026-10-08; subsequent authorization covers only the pure facade
+and synthetic validation below, not retained comparison execution or activation.
+Original Hungarian model classifications are available, but the
 shortlist's approved English mapping and dataset-bound corrections do not
 authorize model translation. The independent exact model lexical policy below
-provides separate authority, not an implemented view or compatibility proof.
+provides separate authority for the implemented reader view, not compatibility proof.
 Candidate text/weight validation and source order are not identical
 to legacy ordinary text, broad numeric-zero handling or SQL holding order;
 float-order and tie effects must not be waived. Historical candidates must still
@@ -435,7 +436,7 @@ strict/recovery inspection. Historical audit fields remain unchanged.
 This establishes joint ledger acceptance only, not a constructed reader,
 integrated reader/ranking equivalence or operational authority. Classification,
 descriptive/allocation and holding-order policies were subsequently approved on
-2026-10-08, not by this run; their evidence gaps and reader facade, integrated
+2026-10-08, not by this run; their evidence gaps and retained reader validation, integrated
 equivalence, activation, eligibility composition and admission remain pending.
 Source order remains evidence order.
 The contract describes later reader-level complete field/occurrence and actual
@@ -504,17 +505,38 @@ the ledger guard nor anomaly identities may be weakened or rebound for English
 reader output. The legacy database can appear only on a separately authorized
 comparator side, never as a candidate-native field fallback.
 
-Future implementation needs explicit approved profile selections and separate
-authorization; classification coverage, descriptor/allocation equivalence,
+The separately authorized pure implementation requires explicit approved
+profile selections; classification coverage, descriptor/allocation equivalence,
 legacy equal-key ordering and integrated reader equivalence remain unproven.
 Later separately authorized synthetic/integrated checks must verify complete reader
 fields, typed/missing states, order and duplicate provenance before using the
 actual advisor to compare coverage, eligibility, scores, ties, warnings and
 winners across all dates. No such checks are executed here. Existing approved
 metric/currency-risk policies and saved comparison/ledger claims are unchanged;
-joint ledger acceptance is not integrated reader/ranking equivalence. Reader
-facade, integrated equivalence, activation, eligibility composition and admission
+joint ledger acceptance is not integrated reader/ranking equivalence.
+Retained reader validation, integrated equivalence, activation, eligibility composition and admission
 remain pending. This ADR remains `Proposed`; admission remains `NOT_GRANTED`.
+
+### Implemented pure candidate-native reader — synthetic-only validation
+
+[`CandidateNativeModelPortfolioReader`](../../src/portfolio_advisor/workbook_source/candidate_model_reader.py)
+now implements the three-method storage-neutral interface under separate explicit
+synthetic-only authorization. Mandatory classification/descriptor/order profiles
+and expected candidate/ledger bindings accompany complete immutable ledgers.
+Both public projections and composition are replayed; complete live and captured
+contents, versions, provenance and occurrence coverage must agree before any
+snapshot is exposed. No legacy-data fallback or public policy override exists.
+
+Original C/ledger order, duplicate/zero-weight holdings and diagnostics remain
+unchanged. The frozen sidecar binds twelve DTO fields plus sub-asset evidence,
+policy contents, scoped dispositions and the complete DTO-to-source permutation;
+detached serialization and fresh holdings lists preserve immutable state.
+The [implementation boundary and synthetic tests](../architecture/biff-xls-normalization-admission-policy-v1.md#implemented-pure-candidate-native-reader-facade)
+do not prove retained classification/descriptor/order or integrated equivalence.
+Historical anomaly candidates keep exact bindings and
+`approved_shortlist_mapping_manifest=None`. No retained execution, advisor wiring,
+consumer activation, eligibility composition or admission is authorized here.
+This ADR remains `Proposed`; admission stays `NOT_GRANTED`.
 
 ## Consequences
 
