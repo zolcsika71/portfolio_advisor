@@ -811,16 +811,19 @@ No candidate-native field may be borrowed from the legacy database.
 Historical candidates continue to omit the optional shortlist mapping manifest.
 The exact two anomaly-candidate bindings reject a changed mapping variant; an
 integration layer must not rebind those fingerprints or inherit shortlist
-classification authority. Model-English classification requires its own reviewed
-mapping decision: the normalizer supplies original Hungarian labels and explicitly
+classification authority. Independent model-only classification policy was
+approved on 2026-10-08, not implemented: the normalizer supplies original Hungarian
+labels and explicitly
 does not apply the approved shortlist mapping to model rows.
 
-The proposed original-descriptor and source-order profiles are **not approved**.
+The original-descriptor and explicit holding-order policies were **approved on
+2026-10-08**; implementation and comparison execution remain unauthorized.
 Candidate text trimming/required fields and preserved allocation zero differ
 from some legacy preparation semantics. Source order also differs from the
 legacy SQL portfolio/ISIN/product order; float aggregation and equal-key ordering
 need explicit comparison, not an assumed permutation-invariant result. A full
-reader facade requires these descriptive/order choices to be reviewed first.
+reader facade requires explicit approved profile selections and separate
+implementation authorization, not assumed equivalence.
 The [pure same-candidate composition ledger](../../src/portfolio_advisor/workbook_source/model_projection_ledger.py)
 is now implemented as `MODEL_PROJECTION_COMPOSITION_LEDGER` v1, with
 [synthetic tests](../../tests/test_model_projection_ledger.py), not a reader facade.
@@ -833,8 +836,8 @@ detached serialization with admission `NOT_GRANTED`. Source order remains
 evidence order; no descriptor/order profile, DTO or consumer is activated.
 Synthetic anomaly-success tests use restored test-local bindings, not a public
 override; their coverage is separate from the retained acceptance evidence below.
-The three reader decisions and separately authorized integrated reader comparison
-remain pending.
+The three reader policies are approved separately from the ledger; their
+implementation and integrated reader comparison remain unauthorized.
 
 The [bounded retained ledger acceptance record](biff-xls-normalization-admission-policy-v1.md#bounded-retained-corpus-ledger-acceptance-evidence)
 used published revision `7908995606c0a5c882cfea74197a6bbf68dad4f4` and is preserved
@@ -867,10 +870,11 @@ typed evidence remains published-parser observations, not new independent BIFF
 inspection or strict/recovery testing. This is joint ledger acceptance only:
 no reader was constructed or integrated advisor/ranking exercised. Source order
 does not select final reader order; matching legacy currency coverage still
-does not establish complete risk information. The classification authority,
-descriptive/allocation compatibility and final reader-order decisions, reader
-facade, integrated equivalence, activation, eligibility composition and admission
-remain pending. ADR-007 stays `Proposed`; admission remains `NOT_GRANTED`.
+does not establish complete risk information. The classification, descriptive/
+allocation and holding-order policies were subsequently approved on 2026-10-08,
+not by this run. Their compatibility evidence gaps, reader facade, integrated
+equivalence, activation, eligibility composition and admission remain pending.
+ADR-007 stays `Proposed`; admission remains `NOT_GRANTED`.
 
 The contract specifies later date/portfolio comparisons of every reader field,
 all 21 model source fields/twelve metrics, missing states, duplicate/order and
@@ -884,6 +888,86 @@ does not prove complete risk information or hedging of missing/partial labels.
 Reader construction, consolidation eligibility and ranking eligibility remain
 distinct. Consumer activation, eligibility composition and admission remain
 pending; proposed reader results must retain admission `NOT_GRANTED`.
+
+### Three separately approved reader-policy sub-decisions
+
+Static inspection at `7eb2a4e95f789c2a5da3a64ba001bab41685b501` grounds the
+[three approved policy sub-decisions](biff-xls-normalization-admission-policy-v1.md#three-approved-reader-policy-sub-decisions),
+including exact scope, alternatives, rejection conditions, evidence gaps and
+reviewed approval wording. The user explicitly stated “Approve all three within
+their reviewed scopes.” **Each policy was separately approved on 2026-10-08;
+none is implemented or authorized for execution.** Scope is the 33 inventoried
+model candidates and future independently v1-conforming model candidates only.
+Every selection is explicit, with no legacy-data fallback, shortlist authority,
+inherited evidence exception or admission. Historical construction continues to
+use `approved_shortlist_mapping_manifest=None`; preserve exact anomaly bindings,
+original-only C metadata and the unchanged immutable source-ordered ledger.
+
+1. **Model classification authority — `MODEL_CLASSIFICATION_AUTHORITY_POLICY_V1`.**
+   **Approved on 2026-10-08:** separate `MODEL_CLASSIFICATION_ORIGINAL_LABELS_V1` and
+   `MODEL_CLASSIFICATION_LEGACY_LEXICAL_V1` choices, the latter for later
+   historical comparison. Its exact 10 asset/24 sub-asset lexical keys and
+   same-column canonical-English identity keys are traced from legacy code,
+   not approved shortlist pairs or corrections. Text-only NFC/trim/casefold
+   lookup and fixed content/version provenance would preserve Hungarian
+   originals and capture English results separately; neither C nor its ledger
+   is rewritten. Required missing/invalid text rejects both modes; unknown
+   text rejects lexical mode rather than invent `None` or borrow a label.
+   Original mode may preserve unknown valid text without claiming English
+   equivalence. No numeric code, synonym, spelling repair or pair semantics
+   is inferred. Sub-asset results remain in the sidecar, not a new DTO slot.
+   Current advisor ranking does not use `asset_class`; LTIA/backtest consumers
+   do carry it. Table coverage/provider semantics and all-date classification
+   field equivalence remain unproven. Recorded approval is independent
+   model-only lexical/original view authority, not implementation or admission.
+2. **Descriptors/allocation — `MODEL_READER_DESCRIPTIVE_ALLOCATION_POLICY_V1`.**
+   **Approved on 2026-10-08:** explicit `ORIGINAL_MODEL_DESCRIPTORS_V1`: existing validated
+   trimmed portfolio/product/ISIN/currency and unchanged finite nonnegative
+   percentage-point allocation, including zero-weight holdings. Required text,
+   ISIN or allocation missing/rejected states block the snapshot; optional
+   currency missing states become reason-bearing `None` with typed originals.
+   No text-to-number coercion, broad legacy zero-to-NULL, rescaling, rounding,
+   weight normalization, new allocation cap or holding exclusion. Reject
+   different raw portfolio labels collapsing to one trimmed key pending
+   identity review; repeated holdings with identical raw labels survive.
+   Classification and approved metric/risk projections remain separate choices.
+   Raw-text and broad legacy-cleaning views are alternatives, not selected
+   shortcuts. Trim/currency grouping, raw-label collision incidence and
+   allocation-zero equivalence remain to compare. Recorded approval defines
+   these reader fields and rejection rules, not ranking eligibility or a claim
+   that descriptor/weight compatibility has been demonstrated.
+3. **Holding order — `MODEL_READER_HOLDING_ORDER_POLICY_V1`.** **Approved on
+   2026-10-08:** explicit
+   `SOURCE_ORDER_V1` or `MODEL_READER_LEGACY_KEY_SOURCE_TIE_ORDER_V1`, the latter
+   for later historical comparison. Its ascending selected DTO portfolio/ISIN/
+   product UTF-8 binary keys and source `occurrence_index` ties define a complete
+   bijective permutation; they never replace ledger source order or deduplicate.
+   Invalid keys/encoding, coverage gaps, changed sort keys or inconsistent
+   permutations reject. No locale/casefold/natural sort, database-row fallback
+   or float-tolerance waiver. Legacy SQL has no explicit occurrence tie-break;
+   its equal-key order and the retained DB collation were not freshly inspected.
+   No identical full DTO groups in the saved risk comparison does not prove
+   primary-key uniqueness or permutation-invariant scores. Recorded approval
+   defines deterministic reader order only, not legacy order/ranking equivalence.
+
+Each proposed sidecar captures source/candidate/ledger/projection fingerprints,
+policy/profile identities and evaluated content, raw/normalized/projected fields,
+diagnostics, reasons and DTO-position-to-occurrence provenance. Duplicates,
+holdings, allocation, both sheets and originals survive. Unknown or altered
+bindings fail the complete snapshot; recomputed fingerprints do not waive typed
+validation. These are separate bounded policy approvals only; a future reader
+needs explicit profile selections and separate implementation authorization.
+Implementation, comparison execution, consumer activation and admission remain
+unauthorized; classification coverage, descriptor/allocation equivalence, legacy
+equal-key ordering and integrated reader equivalence remain unproven.
+Later synthetic and all-date integration checks must account for every field,
+missing state and occurrence, classification outputs, trim collisions and order
+permutations, then actual advisor coverage, eligibility, scores, ordering, ties,
+warnings and winners without fixing descriptors to legacy values. Those checks
+are specified only; neither earlier separate comparison nor retained ledger
+acceptance proves them. The historical currency-risk coverage caveat remains.
+Reader facade, integrated equivalence, activation, eligibility composition and
+admission remain pending; ADR-007 stays `Proposed`, admission `NOT_GRANTED`.
 
 ## Unresolved decisions and blockers
 

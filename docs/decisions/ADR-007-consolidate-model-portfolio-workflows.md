@@ -380,11 +380,13 @@ and the unchanged diagnostics; admission remains `NOT_GRANTED`.
 Legacy data belongs only on an independent comparison side, never as a fallback
 for candidate-native descriptors.
 
-The proposed original-descriptor/source-order profiles still need review before
-implementation. Original Hungarian model classifications are available, but the
+The reader classification, original-descriptor and holding-order policies were
+approved on 2026-10-08; implementation and comparison execution remain
+unauthorized. Original Hungarian model classifications are available, but the
 shortlist's approved English mapping and dataset-bound corrections do not
-authorize model translation. A legacy-English model descriptor profile remains
-unresolved. Candidate text/weight validation and source order are not identical
+authorize model translation. The independent exact model lexical policy below
+provides separate authority, not an implemented view or compatibility proof.
+Candidate text/weight validation and source order are not identical
 to legacy ordinary text, broad numeric-zero handling or SQL holding order;
 float-order and tie effects must not be waived. Historical candidates must still
 omit the optional shortlist mapping manifest; the two anomaly-bound candidate
@@ -431,10 +433,11 @@ typed findings are parser observations, not new independent raw-BIFF or
 strict/recovery inspection. Historical audit fields remain unchanged.
 
 This establishes joint ledger acceptance only, not a constructed reader,
-integrated reader/ranking equivalence or operational authority. Classification
-authority, descriptive/allocation compatibility and final holding order remain
-unresolved; reader facade, integrated equivalence, activation, eligibility
-composition and admission remain pending. Source order remains evidence order.
+integrated reader/ranking equivalence or operational authority. Classification,
+descriptive/allocation and holding-order policies were subsequently approved on
+2026-10-08, not by this run; their evidence gaps and reader facade, integrated
+equivalence, activation, eligibility composition and admission remain pending.
+Source order remains evidence order.
 The contract describes later reader-level complete field/occurrence and actual
 advisor/ranking comparisons across all dates; those are not executed or
 authorized by this record. Separate metric/currency-risk comparisons do not
@@ -442,6 +445,76 @@ prove joint reader equivalence. Matching legacy FX-risk
 coverage is not complete currency-risk information. Reader construction,
 consolidation eligibility composition and ranking eligibility are independent;
 consumer activation and admission remain pending. This ADR stays `Proposed`.
+
+### Three separately approved reader-policy sub-decisions
+
+At static source revision `7eb2a4e95f789c2a5da3a64ba001bab41685b501`, the
+[three detailed policies](../architecture/biff-xls-normalization-admission-policy-v1.md#three-approved-reader-policy-sub-decisions)
+ground the separately approved reader choices. The user explicitly stated
+“Approve all three within their reviewed scopes.” **Each sub-decision was
+separately approved on 2026-10-08.** Their exact alternatives, scopes, rejection
+rules, provenance, compatibility gaps and reviewed approval wording remain part
+of the linked policy. This records policy approval only, not implementation,
+comparison execution, consumer activation or admission authority. Scope covers
+inventoried and future independently v1-conforming model candidates only, without inherited
+shortlist/correction, recovery/formula, eligibility or admission authority.
+
+- **`MODEL_CLASSIFICATION_AUTHORITY_POLICY_V1` — approved on 2026-10-08:** explicit original-label
+  or separately authorized legacy-lexical classification views
+  (`MODEL_CLASSIFICATION_ORIGINAL_LABELS_V1` /
+  `MODEL_CLASSIFICATION_LEGACY_LEXICAL_V1`). The latter pins exactly 10 model
+  asset keys, 24 model sub-asset keys and same-column canonical-English identity
+  keys, with text-only NFC/trim/casefold lookup. This is independent model lexical
+  authority, not ADR-006 pair-mapping authority or provider semantic proof.
+  Missing/invalid required text fails; unknown text fails lexical mode, never
+  falls back or becomes `None`. Original mode may retain unknown valid text
+  without English equivalence. No numeric meaning, spelling repair or new synonym.
+  Preserve originals in C; separate reader sidecar holds English results and
+  mapping identity, including sub-asset output without adding a DTO field.
+  Ranking equality cannot waive classifications merely because the current
+  advisor does not consume them; other consumers retain them. Coverage and
+  full classification field/workflow equivalence remain untested.
+- **`MODEL_READER_DESCRIPTIVE_ALLOCATION_POLICY_V1` — approved on 2026-10-08:** explicit
+  `ORIGINAL_MODEL_DESCRIPTORS_V1`, using validated trimmed required portfolio/
+  product/ISIN, optional currency missing semantics and unchanged finite
+  nonnegative percentage-point allocation, preserving numeric zero and holdings.
+  Required missing/invalid states and different raw portfolio labels collapsing
+  to one trimmed key reject the snapshot. No broad zero cleaner, allocation
+  rescaling/normalization/cap, text coercion or legacy-data fallback; classification
+  and approved metric/risk choices remain separate. Raw text/legacy cleaning
+  are alternatives, not tacit policy. Descriptor grouping/collision and allocation
+  equivalence remain unproven; ranking eligibility remains a different boundary.
+- **`MODEL_READER_HOLDING_ORDER_POLICY_V1` — approved on 2026-10-08:** explicit `SOURCE_ORDER_V1`
+  or `MODEL_READER_LEGACY_KEY_SOURCE_TIE_ORDER_V1`. The latter uses ascending
+  selected DTO portfolio/ISIN/product UTF-8 binary keys with original occurrence
+  index ties and a complete immutable permutation to source order. No dropped/
+  merged duplicates, DB row IDs, locale/casefold/natural sort or unapproved
+  float tolerance. Invalid keys/encoding or inconsistent permutation rejects.
+  SQL key order lacks an explicit occurrence tie-break; source ties are a
+  deterministic extension, not proof of retained equal-key order or collation.
+  Neither the absence of identical full DTO groups in saved evidence nor matching
+  separately substituted rankings establishes key uniqueness/order invariance.
+
+Recorded approval for each defines policy only: implementation, comparison
+execution, consumer activation and admission are not approved. All evaluated
+source/policy/profile/field identities, dispositions, diagnostics and occurrence
+permutations would remain immutable. C retains original-only model classification
+metadata and exact historical `approved_shortlist_mapping_manifest=None`; neither
+the ledger guard nor anomaly identities may be weakened or rebound for English
+reader output. The legacy database can appear only on a separately authorized
+comparator side, never as a candidate-native field fallback.
+
+Future implementation needs explicit approved profile selections and separate
+authorization; classification coverage, descriptor/allocation equivalence,
+legacy equal-key ordering and integrated reader equivalence remain unproven.
+Later separately authorized synthetic/integrated checks must verify complete reader
+fields, typed/missing states, order and duplicate provenance before using the
+actual advisor to compare coverage, eligibility, scores, ties, warnings and
+winners across all dates. No such checks are executed here. Existing approved
+metric/currency-risk policies and saved comparison/ledger claims are unchanged;
+joint ledger acceptance is not integrated reader/ranking equivalence. Reader
+facade, integrated equivalence, activation, eligibility composition and admission
+remain pending. This ADR remains `Proposed`; admission remains `NOT_GRANTED`.
 
 ## Consequences
 

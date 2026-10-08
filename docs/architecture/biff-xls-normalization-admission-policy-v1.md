@@ -38,6 +38,14 @@ currency-risk comparison now supplies the bounded evidence below; consumer
 activation and admission remain unauthorized. Neither the policies nor that
 completed comparison authorize further comparison execution.
 
+On 2026-10-08 the user explicitly approved the three bounded
+[reader policy sub-decisions](#three-approved-reader-policy-sub-decisions):
+model classification authority, descriptive/allocation rules and explicit holding
+order. Each approval preserves its reviewed scope and fail-closed conditions.
+Implementation, comparison execution, consumer activation and admission remain
+unauthorized; classification coverage, descriptor/allocation equivalence, legacy
+equal-key ordering and integrated reader equivalence remain unproven.
+
 The source parser continues to return `NOT_EVALUATED_PARSER_ONLY`. The pure
 `BIFF_XLS_NORMALIZATION_CANDIDATE_V1` adapter returns a separate
 `NOT_EVALUATED_NORMALIZATION_CANDIDATE_ONLY` result with
@@ -167,7 +175,7 @@ blank versus absent versus empty text, rejection versus omission, and originals.
 | `volatility_1y` | `1Y Vol.` → `VOLATILITY_1Y` in M | `float \| None`, unscaled ratio | Same scoped rule. Consumer's reported-annualized label is existing compatibility terminology, not independently established methodology |
 | `downside_risk` | `Down. risk` → `DOWNSIDE_RISK` in M | `float \| None`, unscaled ratio | Same scoped rule; no inferred target return or risk methodology |
 | `maximum_drawdown` | `Max. drawd.` → `MAXIMUM_DRAWDOWN` in M | `float \| None`, unscaled ratio | Same scoped rule; no absolute-value/sign repair or reconstructed drawdown |
-| `asset_class` | `Eszközosztály` → C.`original_asset_class` | DTO `str \| None` | Original Hungarian text preserved. An original-label reader profile is proposed; a legacy-English model profile requires separately reviewed mapping authority. C has `NOT_APPLICABLE_TO_MODEL_ROLE`, no English model mapping. Never use the shortlist reference mapping, correction admission, or `None` to conceal this gap |
+| `asset_class` | `Eszközosztály` → C.`original_asset_class`; separately selected reader classification view | DTO `str \| None` | Original Hungarian text preserved. Original-label and exact model-only lexical profiles were approved on 2026-10-08; implementation and corpus classification equivalence remain unauthorized/unproven. C retains `NOT_APPLICABLE_TO_MODEL_ROLE`, no English model mapping. Derived view/provenance belongs in the sidecar, never inherited shortlist mapping/correction authority or fallback `None` |
 
 The remaining seven model metrics are still accounted for in M's complete
 twelve-field ledger: `YTD` → `YTD`, `3yr` → `RETURN_3Y`, `5yr` → `RETURN_5Y`,
@@ -348,14 +356,16 @@ not a new independent raw-BIFF/formula/recovery audit; the historical six/27
 strict/recovery split was not freshly tested. Historical diagnostics and audit
 `NOT_GRANTED` fields remain unchanged. Neither this run nor the earlier separate
 metric/currency-risk comparisons establishes complete currency-risk information
-or hedging of missing/partially hedged holdings. Model-classification authority,
-descriptive/allocation compatibility, final reader order, reader facade,
-integrated equivalence, activation and eligibility composition remain pending.
+or hedging of missing/partially hedged holdings. The three reader policies were
+subsequently approved on 2026-10-08, separately from this evidence. Classification
+coverage, descriptive/allocation equivalence and legacy equal-key ordering remain
+unproven; reader facade, integrated equivalence, activation and eligibility
+composition remain pending.
 ADR-007 stays `Proposed`; every ledger and the evidence report retain admission
 `NOT_GRANTED`. Recording this result grants no further execution or admission
 authority.
 
-### Proposed opt-in surface and unresolved descriptive choices
+### Proposed opt-in surface and approved reader policy choices
 
 The following illustrates a future interface, **not implemented code**:
 
@@ -365,16 +375,21 @@ reader = CandidateNativeModelPortfolioReader(
     expected_candidate_fingerprints=explicit_fingerprints,
     metric_projection=MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1,
     currency_risk_projection=MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1,
-    descriptor_profile="ORIGINAL_MODEL_DESCRIPTORS_V1",  # Proposed
-    holding_order="SOURCE_ORDER_V1",  # Proposed, not legacy order equivalence
+    classification_profile="MODEL_CLASSIFICATION_LEGACY_LEXICAL_V1",  # Policy approved; unimplemented
+    descriptor_profile="ORIGINAL_MODEL_DESCRIPTORS_V1",  # Policy approved; unimplemented
+    holding_order="MODEL_READER_LEGACY_KEY_SOURCE_TIE_ORDER_V1",  # Policy approved; unimplemented
 )
 ```
 
 No selection has a default. The original metric choice remains available only
 when explicitly requested; it is intentionally not the historical compatibility
-claim. The proposed descriptor profile exposes existing normalized original
-portfolio/product/ISIN/currency fields and Hungarian asset class. It is not a
-legacy-English profile and remains a decision to review before implementation.
+claim. The approved descriptor policy would expose existing normalized original
+portfolio/product/ISIN/currency and allocation fields; classification is a
+separate mandatory choice, not authority inherited from a descriptor profile.
+The alternative `MODEL_CLASSIFICATION_ORIGINAL_LABELS_V1` exposes trimmed
+originals (Hungarian when reported) and makes no English-equivalence claim.
+All three reader policies below were approved on 2026-10-08; their implementation,
+comparison execution, consumer activation and admission remain unauthorized.
 A later separately authorized harness could inject the reader into
 `CapitalPreservationAdvisor(reader, explicit_rules_path)` without changing any
 default. No database is an input or fallback; legacy data belongs exclusively
@@ -384,16 +399,18 @@ DTO-to-occurrence field binding. Proposed reader results always retain
 `admission_approval = NOT_GRANTED`; constructing them is neither consolidation
 eligibility composition nor ranking eligibility.
 
-These integration choices remain unresolved:
+The following static trace grounds the three separately approved policies below;
+their implementation and compatibility validation remain pending:
 
 - **Model classifications:** legacy
   [`excel_processing.VALUE_TRANSLATIONS`](../../src/portfolio_advisor/DB_creation/excel_processing.py)
   independently translates model asset/sub-asset text, including historical
   question-mark spellings, and accepts configured English values. That is code
   behavior, not approval to reuse the shortlist's pair corrections or authority.
-  The proposed original-label profile is truthful but cannot claim full English
-  reader equivalence. Any model-English mapping needs its own scope, original/
-  effective provenance, unknown-label behavior and approval. Asset class is not
+  The approved original-label policy is truthful but cannot claim full English
+  reader equivalence. The independently approved model lexical policy below
+  supplies its own bounded scope, original/effective provenance and unknown-label
+  rules, not shortlist authority. Asset class is not
   read by the current advisor metric/ranking functions, but it is a reader DTO
   field and other workflows use classifications; ranking equality cannot waive it.
   For example, the legacy model dictionary maps `részvény` to `Equity`,
@@ -411,22 +428,274 @@ These integration choices remain unresolved:
   replacement includes allocation, outside the approved twelve-metric policy.
   Compare these states explicitly; reject invalid candidate weights rather than
   invent missing allocation or broaden zero handling to force equivalence.
-- **Holding order:** proposed `SOURCE_ORDER_V1` preserves the source ledger and
+- **Holding order:** approved `SOURCE_ORDER_V1` policy preserves the source ledger and
   DTO order. Legacy SQL sorts by portfolio/ISIN/product and has no explicit
   source-occurrence tie-break for equal keys. Metric float sums follow holding
   order, so even a value-equivalent permutation can affect exact scores/ties.
-  A separate legacy-order view would require an explicit reviewed sort/collation/
-  null/tie contract and permutation-to-source provenance; it must never replace
+  The approved key/source-tie policy below defines the explicit sort/collation/
+  rejection contract and permutation-to-source provenance; it must never replace
   source order or be silently introduced to obtain a pass. No order equivalence
   or numeric-tolerance exception is approved here.
 
+### Three approved reader policy sub-decisions
+
+The user explicitly stated “Approve all three within their reviewed scopes.”
+Each decision below is **Approved on 2026-10-08**, following independent static
+review against source revision `7eb2a4e95f789c2a5da3a64ba001bab41685b501`.
+These are three separate policy approvals, not implemented APIs or execution
+grants. Implementation, comparison execution, consumer activation and admission
+remain unauthorized; reader construction requires separate authorization and
+explicit selection of the approved profiles.
+The existing twelve-field/three-method reader contract remains the boundary.
+The [retained ledger acceptance](#bounded-retained-corpus-ledger-acceptance-evidence)
+supplies same-candidate composition evidence, not authority for these choices.
+The separate metric and currency-risk comparisons used legacy descriptors and/or
+other inputs fixed; no joint reader, classification, descriptor or order
+equivalence test is claimed here.
+
+Common approved scope is `MODEL_PORTFOLIO` sheets of the 33 inventoried candidates
+and future candidates independently satisfying the same supported v1 typed-source,
+normalization and ledger contracts. No shortlist rule, correction admission,
+evidence exception or operational authority is inherited. Historical construction
+remains `approved_shortlist_mapping_manifest=None`; C and the source-ordered
+ledger remain unchanged, including their original-only classification metadata.
+Any later reader view belongs in a separate immutable provenance sidecar, never
+inside C or by rebinding either exact anomaly candidate.
+
+Each future result must bind policy/profile name and version, the separate
+2026-10-08 user approval reference, evaluated content fingerprint, C/envelope/workbook/
+ledger identities, projection identities, all original field/cell identities and
+diagnostics, and the complete DTO-position-to-source-occurrence permutation.
+Malformed typed inputs, stale/recomputed identities concealing changed content,
+unsupported selections, missing/extra occurrences or a required field rejection
+fail the complete snapshot with field/occurrence-specific reasons. Never drop or
+merge a holding, invent `None`, fetch a legacy value, or infer reader/ranking/
+admission eligibility. All proposed results retain admission `NOT_GRANTED`.
+
+#### Decision 1: model classification authority — approved 2026-10-08
+
+**Approval record:** The user's explicit 2026-10-08 approval of all three within
+their reviewed scopes separately approves `MODEL_CLASSIFICATION_AUTHORITY_POLICY_V1`
+under every scope, exclusion, preservation and rejection condition below. This
+is model-only lexical/original-view authority, not implementation, comparison
+execution, consumer activation, admission or semantic taxonomy validation.
+
+**Problem and alternatives.** C has original Hungarian asset/sub-asset fields;
+the legacy importer stores English labels from independent column dictionaries.
+The current advisor does not consume `asset_class`, but
+[LTIA comparison](../../src/portfolio_advisor/tbsz/comparison.py) retains it in
+descriptive targets and [backtest eligibility](../../src/portfolio_advisor/backtesting/eligibility.py)
+carries it into constituent diagnostics. Matching advisor scores cannot waive
+classification fields. Alternatives are an explicit original-label view, a
+separately authorized model lexical view, or a new semantic pair taxonomy.
+The last requires additional provider/pair evidence; borrowing the shortlist's
+[ADR-006](../decisions/ADR-006-standardize-effective-shortlist-classifications-in-english.md)
+authority is not an alternative permitted by this contract.
+
+**Approved policy: `MODEL_CLASSIFICATION_AUTHORITY_POLICY_V1`.** Permit explicit
+`MODEL_CLASSIFICATION_ORIGINAL_LABELS_V1` or
+`MODEL_CLASSIFICATION_LEGACY_LEXICAL_V1` selection, recommending the latter for
+later historical reader comparison. Original mode returns the existing trimmed
+source labels with no English translation claim. Lexical policy independently
+authorizes only the following model tables, copied from the reviewed
+[`VALUE_TRANSLATIONS`](../../src/portfolio_advisor/DB_creation/excel_processing.py)
+(file SHA-256 `edacb65aa8947f35934b115ff726dde9a37f2f4d593192989889c5e1b1e3943a`).
+Lookup is **text-only NFC, trim, casefold**, using the original source text and
+recording its lookup key. Each semicolon-separated item is a separate literal
+key; hyphens, spaces and question marks are not repaired or generalized.
+
+| Model source field | Exact lookup keys | Approved canonical English output |
+| --- | --- | --- |
+| `Eszközosztály` | `alternatív` | `Alternative` |
+| `Eszközosztály` | `kötvény` | `Bond` |
+| `Eszközosztály` | `kötvény - befektetési kategória`; `kötvény-befektetési kategória` | `Investment Grade Bond` |
+| `Eszközosztály` | `kötvény - magas hozamú`; `kötvény-magas hozamú` | `High Yield Bond` |
+| `Eszközosztály` | `kötvény-rugalmas` | `Flexible Bond` |
+| `Eszközosztály` | `pénzpiac`; `pénzpiaci` | `Money Market` |
+| `Eszközosztály` | `részvény` | `Equity` |
+| `Aleszközosztály` | `abszolút hozamú` | `Absolute Return` |
+| `Aleszközosztály` | `amerikai dollár`; `usd` | `USD` |
+| `Aleszközosztály` | `eur`; `euro` | `EUR` |
+| `Aleszközosztály` | `európa` | `Europe` |
+| `Aleszközosztály` | `európa-vállalatok`; `európai vállalatok` | `Europe-Corporates` |
+| `Aleszközosztály` | `fejl?d? piacok` | `Emerging Markets` |
+| `Aleszközosztály` | `globál` | `Global` |
+| `Aleszközosztály` | `globál állampapír`; `globál-állampapír` | `Global-Government Bond` |
+| `Aleszközosztály` | `hu-állampapír` | `Hungary-Government Bond` |
+| `Aleszközosztály` | `huf`; `magyar forint` | `HUF` |
+| `Aleszközosztály` | `ingatlan` | `Real Estate` |
+| `Aleszközosztály` | `kötvény - magyar állampapírok` | `Bond - Hungarian Government Bonds` |
+| `Aleszközosztály` | `közép-kelet európai állampapír` | `Central and Eastern European Government Bond` |
+| `Aleszközosztály` | `magyar állampapírok` | `Hungarian Government Bonds` |
+| `Aleszközosztály` | `nyersanyag` | `Commodities` |
+| `Aleszközosztály` | `részvény - fejl?d? piacok` | `Equity - Emerging Markets` |
+| `Aleszközosztály` | `észak-amerika` | `North America` |
+| `Aleszközosztály` | `észak-amerika-állampapír`; `észak-amerikai állampapír` | `North America-Government Bond` |
+
+Lexical policy also permits **only the normalized identity keys of the listed
+canonical outputs in that same column**, returning their exact canonical spelling.
+This approved English-input permission is classification-specific; it does not
+extend the approved currency-risk mappings. Freeze all 10 asset keys, 24 sub-asset
+keys, column-specific canonical identity keys and lookup operations in a later
+versioned, content-fingerprinted implementation; runtime edits to the legacy
+dictionary must not expand authority. If normalized keys collide with conflicting
+outputs, fail rather than choose precedence. These are independent lexical
+translations, **not** approved asset/sub-asset pair semantics or financial
+eligibility. Literal `fejl?d?` recognition is compatibility with existing code,
+not encoding repair or evidence that other spellings have the same meaning.
+
+**Conditions and gaps.** Both classifications require existing valid nonempty
+BIFF text. Missing/empty/rejected values, numeric codes, booleans, dates or errors
+block construction. Unknown text blocks lexical mode visibly, rather than fall
+back to originals or `None`; original mode may preserve well-formed unknown text
+but cannot claim English equivalence. No new synonyms, accent repair beyond NFC,
+aliases, wildcard matching or future-category inference. Preserve both original
+labels and every cell binding; DTO `asset_class` receives the selected asset result, while the
+sub-asset result and mapping provenance remain in the sidecar (no DTO slot).
+The retained ledger checked original-only metadata, not corpus coverage of these
+tables or provider semantic correctness. All-date label/field equivalence and
+other classification-consuming workflows remain untested. Future matching text
+gets lexical policy scope only, no historical correction or admission.
+
+**Reviewed wording covered by the explicit approval:** “Approve `MODEL_CLASSIFICATION_AUTHORITY_POLICY_V1`
+for model-only explicit original-label or legacy-lexical views, with exactly the
+tables, same-column canonical-English identity keys, text lookup, preservation
+and fail-closed conditions above. This creates independent model lexical authority,
+not shortlist/pair-correction authority, semantic taxonomy validation,
+implementation, comparison execution, activation or admission approval.”
+
+#### Decision 2: descriptive/allocation compatibility — approved 2026-10-08
+
+**Approval record:** The user's explicit 2026-10-08 approval of all three within
+their reviewed scopes separately approves `MODEL_READER_DESCRIPTIVE_ALLOCATION_POLICY_V1`
+and explicit `ORIGINAL_MODEL_DESCRIPTORS_V1` under every condition below.
+Implementation, comparison execution, consumer activation and admission remain
+unauthorized; descriptor/allocation equivalence is not established by approval.
+
+**Problem and alternatives.** The legacy reader returns stored ordinary text;
+legacy `prepare_rows` does not categorically translate portfolio/product/ISIN/
+currency, and its broad numeric-zero replacement includes allocation. C instead
+trims text, requires portfolio/product/ISIN, and preserves a finite nonnegative
+weight. Options are normalized-original fields, a separate raw-text legacy view,
+or emulation of broad legacy cleaning. Raw text can change grouping/currency
+keys; broad zero replacement exceeds the approved twelve-metric scope. Neither
+is silently selected to force equivalence.
+
+**Approved policy: `MODEL_READER_DESCRIPTIVE_ALLOCATION_POLICY_V1`, explicitly
+selected as `ORIGINAL_MODEL_DESCRIPTORS_V1`.** Use only existing validated C fields:
+
+| Reader input | Approved rule and missing/error boundary |
+| --- | --- |
+| Date | Existing strict snapshot ISO date → `date`; one complete candidate per date; duplicate/conflicting dates and unavailable requests reject, not merge or select a nearby date |
+| `portfolio_name` / `product` | BIFF text, existing trim only, nonempty `str`; no casefold, Unicode rewrite, alias, numeric conversion or DB fallback. Required source missing/empty/rejected text blocks the snapshot despite optional `product` DTO type |
+| `isin` | Existing trimmed exact uppercase 12-character source regex; no uppercase repair, inferred identity or check-digit claim; missing/rejected values block despite optional DTO type |
+| `currency` | Existing trimmed optional text; blank/absent/empty or whitespace-only text → `None` with distinct original state/reason. No currency alias/ISO conversion; non-text/error/boolean/date values reject, not masquerade as missing |
+| `allocation` | Existing `reported_weight`: finite nonnegative BIFF number → unchanged `float` in percentage points, **including numeric zero**. No `/100`, rounding, sum normalization, zero-to-absence or invented cash holding. Blank/empty/text `"0"`/other text, error, date, boolean, negative or non-finite source rejects |
+| Classification, risk and five DTO metrics | Separate mandatory classification and already approved risk/metric projections; this descriptor policy neither overrides them nor resolves the remaining seven metrics/unused-field diagnostics |
+
+Keep every occurrence, including zero-weight holdings and exact/economic duplicates.
+For repeated holdings under one identical original portfolio label, grouping by
+the validated trimmed name is explicit. If **different raw portfolio labels**
+within a date collapse to one trimmed key, block with a normalization-collision
+reason pending separate identity review; do not silently merge portfolios.
+Do not deduplicate products/ISINs, normalize currency labels further, or enforce
+a new 100%/per-holding cap at reader construction. Current ranking allocation
+total/tolerance and metric-coverage eligibility remain the reviewed ranking
+functions' responsibility. Reader success is not ranking eligibility.
+
+**Provenance and compatibility limits.** Capture raw/normalized/DTO values,
+typed missing states, applied trim, exact weight/format and field-occurrence
+bindings; rejected fields receive actionable reasons without partial results.
+`None` means authorized missing state or an already approved metric/risk
+disposition, not a blanket error cleaner. Product/currency text `"0"` stays text
+if valid under its own field contract; the metric/allocation rules do not coerce it.
+The consumer groups by portfolio name and currency label, sums allocation and
+weighted metrics in reader order, and tests metric availability using `is not None`.
+Thus trim, allocation `0.0` versus legacy `None`, and label changes can matter
+even when some numerical contributions are zero. No raw-label collision census,
+descriptive/allocation retained equivalence or zero-allocation workflow equivalence
+has been established. Differences must be recorded and reviewed later, not waived
+because an advisor winner matches. Non-DTO sub-asset/sustainability evidence and
+all diagnostics remain intact; sustainability dispositions remain unresolved.
+
+**Reviewed wording covered by the explicit approval:** “Approve `MODEL_READER_DESCRIPTIVE_ALLOCATION_POLICY_V1`
+and explicit `ORIGINAL_MODEL_DESCRIPTORS_V1` for model v1 candidates: existing
+validated trimmed descriptors and unchanged finite nonnegative percentage-point
+allocation, retaining zero-weight holdings, exact occurrences and originals.
+Apply the stated required/optional missing, rejection and portfolio-key collision
+rules, with no legacy fallback, broad zero cleaning or eligibility inference.
+Historical descriptor equivalence, implementation, comparison execution,
+activation and admission are not approved.”
+
+#### Decision 3: reader holding order — approved 2026-10-08
+
+**Approval record:** The user's explicit 2026-10-08 approval of all three within
+their reviewed scopes separately approves `MODEL_READER_HOLDING_ORDER_POLICY_V1`
+under every selection, permutation and rejection condition below. This defines
+reader order only, not legacy equal-key equivalence, ranking-policy changes,
+implementation, comparison execution, consumer activation or admission.
+
+**Problem and alternatives.** The ledger is source-ordered evidence; the legacy
+repository SQL orders by `Portfolio Name`, `ISIN`, `Product` without an occurrence
+tie-break. Source order, an explicit legacy-key view, or a newly designed economic
+order are separate choices. Economic sorting/grouping adds unsupported meaning.
+Unspecified SQL equal-key ordering cannot be manufactured from source IDs or
+recovered by silently borrowing legacy rows. The existing metric functions use
+ordinary float sums and preserve input order inside each name group; portfolio
+groups and final score ties use name order. Permutation invariance is unproven.
+
+**Approved policy: `MODEL_READER_HOLDING_ORDER_POLICY_V1`.** Permit mandatory explicit
+`SOURCE_ORDER_V1` (the unchanged model source sequence) or
+`MODEL_READER_LEGACY_KEY_SOURCE_TIE_ORDER_V1`, recommending the latter for later
+historical comparison. For the key view sort the complete date snapshot ascending
+by the **actual selected DTO** `(portfolio_name, isin, product)` strings, each
+compared by its UTF-8 bytes (binary, no locale/casefold/NFC/natural-numeric sort).
+All three keys are nonempty text under Decision 2; no NULL ordering policy is
+introduced for invalid inputs. Invalid UTF-8 encoding fails explicitly. Break
+exact equal primary keys by the original model `occurrence_index`, preserving
+source order within that key. Verify the occurrence index/reference sequence
+before sorting; never use DB row IDs, metric/risk values, ISIN aggregation or
+input arrival order as a tie-break.
+
+Return a fresh holdings list and an immutable, complete bijective permutation
+between DTO position and source occurrence, binding sort keys/profile/version
+and fingerprint. Never reorder C, its ledger or diagnostics. Neither choice
+drops/merges duplicates; every source occurrence gets exactly one DTO and sidecar
+entry. Missing/extra/duplicate references, altered sort keys, unsupported collation,
+or a permutation inconsistent with the selected policy fail the whole snapshot.
+Dates remain ascending unique; `load_holdings(date)` applies only that snapshot's
+explicit order, never nearest-date selection.
+
+**Limitations and gaps.** UTF-8 binary keys target the ordinary default SQLite
+text ordering expressed by the code-created schema (no explicit `COLLATE`),
+not a fresh verification of the retained database's collation or storage values.
+Normalized candidate keys may differ from stored legacy text. Source-index ties
+are an approved deterministic extension, **not proof of legacy equal-key order**.
+The saved currency-risk comparison preserved the actual legacy reader order and
+reported no identical full `HoldingObservation` groups; that does not rule out
+equal portfolio/ISIN/product keys with different metrics or allocations. Such
+ties require full occurrence/multiplicity accounting in a later comparison; if
+legacy rows cannot be uniquely bound, report order equivalence as unproven.
+Different same-key rows can alter float sums, exact scores and winners; no
+tolerance, reassociation, compensated-sum change or tie waiver is approved here.
+Future files receive only the selected deterministic ordering rule, not inherited
+legacy equivalence or evidence/admission authority.
+
+**Reviewed wording covered by the explicit approval:** “Approve `MODEL_READER_HOLDING_ORDER_POLICY_V1`
+with explicit source order or the defined UTF-8 binary portfolio/ISIN/product
+key view and source-occurrence tie-break. Preserve the immutable source ledger,
+every duplicate and a complete permutation sidecar. This specifies reader order,
+not legacy equal-key order equivalence, ranking-policy change, implementation,
+comparison execution, activation or admission approval.”
+
 ### Later integration validation contract (not executed)
 
-The pure immutable same-candidate ledger is implemented and validated only with
-synthetic fixtures; it preserves fixed production bindings, independent scoped
-resolutions and unconditional `NOT_GRANTED`. The next reader slice requires
-separate authorization and resolution of the classification, descriptive/
-allocation and final order choices before exposing a facade or making a full
+The pure immutable same-candidate ledger has synthetic validation and bounded
+retained acceptance; it preserves fixed production bindings, independent scoped
+resolutions and unconditional `NOT_GRANTED`. Neither constructs a reader. The
+next reader slice requires separate implementation authorization and explicit
+selection of the approved classification, descriptor/allocation and order
+profiles before exposing a facade or making a full
 reader-equivalence claim. No DB adapter or active-consumer integration is present.
 
 Later synthetic integration checks must include both metric selections, all
@@ -440,6 +709,12 @@ test conventions, never a public override or claimed historical acceptance.
 Pinned real anomaly candidates with changed optional mapping inputs must reject.
 Test date enumeration/latest/unavailable/conflicting dates, fresh returned lists,
 and no legacy fallback or fabricated file-backed provenance.
+After separate implementation and validation-execution authorization, add exact
+classification-table/canonical-identity and unknown-key tests, raw-label trim
+collisions, both explicit order profiles, UTF-8/non-ASCII and equal-key source
+ties, complete permutation provenance, and failures on altered sidecar bindings.
+Do not change either original-only candidate classifications or fixed anomaly
+bindings to make those tests pass. These tests are specified, not executed here.
 
 A separately authorized all-date comparison must use the exact retained inputs,
 recorded historical construction, both public projections on each same C, actual
