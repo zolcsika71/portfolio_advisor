@@ -4,7 +4,8 @@
 ' evidence-gate evaluation and pure composition ledger implemented;
 ' ledger synthetic validation and bounded retained acceptance completed;
 ' pure reader facade synthetic validation and bounded retained acceptance completed;
-' integrated legacy-reader/ranking equivalence, activation, admission and cutover pending
+' bounded integrated reader/advisor exact matches recorded; broad rebuild repeats timed out;
+' performance qualification, activation, eligibility composition, admission and cutover pending
 ' Retained ledger acceptance: source 7908995606c0a5c882cfea74197a6bbf68dad4f4
 ' Saved report SHA-256: 8930d1e3fd7f0cb66dc8e7bb9a832593dd0270b17af15dbf3e8b106f8c22997b
 ' Scope/limitations: docs/architecture/biff-xls-normalization-admission-policy-v1.md
@@ -12,6 +13,10 @@
 ' Retained reader acceptance: source c4ef67487221c7ed0b649a942117787c334b335f
 ' Saved report SHA-256: 3e85be6ae922e76abb5cfeef59a3bc77b2f2f5fa1fa01771cc0e04d11eed928d
 ' Scope/limitations: same policy, section "Bounded retained-corpus reader acceptance evidence"
+' Integrated comparison source: d50f5dfc3c885114ab8e5d0be65ddfe53c658fcb
+' Saved report SHA-256: 684f0a9f50354a6e0fa9fe939de13e25d7c72fe2da0f8055fb6b671827d730bf
+' Primary status COMPLETED_WITH_FAILURES; four separate dated repeats matched.
+' Scope/limitations: same policy, section "Bounded integrated retained-reader and advisor comparison evidence"
 ' Implemented sources:
 ' - src/portfolio_advisor/database/model_portfolio_phase3b.py
 ' - src/portfolio_advisor/workbook_source/biff_xls.py
@@ -81,7 +86,7 @@ participant "Normalization candidate\nadapter (no admission)" as Normalizer
 participant "Explicit model metric\nprojection (pure)" as MetricProjection
 participant "Explicit model currency-risk\nprojection (pure)" as CurrencyProjection
 participant "Immutable composition ledger\n[Implemented, pure]" as Ledger
-participant "Candidate-native reader\ncomposition [Proposed]" as CandidateReader
+participant "Candidate-native reader\n[Implemented; activation pending]" as CandidateReader
 participant "Injected advisor/ranking\n(existing interface)" as Advisor
 database "Isolated schema-v3\ntemporary database" as Temporary
 database "portfolio_advisor.sqlite\nproposed operational authority" as Analytical
@@ -239,7 +244,8 @@ note over Parser, Normalizer
   The separate pure projection is implemented. Its bounded comparison held
   other legacy inputs fixed; further comparison execution, consumer activation
   and admission remain unauthorized.
-  Normalizer diagnostics are unchanged; joint reader equivalence is unproven.
+  Normalizer diagnostics are unchanged. Separate bounded integrated matches are recorded below;
+  those matches do not establish general reader equivalence or overall eligibility.
   Missing/partial labels do not establish hedging or complete currency-risk information.
   Shortlist currency-risk mapping remains unapproved. Shortlist numeric
   zero remains an original 0.0 and becomes effective NULL only through the
@@ -265,10 +271,11 @@ MetricProjection --> Operator: immutable versioned result + projection fingerpri
 note over Operator, MetricProjection
   Allocation and shortlist are outside this rule. No active consumer selects it.
   Bounded metric/ranking comparison passed with legacy descriptors fixed;
-  integrated candidate-native reader equivalence remains unproven. No admission authority.
+  that independent result is not integrated reader equivalence.
+  Separate bounded integrated matches are recorded below; no admission authority.
 end note
 
-== Model currency-risk projection [Implemented; integrated reader/consumers pending] ==
+== Model currency-risk projection [Implemented; consumers pending] ==
 
 Operator -> CurrencyProjection: provide v1 candidate, expected fingerprint,\nand explicit LEGACY_READER_PROJECTION_V1 selection
 CurrencyProjection -> CurrencyProjection: validate immutable typed provenance and field semantics;\npreserve both sheets, diagnostics and duplicate occurrences
@@ -309,7 +316,8 @@ note over Ledger
   33 workbooks x two metric modes; 66 accepted cases, zero discrepancies.
   Historical construction omitted the optional shortlist mapping manifest (None).
   That ledger run did not construct a reader or establish integrated reader/ranking equivalence.
-  Reader policies approved 2026-10-08; retained policy compatibility remains unproven.
+  Reader policies approved 2026-10-08; separate bounded integrated matches are recorded below.
+  That later comparison does not broaden this ledger-only result.
   Pure facade separately implemented; activation and eligibility pending; admission NOT_GRANTED.
 end note
 
@@ -321,7 +329,7 @@ alt projection failure, mismatch, rejected reader field or unresolved profile ch
     CandidateReader --> Operator: fail complete snapshot visibly; no DB fallback or dropped holding
 else approved profiles and all snapshot checks satisfied
     CandidateReader --> Operator: ModelPortfolioReader + immutable field/permutation sidecar;\nadmission NOT_GRANTED (not ranking or admission eligibility)
-    Operator -> Advisor: future separately authorized explicit reader injection only
+    Operator -> Advisor: explicit opt-in injection for separately authorized comparisons only;\nno operational activation
 end
 note over CandidateReader, Advisor
   Historical candidates omit the optional shortlist mapping manifest;
@@ -333,14 +341,40 @@ note over CandidateReader, Advisor
   Examined compatibility metrics, model-English lexical, original descriptors,
   binary/source-tie order and historical risk profiles only; exact bytes/bindings.
   All 24 anomaly bindings, originals and complete provenance/permutations checked.
-  Three equal-key groups retained source-index ties, not proof of legacy equal-key order.
+  Three equal-key groups retained source-index ties in this acceptance run;
+  separate integrated order matches apply only to the examined database/query, not a general guarantee.
   No zero-weight holdings observed; that behavior remains synthetic coverage only.
   Further legacy-reader/ranking comparison, consumer activation and admission unauthorized.
-  Source-order preservation is not legacy SQL order or float-score equivalence.
+  Source-order preservation alone is not legacy SQL order or float-score equivalence.
   Separate metric/risk comparisons held other legacy inputs fixed: no joint proof.
   Missing/partial risk labels do not establish hedging or complete risk information.
-  Pure facade and ledger implemented; no advisor wiring or database fallback.
-  Integrated legacy-reader/ranking equivalence, activation and eligibility pending; admission NOT_GRANTED.
+  Pure facade and ledger implemented; no operational advisor wiring or database fallback.
+  Bounded integrated evidence is separate below; activation and eligibility composition pending.
+  Admission NOT_GRANTED.
+end note
+
+== Bounded integrated reader/advisor comparison [Saved evidence, not activation] ==
+
+note over CandidateReader, Advisor
+  Source d50f5dfc3c885114ab8e5d0be65ddfe53c658fcb; same examined profiles as reader acceptance.
+  Candidate observations entirely from workbook evidence; no legacy-field substitution.
+  Actual legacy reader and unchanged production advisor; exact examined DB/configuration.
+  33 dates / 5,283 holdings / 408 date-portfolio identities; 63,396 DTO field checks.
+  Zero field, multiplicity or returned-order differences; complete advisor outcomes matched,
+  including coverage, eligibility/reasons, contributions, scores, warnings, order, winners,
+  alternatives and four observed ties. Exact examined bytes/profiles/workflows only.
+  Primary report remains COMPLETED_WITH_FAILURES (exit 1), not an overall COMPLETE_PASS:
+  four extra full-reader rebuild attempts exceeded the 90-second dated-stage bound
+  AFTER completed comparisons; 29 COMPLETE_MATCH statuses and four FAILED statuses.
+  These resource timeouts are not reader/policy rejections or different dated outcomes.
+  Separate 150-second-per-date follow-up: four dated readers, three byte-identical outcomes each,
+  matching original all-date reader/advisor payloads; no full-all-date rebuild in that follow-up.
+  Initial atomic reader construction used a separate 240-second bound.
+  No performance qualification; dated follow-ups do not prove full-reader rebuilds meet the 90-second bound.
+  No zero-weight holdings observed. Equal-key matches are limited to the examined DB/query.
+  Historical full currency-risk coverage is not complete risk information or hedging proof.
+  Activation, eligibility composition and admission remain pending; ADR-007 Proposed.
+  Admission NOT_GRANTED. Historical evidence reports and approved policies are unchanged.
 end note
 
 == Phase 3B.1 synthetic temporary writer [Implemented, non-operational] ==

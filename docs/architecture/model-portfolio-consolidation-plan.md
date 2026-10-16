@@ -574,8 +574,8 @@ candidate fingerprint, preserves the complete input candidate, and emits
 versioned metric dispositions with original provenance. The adapter still
 reports its pre-approval unresolved diagnostic; the projection preserves it
 as input evidence and records eligible zero resolutions separately. No active
-consumer is integrated, and full candidate-native reader equivalence remains
-unproven. Shortlist original zeros remain `0.0`,
+consumer is activated. A separate bounded integrated reader/advisor comparison is
+recorded below; broader reader compatibility remains unproven. Shortlist original zeros remain `0.0`,
 and the exact existing ADR-003 corrections are not inherited by new sources.
 Recovery/formula evidence is governed by the subsequently approved hash-bound
 sub-decisions described below; remaining anomaly dispositions, executable overall
@@ -819,12 +819,14 @@ does not apply the approved shortlist mapping to model rows.
 
 The original-descriptor and explicit holding-order policies were **approved on
 2026-10-08**; subsequent separate authorization covered pure facade implementation,
-synthetic validation and bounded retained-reader acceptance. It does not grant
-further legacy-reader/ranking comparison execution or activation.
+synthetic validation and bounded retained-reader acceptance. A separately
+authorized bounded integrated comparison is recorded below; none of these
+records grants further comparison execution or activation.
 Candidate text trimming/required fields and preserved allocation zero differ
 from some legacy preparation semantics. Source order also differs from the
 legacy SQL portfolio/ISIN/product order; float aggregation and equal-key ordering
-need explicit comparison, not an assumed permutation-invariant result. A full
+need explicit comparison, not an assumed permutation-invariant result; the
+integrated record covers only the examined profile/database/query. A full
 reader facade requires explicit approved profile selections, not assumed equivalence.
 The [pure same-candidate composition ledger](../../src/portfolio_advisor/workbook_source/model_projection_ledger.py)
 is now implemented as `MODEL_PROJECTION_COMPOSITION_LEDGER` v1, with
@@ -839,8 +841,8 @@ evidence order; no descriptor/order profile, DTO or consumer is activated.
 Synthetic anomaly-success tests use restored test-local bindings, not a public
 override; their coverage is separate from the retained acceptance evidence below.
 The three reader policies are approved separately from the ledger; the pure
-facade and its bounded acceptance are separately recorded below. Integrated
-legacy-reader/ranking comparison remains unauthorized.
+facade, bounded acceptance and integrated comparison are separately recorded
+below. No further legacy-reader/ranking comparison is authorized by these records.
 
 The [bounded retained ledger acceptance record](biff-xls-normalization-admission-policy-v1.md#bounded-retained-corpus-ledger-acceptance-evidence)
 used published revision `7908995606c0a5c882cfea74197a6bbf68dad4f4` and is preserved
@@ -875,9 +877,9 @@ no reader was constructed or integrated advisor/ranking exercised. Source order
 does not select final reader order; matching legacy currency coverage still
 does not establish complete risk information. The classification, descriptive/
 allocation and holding-order policies were subsequently approved on 2026-10-08,
-not by this run. Their compatibility evidence gaps, integrated equivalence,
-activation, eligibility composition and admission remain pending; the separate
-retained-reader acceptance below does not broaden this ledger result.
+not by this run. The separate retained-reader acceptance and bounded integrated
+comparison below do not broaden this ledger result. Broader compatibility,
+activation, eligibility composition and admission remain pending.
 ADR-007 stays `Proposed`; admission remains `NOT_GRANTED`.
 
 The contract specifies later date/portfolio comparisons of every reader field,
@@ -901,8 +903,8 @@ including exact scope, alternatives, rejection conditions, evidence gaps and
 reviewed approval wording. The user explicitly stated “Approve all three within
 their reviewed scopes.” **Each policy was separately approved on 2026-10-08;
 policy approval alone grants no execution authority.** The separately authorized
-pure facade and bounded retained acceptance are described below; legacy-reader/
-ranking comparisons and activation remain pending.
+pure facade, bounded retained acceptance and integrated comparison are described
+below; further legacy-reader/ranking comparisons and activation remain pending.
 Scope is the 33 inventoried
 model candidates and future independently v1-conforming model candidates only.
 Every selection is explicit, with no legacy-data fallback, shortlist authority,
@@ -924,8 +926,9 @@ original-only C metadata and the unchanged immutable source-ordered ledger.
    equivalence. No numeric code, synonym, spelling repair or pair semantics
    is inferred. Sub-asset results remain in the sidecar, not a new DTO slot.
    Current advisor ranking does not use `asset_class`; LTIA/backtest consumers
-   do carry it. Complete approved-table coverage/provider semantics and all-date
-   legacy classification field equivalence remain unproven. Recorded approval
+   do carry it. The integrated record below matches examined DTO `asset_class`;
+   complete approved-table coverage/provider semantics, sub-asset and other
+   classification-consuming workflows remain unproven. Recorded approval
    is independent model-only lexical/original view authority, not implementation
    or admission.
 2. **Descriptors/allocation — `MODEL_READER_DESCRIPTIVE_ALLOCATION_POLICY_V1`.**
@@ -941,7 +944,9 @@ original-only C metadata and the unchanged immutable source-ordered ledger.
    Classification and approved metric/risk projections remain separate choices.
    Raw-text and broad legacy-cleaning views are alternatives, not selected
    shortcuts. The acceptance below found no raw-label collision census issues;
-   legacy trim/currency grouping and allocation-zero equivalence remain to compare.
+   the separate integrated record matches examined trimmed descriptors/currency
+   and allocation fields. No zero-weight holdings were observed, so allocation-zero
+   equivalence remains untested on retained inputs.
    Recorded approval defines
    these reader fields and rejection rules, not ranking eligibility or a claim
    that descriptor/weight compatibility has been demonstrated.
@@ -954,7 +959,9 @@ original-only C metadata and the unchanged immutable source-ordered ledger.
    Invalid keys/encoding, coverage gaps, changed sort keys or inconsistent
    permutations reject. No locale/casefold/natural sort, database-row fallback
    or float-tolerance waiver. Legacy SQL has no explicit occurrence tie-break;
-   its equal-key order and the retained DB collation were not freshly inspected.
+   policy approval itself did not inspect retained DB equal-key order/collation.
+   The integrated record observes matching order in three equal-key groups only
+   for its exact database/query, not a general tie-order guarantee.
    No identical full DTO groups in the saved risk comparison does not prove
    primary-key uniqueness or permutation-invariant scores. Recorded approval
    defines deterministic reader order only, not legacy order/ranking equivalence.
@@ -966,19 +973,19 @@ holdings, allocation, both sheets and originals survive. Unknown or altered
 bindings fail the complete snapshot; recomputed fingerprints do not waive typed
 validation. These are separate bounded policy approvals only; a future reader
 needs explicit profile selections and separate implementation authorization.
-The facade and subsequent bounded acceptance were separately authorized.
-Further legacy-reader/ranking comparison execution, consumer activation and
-admission remain unauthorized; legacy classification-field equivalence,
-descriptor/allocation equivalence, legacy
-equal-key ordering and integrated reader equivalence remain unproven.
-Later synthetic and all-date integration checks must account for every field,
+The facade, subsequent bounded acceptance and integrated comparison were
+separately authorized. Further comparison execution, consumer activation and
+admission remain unauthorized. The integrated record covers examined DTO fields
+and advisor outcomes only; general legacy equal-key ordering, zero-allocation
+behavior, other profiles/workflows and performance qualification remain unproven.
+Any later synthetic and all-date integration checks must account for every field,
 missing state and occurrence, classification outputs, trim collisions and order
 permutations, then actual advisor coverage, eligibility, scores, ordering, ties,
 warnings and winners without fixing descriptors to legacy values. Those checks
-are specified only; neither earlier separate comparison nor retained ledger
-acceptance proves them. The historical currency-risk coverage caveat remains.
-Bounded retained-reader acceptance is recorded below; integrated equivalence,
-activation, eligibility composition and admission remain pending. ADR-007 stays
+are not proven by earlier separate comparison or retained ledger acceptance;
+the bounded integrated evidence below is separate. The historical currency-risk
+coverage caveat remains. Broader equivalence, activation, eligibility composition
+and admission remain pending. ADR-007 stays
 `Proposed`, admission `NOT_GRANTED`.
 
 ### Implemented pure reader facade — bounded validation
@@ -1000,8 +1007,9 @@ Fresh holdings lists and detached serialization cannot mutate evaluated state.
 The [implemented facade contract and synthetic tests](biff-xls-normalization-admission-policy-v1.md#implemented-pure-candidate-native-reader-facade)
 describe exact boundaries. Historical anomaly construction still uses
 `approved_shortlist_mapping_manifest=None`; no registry override exists.
-Admission stays `NOT_GRANTED`. No legacy-reader/ranking comparison, activation,
-eligibility composition or operational change is authorized or claimed.
+Admission stays `NOT_GRANTED`. This implementation record authorizes or claims no
+legacy-reader/ranking comparison, activation, eligibility composition or operational
+change; the separately authorized bounded comparison is recorded below.
 
 ### Bounded retained-reader acceptance
 
@@ -1044,9 +1052,81 @@ not new independent BIFF/formula/strict-recovery inspection.
 This establishes retained reader acceptance only: no legacy reader or advisor/
 ranking comparison was run. Earlier ledger and separate comparison claims are
 unchanged; neither individually nor together proves integrated equivalence or
-complete currency-risk information. Further comparison execution, consumer
+complete currency-risk information. The separate integrated record below does
+not expand this acceptance result. Further comparison execution, consumer
 activation, eligibility composition and admission remain pending and require
 separate authorization. ADR-007 remains `Proposed`; admission stays `NOT_GRANTED`.
+
+### Bounded integrated reader/advisor comparison — matches and resource failures
+
+The [detailed integrated evidence record](biff-xls-normalization-admission-policy-v1.md#bounded-integrated-retained-reader-and-advisor-comparison-evidence)
+binds recovery package `model-reader-integrated-comparison-v1.QypJ8q` to source
+revision `d50f5dfc3c885114ab8e5d0be65ddfe53c658fcb`.
+`evaluated/comparison.json` (`CANDIDATE_NATIVE_MODEL_READER_LEGACY_ADVISOR_COMPARISON`
+v1) SHA-256 is `684f0a9f50354a6e0fa9fe939de13e25d7c72fe2da0f8055fb6b671827d730bf`;
+`SHA256SUMS` SHA-256 is `8bff0b27eed6222bd855b0577922992a06b55f3048c89d8711468a9475d514e2`.
+All 99 entries, 42 source bindings, all 33 workbook/inventory hashes and saved
+database/configuration/dependency/result bindings were statically verified.
+Neither actual harness was executed for this documentation verification.
+
+The examined selections were `MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1`,
+`MODEL_CURRENCY_RISK_LEGACY_READER_PROJECTION_V1`,
+`MODEL_CLASSIFICATION_LEGACY_LEXICAL_V1`, `ORIGINAL_MODEL_DESCRIPTORS_V1` and
+`MODEL_READER_LEGACY_KEY_SOURCE_TIE_ORDER_V1`, with
+`approved_shortlist_mapping_manifest=None` and unchanged production bindings.
+The actual public pipeline constructed all dated readers and one atomic all-date
+reader. Complete candidate observations came only from workbook evidence; the
+actual legacy reader used the exact read-only model database on the independent
+baseline side. Both complete readers used the unchanged production advisor with
+explicit dates, approved `CAPITAL_PRESERVATION_RANKING_POLICY` v1.0.1,
+`allow_proposed_rules=False` and `alternative_count=3`. Database/YAML fingerprints
+and exact type/float-hex comparison semantics are in the detailed record; no
+field substitution, tolerance or sorting-away of returned-order differences.
+
+All three reader methods matched on 33 dates, 5,283 holdings and 408 date/portfolio
+identities: 63,396 DTO field comparisons, zero field/multiplicity/order differences.
+Complete advisor outcomes matched coverage/availability, eligibility/reasons,
+contributions, scores, warnings/assumptions, ranked/rejected order, winners,
+alternatives, rule metadata and four observed ties. Accounting reconciled 12,072
+zero omissions, 50,776 nonzero metrics, 548 missing metric cells, 4,968 risk
+translations, 291 missing states and 24 exact anomaly dispositions. Originals,
+diagnostics, allocations/permutations, 10,833 shortlist occurrences and 327,603
+typed fields remained intact.
+
+**The primary report retains `COMPLETED_WITH_FAILURES` and exit status 1.** Four
+extra full-all-date reader rebuild repeats exceeded the 90-second dated-stage
+bound after completed comparisons (2024-07-02, 2024-10-07, 2024-10-17, 2025-05-09):
+29 case statuses are `COMPLETE_MATCH`, four are `FAILED`. These are resource
+timeouts, not reader/policy rejections or differing dated payloads. The separately
+preserved `DATED_READER_ADVISOR_DETERMINISM_FOLLOWUP` v1 report
+`representative-repeats/repeat-followup.json`, SHA-256
+`bee19e092a965b30e72e663fd65d1106e54b9065e4c7a47f85a884243bf35563`, is `COMPLETE_PASS`:
+four complete dated reader/advisor cases produced three byte-identical outcomes
+each, including independent dated reconstruction, under a 150-second per-date
+bound. They matched the original all-date reader's dated outputs, not a whole
+33-date rebuild. Initial atomic construction used a separate 240-second bound.
+This does not qualify full-reader rebuild performance or satisfy its 90-second bound.
+
+Three equal-key groups matched separate source-index-tied occurrences only for
+the examined database/query. No zero-weight holdings occurred. Legacy full risk
+coverage coexisted with missing labels for 160 identities and partial labels for
+102 (20 had both); do not sum these overlapping groups or infer hedging/complete
+risk information. Other profiles/workflows, taxonomy and future inputs remain
+outside scope. Earlier ledger, acceptance and independent comparisons are unchanged.
+
+Reproduction requires exact own-source checkout, 33 external hash-bound XLS files,
+exact external model database and ranking YAML, the prior reader-acceptance package,
+compatible saved execution-time dependencies and fresh exclusive outputs. Actual
+`compare_readers.py`/`repeat_dates.py` and `REPRODUCE.md` record bounds; saved
+analysis assumes the fixed `evaluated-final` layout and a disposable copy.
+Recorded versions describe this run, not older audits. Relocation/timing can
+change aggregate connection/resource metadata and report bytes; exact dated
+payloads and source/input bindings are the bounded reproduction target.
+This establishes integrated reader/advisor equivalence only for the exact examined
+bytes/profiles/database/configuration, not performance qualification, general
+compatibility or new BIFF/formula evidence. Further execution, activation,
+eligibility composition, authority transfer and admission remain pending.
+ADR-007 stays `Proposed`; admission stays `NOT_GRANTED`.
 
 ## Unresolved decisions and blockers
 
@@ -1093,14 +1173,15 @@ separate authorization. ADR-007 remains `Proposed`; admission stays `NOT_GRANTED
    not combine them with normalization diagnostics or other eligibility gates.
    Changed or future bytes remain outside scope, upstream formula history
    remains unverified, and parser success alone is insufficient.
-8. **Approved model-zero policy—consumer integration and full reader equivalence pending:** the
+8. **Approved model-zero policy—consumer integration still pending:** the
    user approved `MODEL_METRIC_ZERO_HANDLING_POLICY_V1` on 2026-09-26 for the
    twelve model metrics on the 33 inventoried workbooks and future
    v1-conforming model sheets. Original zero preservation and the separate pure
    `MODEL_METRIC_ZERO_TO_ABSENCE_COMPATIBILITY_V1` projection are implemented
    in memory. The bounded twelve-metric comparison and five-metric ranking
-   bridge match legacy with descriptive inputs fixed; full candidate-native
-   reader equivalence remains unproven and no consumer is activated.
+   bridge match legacy with descriptive inputs fixed. The separate integrated
+   record matches examined reader/advisor outcomes only; broader compatibility
+   and performance remain unproven and no consumer is activated.
    Projection success retains admission `NOT_GRANTED`.
 9. **Currency-risk consumer integration and remaining anomaly policy:** the user
    approved the model-only lexical mapping, exact 24-occurrence disposition and
