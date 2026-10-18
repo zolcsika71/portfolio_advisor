@@ -40,6 +40,7 @@ from portfolio_advisor.workbook_source import (
 from portfolio_advisor.workbook_source import (
     SOURCE_ORDER_V1 as SOURCE,
 )
+from portfolio_advisor.workbook_source import candidate_model_reader as reader_module
 from portfolio_advisor.workbook_source import model_currency_risk_projection as risk
 from tests.fixtures.biff_xls_fixture import write_biff_fixture
 from tests.test_model_currency_risk_projection import _synthetic_anomaly_case
@@ -99,6 +100,195 @@ def _reader(*ledgers, **changes):
             **changes,
         }
     )
+
+
+def _parent_reader_to_dict(reader):
+    # Frozen reference to the parent implementation, including evaluation order.
+    payload: dict[str, object] = json.loads(reader._evaluated_payload_json)
+    return {**payload, "reader_fingerprint": reader.reader_fingerprint}
+
+
+def _subclass_reader(envelope, reader_type):
+    ledger = _ledger(envelope)
+    return reader_type(
+        ledgers=(ledger,),
+        expected_candidate_fingerprints=(
+            ledger.original_candidate.candidate_fingerprint,
+        ),
+        expected_ledger_fingerprints=(ledger.ledger_fingerprint,),
+        classification_profile=LEXICAL,
+        descriptor_profile=ORIGINAL_MODEL_DESCRIPTORS_V1,
+        holding_order=SOURCE,
+    )
+
+
+@pytest.mark.parametrize("classification", [LEXICAL, LABELS])
+@pytest.mark.parametrize("order", [SOURCE, KEY_ORDER])
+@pytest.mark.parametrize("mode", [ORIGINAL, COMPATIBILITY])
+def test_export_matches_parent_for_all_synthetic_profiles(
+    envelope, classification, order, mode
+):
+    ledger = _ledger(_cell(envelope, "1yr", raw_value=-0.0), mode)
+    before = ledger.to_json()
+    reader = _reader(ledger, classification_profile=classification, holding_order=order)
+    expected = _parent_reader_to_dict(reader)
+    encoded = canonical_json(expected)
+    fingerprint = reader.reader_fingerprint
+    assert reader.to_dict() == expected
+    assert reader.to_json() == encoded
+    # Each exported graph is detached, including deeply nested provenance.
+    detached = reader.to_dict()
+    detached["snapshots"][0]["ledger"]["original_candidate"].clear()
+    detached["policies"].clear()
+    detached["reader_fingerprint"] = "changed"
+    assert reader.to_json() == encoded
+    assert reader.reader_fingerprint == fingerprint
+    assert ledger.to_json() == before
+
+
+def test_exact_class_export_decodes_payload_once_without_caching(envelope, monkeypatch):
+    reader = _reader(_ledger(envelope))
+    encoded = reader._evaluated_payload_json
+    loads = json.loads
+    calls = []
+
+    def counted_loads(value):
+        calls.append(value)
+        return loads(value)
+
+    monkeypatch.setattr(reader_module.json, "loads", counted_loads)
+    expected = _parent_reader_to_dict(reader)
+    assert calls == [encoded, encoded]
+    for operation in (reader.to_dict, reader.to_dict):
+        calls.clear()
+        assert operation() == expected
+        assert calls == [encoded]
+    calls.clear()
+    assert reader.to_json() == canonical_json(expected)
+    assert calls == [encoded]
+    calls.clear()
+    assert reader.reader_fingerprint == expected["reader_fingerprint"]
+    assert calls == [encoded]
+
+
+def test_inherited_subclass_keeps_parent_decode_path(envelope, monkeypatch):
+    class Subclass(CandidateNativeModelPortfolioReader):
+        pass
+
+    reader = _subclass_reader(envelope, Subclass)
+    loads = json.loads
+    calls = []
+
+    def counted_loads(value):
+        calls.append(value)
+        return loads(value)
+
+    monkeypatch.setattr(reader_module.json, "loads", counted_loads)
+    expected = _parent_reader_to_dict(reader)
+    assert len(calls) == 2
+    calls.clear()
+    assert reader.to_dict() == expected
+    assert calls == [reader._evaluated_payload_json] * 2
+
+
+@pytest.mark.parametrize("override_on", ["subclass", "exact_class"])
+@pytest.mark.parametrize("behavior", ["return", "raise", "mutate"])
+def test_export_preserves_fingerprint_property_override_order(
+    envelope, monkeypatch, override_on, behavior
+):
+    events = []
+
+    def fingerprint(self):
+        events.append("property")
+        if behavior == "raise":
+            raise LookupError("overridden fingerprint")
+        if behavior == "mutate":
+            object.__setattr__(self, "_evaluated_payload_json", '{"later":true}')
+        return "overridden"
+
+    if override_on == "subclass":
+
+        class Subclass(CandidateNativeModelPortfolioReader):
+            reader_fingerprint = property(fingerprint)
+
+        reader = _subclass_reader(envelope, Subclass)
+    else:
+        reader = _reader(_ledger(envelope))
+        monkeypatch.setattr(
+            CandidateNativeModelPortfolioReader,
+            "reader_fingerprint",
+            property(fingerprint),
+        )
+    encoded = reader._evaluated_payload_json
+    loads = json.loads
+
+    def counted_loads(value):
+        events.append(("decode", value))
+        return loads(value)
+
+    monkeypatch.setattr(reader_module.json, "loads", counted_loads)
+    outcomes = []
+    for operation in (lambda: _parent_reader_to_dict(reader), reader.to_dict):
+        object.__setattr__(reader, "_evaluated_payload_json", encoded)
+        events.clear()
+        if behavior == "raise":
+            with pytest.raises(LookupError, match="^overridden fingerprint$"):
+                operation()
+        else:
+            outcomes.append(canonical_json(operation()))
+        assert events == [("decode", encoded), "property"]
+    assert not outcomes or outcomes[0] == outcomes[1]
+
+
+@pytest.mark.parametrize("encoded", ["{", "[]", "null", "false", "0", '"text"'])
+def test_export_preserves_malformed_payload_errors_before_property(
+    envelope, monkeypatch, encoded
+):
+    reader = _reader(_ledger(envelope))
+    object.__setattr__(reader, "_evaluated_payload_json", encoded)
+    calls = []
+
+    def fingerprint(self):
+        calls.append("property")
+        raise AssertionError("fingerprint must not run")
+
+    monkeypatch.setattr(
+        CandidateNativeModelPortfolioReader, "reader_fingerprint", property(fingerprint)
+    )
+    with pytest.raises((json.JSONDecodeError, TypeError)) as parent:
+        _parent_reader_to_dict(reader)
+    with pytest.raises(type(parent.value)) as current:
+        reader.to_dict()
+    assert str(current.value) == str(parent.value)
+    assert calls == []
+
+
+def test_export_hashes_payload_before_overwriting_excluded_field(envelope):
+    reader = _reader(_ledger(envelope))
+    # Even a replaced captured object retains the old hashing scope: all of its
+    # keys are hashed before the result's fingerprint key is added/overwritten.
+    payload = {"reader_fingerprint": "captured", "signed_zero": -0.0, "bool": False}
+    object.__setattr__(reader, "_evaluated_payload_json", canonical_json(payload))
+    expected = _parent_reader_to_dict(reader)
+    assert canonical_json(reader.to_dict()) == canonical_json(expected)
+    assert expected["reader_fingerprint"] == canonical_fingerprint(payload)
+
+
+def test_exact_class_export_preserves_hashing_errors_and_input(envelope, monkeypatch):
+    reader = _reader(_ledger(envelope))
+    encoded = reader._evaluated_payload_json
+    payloads = []
+
+    def fingerprint(payload):
+        payloads.append(canonical_json(payload))
+        raise ValueError("hashing failed")
+
+    monkeypatch.setattr(reader_module, "canonical_fingerprint", fingerprint)
+    for operation in (lambda: _parent_reader_to_dict(reader), reader.to_dict):
+        with pytest.raises(ValueError, match="^hashing failed$"):
+            operation()
+        assert reader._evaluated_payload_json == encoded
+    assert payloads == [encoded, encoded]
 
 
 @pytest.mark.parametrize("classification", [LEXICAL, LABELS])
@@ -508,6 +698,7 @@ def test_dates_are_unique_sorted_and_exact(envelope, tmp_path):
         )
     )
     reader = _reader(other, one)
+    assert reader.to_json() == canonical_json(_parent_reader_to_dict(reader))
     assert reader.observation_dates() == (date(2026, 1, 15), date(2026, 2, 16))
     assert reader.latest_observation_date() == date(2026, 2, 16)
     with pytest.raises(CandidateModelReaderError, match="DUPLICATE_SNAPSHOT_DATE"):

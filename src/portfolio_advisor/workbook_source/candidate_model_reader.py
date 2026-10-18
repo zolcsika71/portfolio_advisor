@@ -564,7 +564,18 @@ class CandidateNativeModelPortfolioReader:
 
     def to_dict(self) -> dict[str, object]:
         payload: dict[str, object] = json.loads(self._evaluated_payload_json)
-        return {**payload, "reader_fingerprint": self.reader_fingerprint}
+        result = {**payload}
+        # Only the unmodified exact-class property hashes this same payload.
+        # Keep dynamic dispatch for subclasses and replaced property descriptors.
+        fingerprint = (
+            canonical_fingerprint(payload)
+            if type(self) is CandidateNativeModelPortfolioReader
+            and vars(CandidateNativeModelPortfolioReader).get("reader_fingerprint")
+            is _READER_FINGERPRINT_PROPERTY
+            else self.reader_fingerprint
+        )
+        result["reader_fingerprint"] = fingerprint
+        return result
 
     def to_json(self) -> str:
         return canonical_json(self.to_dict())
@@ -590,3 +601,9 @@ class CandidateNativeModelPortfolioReader:
 
     def load_holdings(self, observation_date: date) -> list[HoldingObservation]:
         return list(self.snapshot_provenance(observation_date).holdings)
+
+
+# Pin the descriptor, not a fingerprint or decoded/caller-provided payload.
+_READER_FINGERPRINT_PROPERTY: Final = vars(CandidateNativeModelPortfolioReader)[
+    "reader_fingerprint"
+]
