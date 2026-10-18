@@ -10,7 +10,7 @@ import re
 import types
 from dataclasses import dataclass, fields, is_dataclass
 from datetime import date
-from functools import cache
+from functools import cache, lru_cache
 from typing import Final, Literal, TypeAliasType, get_args, get_origin, get_type_hints
 
 from portfolio_advisor.canonical import canonical_fingerprint, canonical_json
@@ -224,11 +224,25 @@ def _annotations(cls: type) -> dict[str, object]:
     return get_type_hints(cls)
 
 
+@lru_cache(maxsize=128)
+def _class_type_metadata(annotation: type) -> tuple[object, tuple[object, ...]]:
+    """Only origin/args of ordinary classes, never live values or verdicts.
+
+    The exact-metaclass guard below excludes caller hash/equality hooks. Typing
+    constructs stay uncached: their metadata may be mutable or unhashable.
+    """
+    return get_origin(annotation), get_args(annotation)
+
+
 def _typed(value: object, annotation: object) -> bool:
     """Reject mutable containers, subclasses, and bool-as-int at this boundary."""
     if isinstance(annotation, TypeAliasType):
         return _typed(value, annotation.__value__)
-    origin, args = get_origin(annotation), get_args(annotation)
+    origin, args = (
+        _class_type_metadata(annotation)
+        if type(annotation) is type
+        else (get_origin(annotation), get_args(annotation))
+    )
     if origin is types.UnionType:
         return any(_typed(value, arg) for arg in args)
     if origin is Literal:

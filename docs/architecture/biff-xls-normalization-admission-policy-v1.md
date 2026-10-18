@@ -726,6 +726,16 @@ trim-induced portfolio identity collisions and rejected five DTO metrics.
 Unused-field diagnostics remain unchanged, not waived. Allocation is unchanged
 in percentage points; zero-weight holdings and duplicate occurrences survive.
 
+The shared typed guard reuses only `get_origin`/`get_args` metadata for ordinary
+class annotations (exact metaclass `type`) in a private, process-local LRU of at
+most 128 entries. Entries retain schema classes and immutable metadata until
+eviction or module teardown, never input instances, validity, fingerprints or
+policy decisions. Typing constructs and caller metaclasses remain uncached;
+their existing introspection/exception behavior is retained. Every live field,
+recursive type check and full canonical-content comparison still executes.
+Synthetic differential and call-count checks cover this reuse; no new retained
+run, profiling, production speedup or performance qualification is claimed.
+
 The original-label or fixed model-only lexical view is separate from C's
 original-only classification metadata. Exact 10/24 keys, same-column canonical
 identity keys, lookup operations and policy/version/approval identities are
