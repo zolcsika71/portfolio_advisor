@@ -733,8 +733,10 @@ eviction or module teardown, never input instances, validity, fingerprints or
 policy decisions. Typing constructs and caller metaclasses remain uncached;
 their existing introspection/exception behavior is retained. Every live field,
 recursive type check and full canonical-content comparison still executes.
-Synthetic differential and call-count checks cover this reuse; no new retained
-run, profiling, production speedup or performance qualification is claimed.
+Synthetic differential and call-count checks cover this reuse. That synthetic
+implementation slice made no retained-performance claim; the separate
+[unprofiled export diagnostic](#bounded-unprofiled-export-diagnostic) below
+does not establish a repeatable cache speedup or performance qualification.
 
 The original-label or fixed model-only lexical view is separate from C's
 original-only classification metadata. Exact 10/24 keys, same-column canonical
@@ -949,6 +951,96 @@ bytes, profiles, database and configuration**, not general compatibility or
 performance. Further execution, consumer activation, eligibility composition,
 authority transfer and admission remain pending and separately authorized.
 ADR-007 remains `Proposed`; both reports and every reader retain `NOT_GRANTED`.
+
+### Bounded unprofiled export diagnostic
+
+Local recovery package `model-reader-export-unprofiled-v1.1AcQ6C` records one
+completed unprofiled attempt at published source revision
+`0f6f6f9e2c5200793eb382999411189a19759978`. Its `report.json` contract is
+`ONE_DECODE_EXPORT_UNPROFILED_DIAGNOSTIC` v1, status `COMPLETED`:
+
+- Report SHA-256: `fc740622869d769a156a1b7e1567f8b5c1dfb2e4a32c2018c0149959d825ff89`.
+- `SHA256SUMS` SHA-256: `a06c2e153449572296698175803ebd48e8848adecafd8c4f970bcf11eb2d9c0b`;
+  all 119 entries and the index self-check were verified.
+- Baseline package: `model-reader-unprofiled-v1.WJxqoQ`, source revision
+  `e38076dbe8513f36ba77679d7ddb05d04fbd3385`; `diagnostic.json` SHA-256
+  `4dc4fe965e2004578d84de4af56ca44cb1607e8342cb14d4ce02a9f5429997ae`.
+  Its `SHA256SUMS` SHA-256 is
+  `58db0bc4fba4e08fa32293e9ad27be37afa45ac4a68d6119e9404d2e8481ab85`;
+  all 120 entries and the index self-check were verified.
+
+This documentation verification inspected saved harnesses and records as data,
+without executing them or importing application modules. Saved source snapshots
+match their revisions; the published delta contains only the reader's guarded
+one-decode `to_dict()` optimization and its synthetic tests. The worker,
+status-aware repaired supervisor, launcher and preparation script are
+byte-identical to the successful baseline. `diagnostic-harness.patch` changes
+only source/revision verification bindings in `common.py`; workload, phase
+boundaries, validations, export retention and object lifetimes are unchanged.
+The first complete export remains live during the second. No decoded payload,
+fingerprint, validity or verdict cache was added by the reader optimization.
+
+The actual saved workload prepared all 33 ledgers through the public APIs,
+computed constructor argument fingerprints, constructed one all-date reader
+and produced exactly two exports. Profiles are the same explicit compatibility
+metrics, historical currency-risk projection, model-English lexical view,
+`ORIGINAL_MODEL_DESCRIPTORS_V1` and binary/source-tie order listed in the
+integrated record above, with `approved_shortlist_mapping_manifest=None` and
+unchanged production bindings. All prepared identities/accounting match the
+baseline: 5,283 model occurrences, 10,833 shortlist occurrences and 327,603 typed
+fields, including the same zero omissions and exact anomaly dispositions.
+This diagnostic did **not** execute a legacy reader or repeat advisor/ranking
+comparisons; earlier bounded equivalence claims are not refreshed or expanded.
+
+| Phase | New wall seconds | Baseline wall seconds | New CPU seconds |
+|---|---:|---:|---:|
+| Preparation | 154.656 | 153.489 | 152.605 |
+| Argument hashing | 6.324 | 5.902 | 6.247 |
+| Construction | 199.018 | 195.798 | 194.717 |
+| Export 1 | 10.789 | 12.838 | 9.944 |
+| Export 2 | 10.148 | 12.748 | 9.792 |
+| Total worker lifetime | 448.637 | 443.318 | Not separately recorded |
+
+The total clock includes imports, between-phase graph hashing, persistence and
+post-export verification; preflight and offline analysis/sealing are outside
+it. Separate phase timings must not be summed as the complete workload cost.
+Both canonical exports remain **491,493,440 bytes**, SHA-256
+`b807a9c6dd6f601328df2331775a675af619e81d0da308972409d6183fc1b0cd`,
+matching the baseline and each other. Historical reader fingerprint
+`ab86091ad4921c2f513357305aa062412c074d981c4dbafe18caf87653d06994`
+and exact typed/signed-zero input/reader live-graph digests match; both graphs
+remain unchanged. No export-size, schema or inline-provenance reduction occurred.
+
+New sampled peak **worker process RSS** was 3,505,700,864 bytes (3.265 GiB),
+versus baseline 3,966,255,104 bytes (approximately 3.69 GiB). This is not retained
+reader memory or an allocation attribution: preparation state, graph checks,
+serialization temporaries and retained export strings overlap. The independent
+monitor polled nominally every 0.1 seconds; the maximum actual gap was 0.628
+seconds across 4,270 samples. Polling can miss transient peaks and overshoot
+limits through scheduling/`ps` latency; worker lifetime `ru_maxrss` is separately
+recorded (3,507,617,792 bytes). No limit, validation or output failure was recorded.
+These are two single-run observations, not a paired/repeatable speedup estimate,
+causal memory-reduction claim, overall speedup or production qualification.
+
+Reproduction requires the exact source checkout, all 33 external inventory-bound
+XLS files, the named baseline/prior correctness and supervisor-repair packages,
+recorded compatible dependencies and a fresh exclusive output directory.
+`REPRODUCE.md`, `runtime.json`, `verified-inputs.json`, source snapshots and launch
+receipts identify exact commands, profiles and bindings; recorded SDK/platform/
+distribution versions match the baseline, without proving equivalent runtime
+load. No database is required and no full export is persisted. Unchanged bounds
+are 900 seconds total, 600 preparation, 30 hashing, 240 construction, 15 per
+export, 4 GiB worker RSS and 25 MiB persisted output, with no retries, extra
+constructions or artificial cache warming. Elapsed time, RSS and report bytes
+need not reproduce; the complete canonical export identity is the bounded
+output target. Any further execution requires separate authorization.
+
+Earlier incomplete instrumented measurements remain incomplete. Neither
+completed unprofiled run supplies their missing measurements or reclassifies
+the integrated comparison's four timeout failures and historical
+`COMPLETED_WITH_FAILURES` status. Existing policy approvals are unchanged;
+ADR-007 stays `Proposed`. Activation, eligibility composition and admission
+remain unauthorized; admission stays `NOT_GRANTED`.
 
 <a id="later-retained-integration-validation-contract-not-executed"></a>
 

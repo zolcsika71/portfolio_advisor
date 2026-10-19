@@ -667,6 +667,45 @@ configuration**. Further execution, activation, eligibility composition, authori
 transfer and admission remain pending. This ADR stays `Proposed`; admission in
 both reports and every reader remains `NOT_GRANTED`.
 
+### Bounded unprofiled export diagnostic (evidence only)
+
+The [detailed diagnostic record](../architecture/biff-xls-normalization-admission-policy-v1.md#bounded-unprofiled-export-diagnostic)
+documents saved package `model-reader-export-unprofiled-v1.1AcQ6C` at source
+`0f6f6f9e2c5200793eb382999411189a19759978`: `report.json` SHA-256
+`fc740622869d769a156a1b7e1567f8b5c1dfb2e4a32c2018c0149959d825ff89`,
+index SHA-256 `a06c2e153449572296698175803ebd48e8848adecafd8c4f970bcf11eb2d9c0b`
+(119 verified entries). Baseline `model-reader-unprofiled-v1.WJxqoQ`, source
+`e38076dbe8513f36ba77679d7ddb05d04fbd3385`, has index SHA-256
+`58db0bc4fba4e08fa32293e9ad27be37afa45ac4a68d6119e9404d2e8481ab85`
+(120 verified entries). Harness identity, source/input/dependency bindings,
+phase/output and preservation records were verified as saved data only; no
+harness or application was executed for this documentation update.
+
+One attempt completed using the baseline's unchanged worker and repaired
+supervisor, historical profiles and `approved_shortlist_mapping_manifest=None`.
+It prepared all 33 ledgers, computed argument fingerprints, constructed one
+reader and retained two complete exports with unchanged lifetimes. New/baseline
+wall seconds were 154.656/153.489 preparation, 6.324/5.902 hashing,
+199.018/195.798 construction, 10.789/12.838 and 10.148/12.748 exports,
+448.637/443.318 total. CPU records and exact limits are in the detailed record.
+Both 491,493,440-byte exports matched baseline digests and the historical reader
+fingerprint; input/reader graphs and prepared identities/accounting were unchanged.
+This did not repeat advisor/ranking comparisons or expand earlier equivalence.
+
+Sampled peak **process** RSS was 3.265 GiB versus approximately 3.69 GiB, not a
+retained-reader-memory measurement. Nominal 0.1-second polling had a maximum
+actual gap of 0.628 seconds; missed transient peaks and reactive overshoot remain
+possible. Lifetimes, temporary representations and retained exports overlap;
+no causal memory reduction, repeatable/overall speedup or production qualification
+is established. Export size/schema and required provenance did not shrink.
+Reproduction requires exact source, external hash-bound workbooks, named prior
+packages, recorded compatible dependencies and fresh bounded output as specified
+in `REPRODUCE.md`; no database is needed. Earlier incomplete measurements and
+the integrated report's historical `COMPLETED_WITH_FAILURES` are not reclassified.
+All approvals and bounded comparison claims remain unchanged. This ADR remains
+`Proposed`; further execution, activation, eligibility composition and admission
+remain unauthorized, with admission `NOT_GRANTED`.
+
 ## Consequences
 
 - Model source authority becomes explicit and portable instead of being

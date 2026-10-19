@@ -1128,6 +1128,47 @@ compatibility or new BIFF/formula evidence. Further execution, activation,
 eligibility composition, authority transfer and admission remain pending.
 ADR-007 stays `Proposed`; admission stays `NOT_GRANTED`.
 
+### Bounded unprofiled export diagnostic — observations, not qualification
+
+The [detailed diagnostic record](biff-xls-normalization-admission-policy-v1.md#bounded-unprofiled-export-diagnostic)
+binds `model-reader-export-unprofiled-v1.1AcQ6C` to source
+`0f6f6f9e2c5200793eb382999411189a19759978`. `report.json` SHA-256 is
+`fc740622869d769a156a1b7e1567f8b5c1dfb2e4a32c2018c0149959d825ff89`;
+`SHA256SUMS` SHA-256 is `a06c2e153449572296698175803ebd48e8848adecafd8c4f970bcf11eb2d9c0b`
+(119 verified entries). Baseline `model-reader-unprofiled-v1.WJxqoQ` at
+`e38076dbe8513f36ba77679d7ddb05d04fbd3385` has index SHA-256
+`58db0bc4fba4e08fa32293e9ad27be37afa45ac4a68d6119e9404d2e8481ab85`
+(120 verified entries). Saved harness/source/input/dependency, phase, export and
+preservation bindings were checked statically; no harness or application ran
+for this documentation verification.
+
+Exactly one attempt completed with unchanged worker/supervisor, historical
+profiles and `approved_shortlist_mapping_manifest=None`: all 33 ledgers, argument
+fingerprinting, one reader and two exports; the first export stayed live during
+the second. Only source/revision verification bindings changed in the external
+harness. New/baseline wall seconds were preparation 154.656/153.489, hashing
+6.324/5.902, construction 199.018/195.798, exports 10.789/12.838 and 10.148/12.748,
+total 448.637/443.318. Phase CPU times remain in the detailed record. Both exports
+were 491,493,440 bytes with exact baseline digest/reader-fingerprint matches and
+unchanged input/reader graphs. All prepared identities/accounting matched the
+baseline; advisor/ranking comparisons were **not** repeated.
+
+Sampled peak process RSS was 3.265 GiB versus approximately 3.69 GiB; it includes
+overlapping workload/serialization/export state, not retained reader memory.
+Nominal 0.1-second polling had a 0.628-second maximum actual gap and can miss
+transient peaks or overshoot; lifetime high-water RSS is recorded separately.
+No limit or output failure occurred. These single-run observations establish
+neither repeatable speedup, causal memory reduction, overall speedup nor
+production qualification; export size/schema/provenance are unchanged.
+Reproduction needs exact source, external hash-bound XLS inputs, referenced
+prior packages, recorded compatible environment and fresh output under the
+unchanged 900/600/30/240/15-second, 4-GiB and 25-MiB bounds in `REPRODUCE.md`.
+No database is needed. Earlier incomplete profiles and historical
+`COMPLETED_WITH_FAILURES` remain unchanged, as do earlier equivalence claims and
+policy approvals. Further execution, activation, eligibility composition and
+admission require separate authorization; ADR-007 stays `Proposed`, admission
+`NOT_GRANTED`.
+
 ## Unresolved decisions and blockers
 
 1. **Dual-sheet watcher policy — operational approval still required.** Option
